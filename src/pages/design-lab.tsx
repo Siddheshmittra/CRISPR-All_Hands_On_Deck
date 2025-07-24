@@ -1,9 +1,11 @@
 import { useState } from "react"
+import { DragDropContext, type DropResult } from "@hello-pangea/dnd"
 import { Header } from "@/components/design-lab/header"
 import { DesignMode } from "@/components/design-lab/design-mode"
-import { ModuleSelector } from "@/components/design-lab/module-selector"
+import { ModuleSelector, predefinedModules } from "@/components/design-lab/module-selector"
 import { ConstructLayout } from "@/components/design-lab/construct-layout"
 import { FinalConstruct } from "@/components/design-lab/final-construct"
+import { MultiCassetteDialog } from "@/components/design-lab/multi-cassette-dialog"
 
 interface Module {
   id: string
@@ -14,8 +16,18 @@ interface Module {
 
 const DesignLab = () => {
   const [designMode, setDesignMode] = useState<"single" | "multi">("single")
+
+  const handleModeChange = (mode: "single" | "multi") => {
+    setDesignMode(mode)
+    if (mode === "multi") {
+      setMultiOpen(true)
+    }
+  }
   const [selectedModules, setSelectedModules] = useState<Module[]>([])
   const [constructModules, setConstructModules] = useState<Module[]>([])
+  const [multiOpen, setMultiOpen] = useState(false)
+  const [cassetteCount, setCassetteCount] = useState(2)
+  const [modulesPerCassette, setModulesPerCassette] = useState(3)
 
   const handleModuleSelect = (module: Module) => {
     if (constructModules.length >= 5) {
@@ -35,15 +47,32 @@ const DesignLab = () => {
     setSelectedModules(prev => prev.filter(m => m.id !== moduleId))
   }
 
-  const handleModuleReorder = (result: any) => {
+  const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return
 
-    const items = Array.from(constructModules)
-    const [reorderedItem] = items.splice(result.source.index, 1)
-    items.splice(result.destination.index, 0, reorderedItem)
+    if (
+      result.source.droppableId === "construct" &&
+      result.destination.droppableId === "construct"
+    ) {
+      const items = Array.from(constructModules)
+      const [reorderedItem] = items.splice(result.source.index, 1)
+      items.splice(result.destination.index, 0, reorderedItem)
+      setConstructModules(items)
+    }
 
-    setConstructModules(items)
+    if (
+      result.source.droppableId === "available-modules" &&
+      result.destination.droppableId === "construct"
+    ) {
+      const module = predefinedModules.find(m => m.id === result.draggableId)
+      if (!module) return
+      if (constructModules.some(m => m.id === module.id)) return
+      if (constructModules.length >= 5) return
+      setConstructModules(prev => [...prev, module])
+      setSelectedModules(prev => [...prev, module])
+    }
   }
+
 
   const handleRandomize = () => {
     const shuffled = [...constructModules].sort(() => Math.random() - 0.5)
@@ -62,7 +91,15 @@ const DesignLab = () => {
           <Header />
           
           <div className="p-6 space-y-6">
-            <DesignMode mode={designMode} onModeChange={setDesignMode} />
+            <DesignMode mode={designMode} onModeChange={handleModeChange} />
+            <MultiCassetteDialog
+              open={multiOpen}
+              cassetteCount={cassetteCount}
+              modulesPerCassette={modulesPerCassette}
+              setCassetteCount={setCassetteCount}
+              setModulesPerCassette={setModulesPerCassette}
+              onClose={() => setMultiOpen(false)}
+            />
             
             <ModuleSelector
               selectedModules={selectedModules}
@@ -70,13 +107,14 @@ const DesignLab = () => {
               onModuleDeselect={handleModuleDeselect}
             />
             
-            <ConstructLayout
-              constructModules={constructModules}
-              onModuleRemove={handleModuleRemove}
-              onModuleReorder={handleModuleReorder}
-              onRandomize={handleRandomize}
-              onReset={handleReset}
-            />
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <ConstructLayout
+                constructModules={constructModules}
+                onModuleRemove={handleModuleRemove}
+                onRandomize={handleRandomize}
+                onReset={handleReset}
+              />
+            </DragDropContext>
             
             <FinalConstruct constructModules={constructModules} />
           </div>

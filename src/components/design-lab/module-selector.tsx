@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ModuleButton } from "@/components/ui/module-button"
 import { Search, Plus } from "lucide-react"
+import { Droppable, Draggable } from "@hello-pangea/dnd"
 
 interface Module {
   id: string
@@ -18,7 +19,7 @@ interface ModuleSelectorProps {
   onModuleDeselect: (moduleId: string) => void
 }
 
-const predefinedModules: Module[] = [
+export const predefinedModules: Module[] = [
   { id: "BATF", name: "BATF", type: "overexpression" },
   { id: "IRF4", name: "IRF4", type: "overexpression" },
   { id: "c-Jun", name: "c-Jun", type: "overexpression" },
@@ -81,18 +82,37 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         Sorted by NCBI GeneBank
       </p>
 
-      <div className="flex flex-wrap gap-2">
-        {filteredModules.map((module) => (
-          <ModuleButton
-            key={module.id}
-            moduleType={module.type}
-            isSelected={isSelected(module.id)}
-            onClick={() => handleModuleClick(module)}
+      <Droppable droppableId="available-modules" direction="horizontal">
+        {(provided) => (
+          <div
+            className="flex flex-wrap gap-2"
+            ref={provided.innerRef}
+            {...provided.droppableProps}
           >
-            {module.name}
-          </ModuleButton>
-        ))}
-      </div>
+            {filteredModules.map((module, index) => (
+              <Draggable key={module.id} draggableId={module.id} index={index}>
+                {(dragProvided) => (
+                  <div
+                    ref={dragProvided.innerRef}
+                    {...dragProvided.draggableProps}
+                    {...dragProvided.dragHandleProps}
+                    className="cursor-move"
+                  >
+                    <ModuleButton
+                      moduleType={module.type}
+                      isSelected={isSelected(module.id)}
+                      onClick={() => handleModuleClick(module)}
+                    >
+                      {module.name}
+                    </ModuleButton>
+                  </div>
+                )}
+              </Draggable>
+            ))}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
     </Card>
   )
 }
