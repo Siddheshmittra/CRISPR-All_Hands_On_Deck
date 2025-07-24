@@ -33,7 +33,7 @@ export interface ModuleButtonProps
   moduleType?: "overexpression" | "knockout" | "knockdown"
 }
 
-const ModuleButton = React.forwardRef<HTMLButtonElement, ModuleButtonProps>(
+const ModuleButton = React.forwardRef<HTMLDivElement, ModuleButtonProps>(
   ({ className, variant, size, isSelected, moduleType, ...props }, ref) => {
     const buttonVariant = isSelected 
       ? "selected" 
@@ -42,9 +42,11 @@ const ModuleButton = React.forwardRef<HTMLButtonElement, ModuleButtonProps>(
         : variant
 
     return (
-      <button
+      <div
         className={cn(moduleButtonVariants({ variant: buttonVariant, size, className }))}
         ref={ref}
+        tabIndex={0}
+        role="button"
         {...props}
       />
     )
