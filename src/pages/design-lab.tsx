@@ -6,6 +6,8 @@ import { ModuleSelector, predefinedModules } from "@/components/design-lab/modul
 import { ConstructLayout } from "@/components/design-lab/construct-layout"
 import { FinalConstruct } from "@/components/design-lab/final-construct"
 import { MultiCassetteDialog } from "@/components/design-lab/multi-cassette-dialog"
+import { NaturalLanguageMode } from "@/components/design-lab/natural-language-mode"
+import { LibraryManager } from "@/components/design-lab/library-manager"
 
 interface Module {
   id: string
@@ -15,9 +17,9 @@ interface Module {
 }
 
 const DesignLab = () => {
-  const [designMode, setDesignMode] = useState<"single" | "multi">("single")
+  const [designMode, setDesignMode] = useState<"manual" | "natural" | "multi">("manual")
 
-  const handleModeChange = (mode: "single" | "multi") => {
+  const handleModeChange = (mode: "manual" | "natural" | "multi") => {
     setDesignMode(mode)
     if (mode === "multi") {
       setMultiOpen(true)
@@ -28,6 +30,7 @@ const DesignLab = () => {
   const [multiOpen, setMultiOpen] = useState(false)
   const [cassetteCount, setCassetteCount] = useState(2)
   const [modulesPerCassette, setModulesPerCassette] = useState(3)
+  const [customModules, setCustomModules] = useState<Module[]>([])
 
   const handleModuleSelect = (module: Module) => {
     if (constructModules.length >= 5) {
@@ -101,20 +104,33 @@ const DesignLab = () => {
               onClose={() => setMultiOpen(false)}
             />
             
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <ModuleSelector
-              selectedModules={selectedModules}
-              onModuleSelect={handleModuleSelect}
-              onModuleDeselect={handleModuleDeselect}
+            <LibraryManager
+              customModules={customModules}
+              onCustomModulesChange={setCustomModules}
             />
             
-            <ConstructLayout
-              constructModules={constructModules}
-              onModuleRemove={handleModuleRemove}
-              onRandomize={handleRandomize}
-              onReset={handleReset}
-            />
-          </DragDropContext>
+            {designMode === "natural" && (
+              <NaturalLanguageMode
+                onSuggestedConstruct={(modules) => setConstructModules(modules)}
+              />
+            )}
+            
+            {designMode === "manual" && (
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <ModuleSelector
+                  selectedModules={selectedModules}
+                  onModuleSelect={handleModuleSelect}
+                  onModuleDeselect={handleModuleDeselect}
+                />
+                
+                <ConstructLayout
+                  constructModules={constructModules}
+                  onModuleRemove={handleModuleRemove}
+                  onRandomize={handleRandomize}
+                  onReset={handleReset}
+                />
+              </DragDropContext>
+            )}
             
             <FinalConstruct constructModules={constructModules} />
           </div>

@@ -8,63 +8,55 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 220 13% 13%;
+    /* Stanford Red Theme */
+    --background: 8 67% 67%; /* Stanford Red as main background */
+    --foreground: 0 0% 98%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 13% 13%;
+    --card-foreground: 8 15% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 13% 13%;
+    --popover-foreground: 8 15% 15%;
 
-    /* Scientific burgundy theme */
-    --primary: 0 45% 35%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 8 67% 67%;
+    --primary-foreground: 0 0% 98%;
     
-    --primary-light: 0 45% 45%;
-    --primary-dark: 0 45% 25%;
+    --primary-light: 8 67% 77%;
+    --primary-dark: 8 67% 57%;
 
-    --secondary: 220 13% 95%;
-    --secondary-foreground: 220 13% 13%;
+    --secondary: 8 10% 92%;
+    --secondary-foreground: 8 15% 15%;
 
-    --muted: 220 13% 95%;
-    --muted-foreground: 220 8% 46%;
+    --muted: 8 5% 94%;
+    --muted-foreground: 8 10% 45%;
 
-    /* Scientific blue accent */
-    --accent: 210 100% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 8 5% 94%;
+    --accent-foreground: 8 15% 15%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 0 45% 35%;
+    --border: 8 10% 85%;
+    --input: 8 5% 96%;
+    --ring: 8 67% 67%;
 
-    /* Scientific gradients */
+    /* Stanford Red gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
-    --gradient-surface: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted)));
+    --gradient-surface: linear-gradient(135deg, hsl(0 0% 100% / 0.95), hsl(8 5% 98% / 0.95));
     
     /* Shadows */
-    --shadow-module: 0 2px 8px hsl(var(--primary) / 0.15);
-    --shadow-elevated: 0 4px 16px hsl(var(--primary) / 0.2);
+    --shadow-module: 0 2px 8px hsl(8 67% 67% / 0.25);
+    --shadow-elevated: 0 20px 40px -12px hsl(8 67% 67% / 0.35);
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
