@@ -101,20 +101,20 @@ const DesignLab = () => {
               onClose={() => setMultiOpen(false)}
             />
             
+          <DragDropContext onDragEnd={handleDragEnd}>
             <ModuleSelector
               selectedModules={selectedModules}
               onModuleSelect={handleModuleSelect}
               onModuleDeselect={handleModuleDeselect}
             />
             
-            <DragDropContext onDragEnd={handleDragEnd}>
-              <ConstructLayout
-                constructModules={constructModules}
-                onModuleRemove={handleModuleRemove}
-                onRandomize={handleRandomize}
-                onReset={handleReset}
-              />
-            </DragDropContext>
+            <ConstructLayout
+              constructModules={constructModules}
+              onModuleRemove={handleModuleRemove}
+              onRandomize={handleRandomize}
+              onReset={handleReset}
+            />
+          </DragDropContext>
             
             <FinalConstruct constructModules={constructModules} />
           </div>
