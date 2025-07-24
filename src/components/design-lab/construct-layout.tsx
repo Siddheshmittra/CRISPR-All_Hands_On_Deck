@@ -41,20 +41,21 @@ export const ConstructLayout = ({
       </div>
 
       <div className="border-2 border-dashed border-border rounded-lg p-6 min-h-[120px] bg-gradient-surface">
-        {constructModules.length === 0 ? (
-          <div className="text-center text-muted-foreground">
-            <p>Drop modules here to build your construct</p>
-            <p className="text-sm mt-1">Maximum 5 perturbations</p>
-          </div>
-        ) : (
-          <Droppable droppableId="construct" direction="horizontal">
-            {(provided) => (
-              <div
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-                className="flex items-center gap-3 flex-wrap"
-              >
-                {constructModules.map((module, index) => (
+        <Droppable droppableId="construct" direction="horizontal">
+          {(provided, snapshot) => (
+            <div
+              {...provided.droppableProps}
+              ref={provided.innerRef}
+              className="flex items-center gap-3 flex-wrap min-h-[48px] w-full"
+              style={{ minHeight: 48 }}
+            >
+              {constructModules.length === 0 ? (
+                <div className="w-full text-center text-muted-foreground pointer-events-none select-none">
+                  <p>Drop modules here to build your construct</p>
+                  <p className="text-sm mt-1">Maximum 5 perturbations</p>
+                </div>
+              ) : (
+                constructModules.map((module, index) => (
                   <div key={module.id} className="flex items-center gap-2">
                     <Draggable draggableId={module.id} index={index}>
                       {(provided, snapshot) => (
@@ -83,12 +84,12 @@ export const ConstructLayout = ({
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
                     )}
                   </div>
-                ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        )}
+                ))
+              )}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
       </div>
 
       {constructModules.length > 0 && (
