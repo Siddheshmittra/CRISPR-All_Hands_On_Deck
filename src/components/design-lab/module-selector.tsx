@@ -17,6 +17,7 @@ interface ModuleSelectorProps {
   selectedModules: Module[]
   onModuleSelect: (module: Module) => void
   onModuleDeselect: (moduleId: string) => void
+  customModules: Module[] // <-- add this prop
 }
 
 export const predefinedModules: Module[] = [
@@ -41,10 +42,12 @@ export const predefinedModules: Module[] = [
   { id: "KU-GZMB", name: "KU-GZMB", type: "overexpression" }
 ]
 
-export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDeselect }: ModuleSelectorProps) => {
+export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDeselect, customModules }: ModuleSelectorProps) => {
   const [searchTerm, setSearchTerm] = useState("")
 
-  const filteredModules = predefinedModules.filter(module =>
+  // Merge predefined and custom modules
+  const allModules = [...predefinedModules, ...customModules]
+  const filteredModules = allModules.filter(module =>
     module.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 

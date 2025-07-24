@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { DragDropContext, type DropResult } from "@hello-pangea/dnd"
+import { DragDropContext, type DropResult, Droppable } from "@hello-pangea/dnd"
 import { Header } from "@/components/design-lab/header"
 import { DesignMode } from "@/components/design-lab/design-mode"
 import { ModuleSelector, predefinedModules } from "@/components/design-lab/module-selector"
@@ -8,6 +8,7 @@ import { FinalConstruct } from "@/components/design-lab/final-construct"
 import { MultiCassetteDialog } from "@/components/design-lab/multi-cassette-dialog"
 import { NaturalLanguageMode } from "@/components/design-lab/natural-language-mode"
 import { LibraryManager } from "@/components/design-lab/library-manager"
+import { Trash2 } from "lucide-react"
 
 interface Module {
   id: string
@@ -67,12 +68,25 @@ const DesignLab = () => {
       result.source.droppableId === "available-modules" &&
       result.destination.droppableId === "construct"
     ) {
-      const module = predefinedModules.find(m => m.id === result.draggableId)
+      // Try both predefined and custom modules
+      const allModules = [...predefinedModules, ...customModules]
+      const module = allModules.find(m => m.id === result.draggableId)
       if (!module) return
       if (constructModules.some(m => m.id === module.id)) return
       if (constructModules.length >= 5) return
       setConstructModules(prev => [...prev, module])
       setSelectedModules(prev => [...prev, module])
+    }
+
+    // Remove from construct if dropped in trash
+    if (
+      result.source.droppableId === "construct" &&
+      result.destination.droppableId === "trash"
+    ) {
+      const items = Array.from(constructModules)
+      items.splice(result.source.index, 1)
+      setConstructModules(items)
+      setSelectedModules(items)
     }
   }
 
@@ -121,6 +135,7 @@ const DesignLab = () => {
                   selectedModules={selectedModules}
                   onModuleSelect={handleModuleSelect}
                   onModuleDeselect={handleModuleDeselect}
+                  customModules={customModules}
                 />
                 
                 <ConstructLayout
@@ -129,6 +144,22 @@ const DesignLab = () => {
                   onRandomize={handleRandomize}
                   onReset={handleReset}
                 />
+                {/* Trash Area for drag-to-remove */}
+                <div className="flex justify-center mt-6">
+                  <Droppable droppableId="trash">
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={`flex flex-col items-center justify-center w-24 h-24 rounded-full border-2 border-dashed transition-colors ${snapshot.isDraggingOver ? 'bg-destructive/20 border-destructive' : 'bg-muted border-border'}`}
+                      >
+                        <Trash2 className={`h-10 w-10 ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
+                        <span className="text-xs mt-2 text-muted-foreground">Trash</span>
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </div>
               </DragDropContext>
             )}
             
