@@ -143,10 +143,57 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const isSelected = (moduleId: string) => 
     selectedModules.some(m => m.id === moduleId)
 
+  // Import/export logic
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  function handleImportLibrary() {
+    if (fileInputRef.current) fileInputRef.current.click()
+  }
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const imported = JSON.parse(e.target?.result as string)
+          onCustomModulesChange([...customModules, ...imported])
+        } catch (error) {
+          console.error('Failed to import library:', error)
+        }
+      }
+      reader.readAsText(file)
+    }
+  }
+  function handleExportLibrary() {
+    const dataStr = JSON.stringify(customModules, null, 2)
+    const dataBlob = new Blob([dataStr], { type: 'application/json' })
+    const url = URL.createObjectURL(dataBlob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'gene-library.json'
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   // Remove isSelected logic from Draggable rendering, so all modules are always draggable
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-4">2. Select Modules</h2>
+      {/* Import/Export buttons */}
+      <div className="flex gap-2 mb-2">
+        <Button variant="outline" size="sm" onClick={handleImportLibrary}>
+          Import
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleExportLibrary}>
+          Export
+        </Button>
+        <input
+          type="file"
+          accept=".json"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+        />
+      </div>
       <div className="flex gap-2 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
