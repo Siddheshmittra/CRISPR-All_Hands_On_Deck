@@ -26,7 +26,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   const [rightArm, setRightArm] = useState("e.g. TRAC downstream")
   const [barcode, setBarcode] = useState("e.g. Unique 10-20bp")
   const [polyASignal, setPolyASignal] = useState("bGH")
-  const [showSequence, setShowSequence] = useState(false)
+  const [showSequence, setShowSequence] = useState(true)
 
   // Generate predicted function
   const generatePredictedFunction = () => {
