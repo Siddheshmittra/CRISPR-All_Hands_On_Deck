@@ -18,14 +18,8 @@ interface Module {
 }
 
 const DesignLab = () => {
-  const [designMode, setDesignMode] = useState<"manual" | "natural" | "multi">("manual")
-
-  const handleModeChange = (mode: "manual" | "natural" | "multi") => {
-    setDesignMode(mode)
-    if (mode === "multi") {
-      setMultiOpen(true)
-    }
-  }
+  const [cassetteMode, setCassetteMode] = useState<'single' | 'multi'>('single')
+  const [inputMode, setInputMode] = useState<'manual' | 'natural'>('manual')
   const [selectedModules, setSelectedModules] = useState<Module[]>([])
   const [constructModules, setConstructModules] = useState<Module[]>([])
   const [multiOpen, setMultiOpen] = useState(false)
@@ -108,28 +102,38 @@ const DesignLab = () => {
           <Header />
           
           <div className="p-6 space-y-6">
-            <DesignMode mode={designMode} onModeChange={handleModeChange} />
-            <MultiCassetteDialog
-              open={multiOpen}
-              cassetteCount={cassetteCount}
-              modulesPerCassette={modulesPerCassette}
-              setCassetteCount={setCassetteCount}
-              setModulesPerCassette={setModulesPerCassette}
-              onClose={() => setMultiOpen(false)}
+            <DesignMode
+              cassetteMode={cassetteMode}
+              onCassetteModeChange={mode => {
+                setCassetteMode(mode)
+                if (mode === 'multi') setMultiOpen(true)
+              }}
+              inputMode={inputMode}
+              onInputModeChange={setInputMode}
             />
+            {cassetteMode === 'multi' && (
+              <MultiCassetteDialog
+                open={multiOpen}
+                cassetteCount={cassetteCount}
+                modulesPerCassette={modulesPerCassette}
+                setCassetteCount={setCassetteCount}
+                setModulesPerCassette={setModulesPerCassette}
+                onClose={() => setMultiOpen(false)}
+              />
+            )}
             
             <LibraryManager
               customModules={customModules}
               onCustomModulesChange={setCustomModules}
             />
             
-            {designMode === "natural" && (
+            {inputMode === 'natural' && (
               <NaturalLanguageMode
-                onSuggestedConstruct={(modules) => setConstructModules(modules)}
+                onSuggestedConstruct={modules => setConstructModules(modules)}
               />
             )}
             
-            {designMode === "manual" && (
+            {inputMode === 'manual' && (
               <DragDropContext onDragEnd={handleDragEnd}>
                 <ModuleSelector
                   selectedModules={selectedModules}
