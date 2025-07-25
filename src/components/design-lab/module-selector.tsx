@@ -3,8 +3,9 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ModuleButton } from "@/components/ui/module-button"
-import { Search, Plus } from "lucide-react"
+import { Search, Plus, Trash2 } from "lucide-react"
 import { Droppable, Draggable } from "@hello-pangea/dnd"
+import { Badge } from "@/components/ui/badge"
 
 interface Module {
   id: string
@@ -189,6 +190,33 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       <p className="text-sm text-muted-foreground mb-4">
         Powered by NCBI GeneBank
       </p>
+      {/* Divider */}
+      <div className="border-t border-border my-4" />
+      {/* Custom Modules Library (badges with delete buttons) */}
+      {customModules.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-sm font-medium text-muted-foreground mb-2">
+            Custom Modules ({customModules.length})
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {customModules.map((module) => (
+              <div key={module.id} className="flex items-center gap-1">
+                <Badge variant="secondary" className="text-xs">
+                  {module.name}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onCustomModulesChange(customModules.filter(m => m.id !== module.id))}
+                  className="h-6 w-6 p-0"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <Droppable droppableId="available-modules" direction="horizontal">
         {(provided) => (
           <div
@@ -207,7 +235,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                   >
                     <ModuleButton
                       moduleType={module.type}
-                      // Remove isSelected logic from here
                       onClick={() => handleModuleClick(module)}
                     >
                       {module.name}
