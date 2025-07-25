@@ -5,7 +5,7 @@ import { DesignMode } from "@/components/design-lab/design-mode"
 import { ModuleSelector, predefinedModules } from "@/components/design-lab/module-selector"
 import { ConstructLayout } from "@/components/design-lab/construct-layout"
 import { FinalConstruct } from "@/components/design-lab/final-construct"
-import { MultiCassetteDialog } from "@/components/design-lab/multi-cassette-dialog"
+import { MultiCassetteSetup } from "@/components/design-lab/multi-cassette-dialog"
 import { NaturalLanguageMode } from "@/components/design-lab/natural-language-mode"
 import { LibraryManager } from "@/components/design-lab/library-manager"
 import { Trash2 } from "lucide-react"
@@ -22,9 +22,10 @@ const DesignLab = () => {
   const [inputMode, setInputMode] = useState<'manual' | 'natural'>('manual')
   const [selectedModules, setSelectedModules] = useState<Module[]>([])
   const [constructModules, setConstructModules] = useState<Module[]>([])
-  const [multiOpen, setMultiOpen] = useState(false)
   const [cassetteCount, setCassetteCount] = useState(2)
-  const [modulesPerCassette, setModulesPerCassette] = useState(3)
+  const [overexpressionCount, setOverexpressionCount] = useState(0)
+  const [knockoutCount, setKnockoutCount] = useState(0)
+  const [knockdownCount, setKnockdownCount] = useState(0)
   const [customModules, setCustomModules] = useState<Module[]>([])
 
   const handleModuleSelect = (module: Module) => {
@@ -104,21 +105,20 @@ const DesignLab = () => {
           <div className="p-6 space-y-6">
             <DesignMode
               cassetteMode={cassetteMode}
-              onCassetteModeChange={mode => {
-                setCassetteMode(mode)
-                if (mode === 'multi') setMultiOpen(true)
-              }}
+              onCassetteModeChange={setCassetteMode}
               inputMode={inputMode}
               onInputModeChange={setInputMode}
             />
             {cassetteMode === 'multi' && (
-              <MultiCassetteDialog
-                open={multiOpen}
+              <MultiCassetteSetup
                 cassetteCount={cassetteCount}
-                modulesPerCassette={modulesPerCassette}
                 setCassetteCount={setCassetteCount}
-                setModulesPerCassette={setModulesPerCassette}
-                onClose={() => setMultiOpen(false)}
+                overexpressionCount={overexpressionCount}
+                setOverexpressionCount={setOverexpressionCount}
+                knockoutCount={knockoutCount}
+                setKnockoutCount={setKnockoutCount}
+                knockdownCount={knockdownCount}
+                setKnockdownCount={setKnockdownCount}
               />
             )}
             
