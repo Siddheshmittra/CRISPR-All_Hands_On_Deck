@@ -91,6 +91,10 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     } else if (e.key === "Enter") {
       if (selectedIndex >= 0 && suggestions[selectedIndex]) {
         selectSuggestion(suggestions[selectedIndex])
+        // Add gene immediately after selecting
+        setTimeout(() => handleAddGene(), 0)
+      } else if (selectedSuggestion) {
+        handleAddGene()
       }
     } else if (e.key === "Escape") {
       setShowDropdown(false)
