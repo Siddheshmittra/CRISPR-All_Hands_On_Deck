@@ -97,24 +97,27 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       return
     }
     setLoading(true)
+    // Reduced timeout for more responsive feel
     searchTimeout.current = setTimeout(async () => {
       const items = await hgncSuggest(searchTerm)
       setSuggestions(items)
       setShowDropdown(true)
       setLoading(false)
       setSelectedIndex(-1)
-    }, 300)
+    }, 150) // Faster response time
     // eslint-disable-next-line
   }, [searchTerm])
 
   // Keyboard navigation for dropdown
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
-      if (showDropdown && suggestions.length > 0) {
+      e.preventDefault() // Prevent form submission if in a form
+      if (suggestions.length > 0) {
+        // If we have suggestions, always use the first one
         selectSuggestion(suggestions[0])
-        setTimeout(() => handleAddGene(), 0)
-      } else if (selectedSuggestion) {
-        handleAddGene()
+        setTimeout(() => handleAddGene(), 0) // Small timeout to ensure state updates
+      } else if (selectedSuggestion) { // If we already selected one
+        handleAddGene() // Just add it
       }
     } else if (showDropdown && suggestions.length) {
       if (e.key === "ArrowDown") {
