@@ -9,6 +9,7 @@ interface Module {
   name: string
   type: "overexpression" | "knockout" | "knockdown"
   description?: string
+  sequence?: string
 }
 
 interface ConstructLayoutProps {

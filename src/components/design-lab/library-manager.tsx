@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Upload, Download, Plus, Trash2, Library } from "lucide-react"
@@ -11,6 +12,7 @@ interface Module {
   name: string
   type: "overexpression" | "knockout" | "knockdown"
   description?: string
+  sequence?: string
 }
 
 interface LibraryManagerProps {
@@ -22,7 +24,7 @@ interface LibraryManagerProps {
 
 export const LibraryManager = ({ customModules, onCustomModulesChange, constructModules, onConstructModulesChange }: LibraryManagerProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [newModule, setNewModule] = useState({ name: "", type: "overexpression" as const })
+  const [newModule, setNewModule] = useState({ name: "", type: "overexpression" as const, sequence: "" })
   
   const handleImportLibrary = () => {
     const input = document.createElement('input')
@@ -63,10 +65,11 @@ export const LibraryManager = ({ customModules, onCustomModulesChange, construct
         id: `custom-${Date.now()}`,
         name: newModule.name.trim(),
         type: newModule.type,
-        description: "Custom module"
+        description: "Custom module",
+        sequence: newModule.sequence || ""
       }
       onCustomModulesChange([...customModules, module])
-      setNewModule({ name: "", type: "overexpression" })
+      setNewModule({ name: "", type: "overexpression", sequence: "" })
       setIsCreateOpen(false)
     }
   }
@@ -122,6 +125,15 @@ export const LibraryManager = ({ customModules, onCustomModulesChange, construct
                     <option value="knockout">Knockout</option>
                     <option value="knockdown">Knockdown</option>
                   </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Nucleotide Sequence</label>
+                  <Textarea
+                    placeholder="e.g., ATGCGT..."
+                    value={newModule.sequence}
+                    onChange={(e) => setNewModule({ ...newModule, sequence: e.target.value })}
+                    className="min-h-[80px]"
+                  />
                 </div>
                 <Button onClick={handleCreateModule} className="w-full">
                   Create Module

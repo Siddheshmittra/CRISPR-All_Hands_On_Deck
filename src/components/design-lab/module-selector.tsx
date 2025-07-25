@@ -12,6 +12,7 @@ interface Module {
   name: string
   type: "overexpression" | "knockout" | "knockdown"
   description?: string
+  sequence?: string
 }
 
 interface ModuleSelectorProps {
@@ -153,7 +154,8 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       id: selectedSuggestion.symbol,
       name: selectedSuggestion.symbol,
       type: selectedType as any,
-      description: selectedSuggestion.name
+      description: selectedSuggestion.name,
+      sequence: ""
     }
 
     // First add to customModules
