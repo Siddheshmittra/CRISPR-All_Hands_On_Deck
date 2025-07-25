@@ -22,6 +22,27 @@ export const MultiCassetteSetup = ({
   knockdownCount,
   setKnockdownCount
 }: MultiCassetteSetupProps) => {
+  const totalPerturbations =
+    (Number(overexpressionCount) || 0) +
+    (Number(knockoutCount) || 0) +
+    (Number(knockdownCount) || 0)
+  const maxPerturbations = 5
+  const overLimit = totalPerturbations > maxPerturbations
+
+  // Helper for input: allow empty, clamp, no leading zeros
+  function handleCountChange(setter: (n: number) => void, value: string) {
+    if (value === "") {
+      setter(0)
+      return
+    }
+    // Remove leading zeros
+    const sanitized = value.replace(/^0+(?!$)/, "")
+    let n = parseInt(sanitized, 10)
+    if (isNaN(n) || n < 0) n = 0
+    if (n > maxPerturbations) n = maxPerturbations
+    setter(n)
+  }
+
   return (
     <Card className="p-6 mb-4">
       <h3 className="text-lg font-semibold mb-4">Multi-Cassette Setup</h3>
@@ -43,8 +64,10 @@ export const MultiCassetteSetup = ({
           <Input
             type="number"
             min={0}
-            value={overexpressionCount}
-            onChange={e => setOverexpressionCount(Math.max(0, parseInt(e.target.value) || 0))}
+            max={maxPerturbations}
+            value={overexpressionCount === 0 ? "" : overexpressionCount}
+            onChange={e => handleCountChange(setOverexpressionCount, e.target.value)}
+            disabled={overLimit && overexpressionCount === 0}
           />
         </div>
         <div>
@@ -52,8 +75,10 @@ export const MultiCassetteSetup = ({
           <Input
             type="number"
             min={0}
-            value={knockoutCount}
-            onChange={e => setKnockoutCount(Math.max(0, parseInt(e.target.value) || 0))}
+            max={maxPerturbations}
+            value={knockoutCount === 0 ? "" : knockoutCount}
+            onChange={e => handleCountChange(setKnockoutCount, e.target.value)}
+            disabled={overLimit && knockoutCount === 0}
           />
         </div>
         <div>
@@ -61,10 +86,16 @@ export const MultiCassetteSetup = ({
           <Input
             type="number"
             min={0}
-            value={knockdownCount}
-            onChange={e => setKnockdownCount(Math.max(0, parseInt(e.target.value) || 0))}
+            max={maxPerturbations}
+            value={knockdownCount === 0 ? "" : knockdownCount}
+            onChange={e => handleCountChange(setKnockdownCount, e.target.value)}
+            disabled={overLimit && knockdownCount === 0}
           />
         </div>
+      </div>
+      <div className={`mt-2 text-sm ${overLimit ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+        Total perturbations: {totalPerturbations} / {maxPerturbations}
+        {overLimit && <span> &mdash; Maximum is {maxPerturbations} per cassette</span>}
       </div>
     </Card>
   )
