@@ -135,39 +135,38 @@ const DesignLab = () => {
             
             {inputMode === 'manual' && (
               <DragDropContext onDragEnd={handleDragEnd}>
-                <ModuleSelector
-                  selectedModules={selectedModules}
-                  onModuleSelect={handleModuleSelect}
-                  onModuleDeselect={handleModuleDeselect}
-                  customModules={customModules}
-                  onCustomModulesChange={setCustomModules}
-                />
-                
-                <ConstructLayout
-                  constructModules={constructModules}
-                  onModuleRemove={handleModuleRemove}
-                  onRandomize={handleRandomize}
-                  onReset={handleReset}
-                />
-                {/* Trash Area for drag-to-remove */}
-                <div className="flex justify-center mt-4">
-                  <Droppable droppableId="trash">
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`flex flex-col items-center transition-colors select-none`}
-                      >
+                <div className="flex flex-row gap-4 items-start">
+                  <div className="flex-1">
+                    <ModuleSelector
+                      selectedModules={selectedModules}
+                      onModuleSelect={handleModuleSelect}
+                      onModuleDeselect={handleModuleDeselect}
+                      customModules={customModules}
+                      onCustomModulesChange={setCustomModules}
+                    />
+                    <ConstructLayout
+                      constructModules={constructModules}
+                      onModuleRemove={handleModuleRemove}
+                      onRandomize={handleRandomize}
+                      onReset={handleReset}
+                    />
+                  </div>
+                  {/* Inline Trash Area */}
+                  <div className="flex flex-col items-center mt-2">
+                    <Droppable droppableId="trash">
+                      {(provided, snapshot) => (
                         <div
-                          className={`rounded-full p-1 transition-colors ${snapshot.isDraggingOver ? 'bg-destructive/20' : 'bg-transparent'} hover:bg-destructive/10`}
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={`flex flex-col items-center justify-center w-16 h-20 rounded-lg border border-border bg-muted transition-colors select-none shadow-sm ml-2 ${snapshot.isDraggingOver ? 'bg-destructive/20 border-destructive' : ''}`}
                         >
-                          <Trash2 className={`h-6 w-6 ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
+                          <Trash2 className={`h-6 w-6 mb-1 ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
+                          <span className="text-xs text-muted-foreground">Trash</span>
+                          {provided.placeholder}
                         </div>
-                        <span className="text-xs mt-1 text-muted-foreground">Trash</span>
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
+                      )}
+                    </Droppable>
+                  </div>
                 </div>
               </DragDropContext>
             )}
