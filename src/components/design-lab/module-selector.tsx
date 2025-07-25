@@ -175,9 +175,18 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     setShowDropdown(false)
   }
 
-  function handleDeleteModule(moduleId: string) {
-    // Remove from customModules (parent will update folders and construct)
-    onCustomModulesChange(customModules.filter(m => m.id !== moduleId))
+  function handleDeleteModule(moduleId: string, folderId: string) {
+    if (folderId === 'total-library') {
+      // Remove from customModules (parent will update folders and construct)
+      onCustomModulesChange(customModules.filter(m => m.id !== moduleId))
+    } else {
+      // Remove only from this folder
+      setFolders(folders.map(folder =>
+        folder.id === folderId
+          ? { ...folder, modules: folder.modules.filter(id => id !== moduleId) }
+          : folder
+      ))
+    }
   }
 
   // Always show at least one folder
@@ -400,16 +409,14 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                               >
                                 {getTypeArrow(module.type)} {module.name}
                               </Badge>
-                              {/* Show delete button only in Total Library */}
-                              {folder.id === 'total-library' && (
-                                <button
-                                  className="ml-1 p-0.5 rounded hover:bg-destructive/20 text-destructive absolute -top-2 -right-2"
-                                  title="Remove from Total Library"
-                                  onClick={e => { e.stopPropagation(); handleDeleteModule(module.id); }}
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              )}
+                              {/* Show delete button in all folders */}
+                              <button
+                                className="ml-1 p-0.5 rounded hover:bg-destructive/20 text-destructive absolute -top-2 -right-2"
+                                title={folder.id === 'total-library' ? "Remove from Total Library" : "Remove from this Library"}
+                                onClick={e => { e.stopPropagation(); handleDeleteModule(module.id, folder.id); }}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
                             </div>
                           )}
                         </Draggable>
