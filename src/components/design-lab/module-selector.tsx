@@ -46,6 +46,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const [folders, setFolders] = useState<any[]>([])
   const [newFolderName, setNewFolderName] = useState("")
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
 
   // Compute modules not in any folder
   const folderedModuleIds = folders.flatMap(f => f.modules)
@@ -60,6 +61,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     ])
     setNewFolderName("")
     setActiveFolderId(newId)
+    setSelectedFolderId(newId)
   }
   
   function handleToggleFolder(id: string) {
@@ -133,7 +135,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     setSelectedSuggestion(suggestion)
   }
 
-  // When adding a new module, place it in the active folder or create a default folder if none exist
+  // When adding a new module, place it in the selected folder or create a default folder if none exist
   function handleAddGene() {
     if (!selectedSuggestion) return
     // Prevent duplicates
@@ -163,10 +165,11 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         open: true
       }])
       setActiveFolderId('default')
+      setSelectedFolderId('default')
     } else {
       setFolders(currentFolders =>
         currentFolders.map(folder =>
-          folder.id === (activeFolderId || currentFolders[0].id)
+          folder.id === (selectedFolderId || currentFolders[0].id)
             ? { ...folder, modules: [...folder.modules, newModule.id], open: true }
             : folder
         )
@@ -184,6 +187,11 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     if (folders.length === 0 && customModules.length > 0) {
       setFolders([{ id: 'default', name: 'Library', modules: customModules.map(m => m.id), open: true }])
       setActiveFolderId('default')
+      setSelectedFolderId('default')
+    }
+    // If folders change and selectedFolderId is missing, default to first
+    if (folders.length > 0 && (!selectedFolderId || !folders.some(f => f.id === selectedFolderId))) {
+      setSelectedFolderId(folders[0].id)
     }
   }, [folders.length, customModules.length])
 
@@ -310,6 +318,16 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             </div>
           )}
         </div>
+        <select
+          value={selectedFolderId || (folders[0] && folders[0].id) || ''}
+          onChange={e => setSelectedFolderId(e.target.value)}
+          className="h-9 px-2 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+          style={{ minWidth: 120 }}
+        >
+          {folders.map(folder => (
+            <option key={folder.id} value={folder.id}>{folder.name}</option>
+          ))}
+        </select>
         <Button variant="secondary" size="icon" onClick={handleAddGene} disabled={!selectedSuggestion}>
           <Plus className="h-4 w-4" />
         </Button>
