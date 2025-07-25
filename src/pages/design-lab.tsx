@@ -136,6 +136,7 @@ const DesignLab = () => {
                   onModuleSelect={handleModuleSelect}
                   onModuleDeselect={handleModuleDeselect}
                   customModules={customModules}
+                  onCustomModulesChange={setCustomModules}
                 />
                 
                 <ConstructLayout

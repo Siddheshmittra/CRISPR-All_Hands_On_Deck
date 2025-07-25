@@ -17,7 +17,8 @@ interface ModuleSelectorProps {
   selectedModules: Module[]
   onModuleSelect: (module: Module) => void
   onModuleDeselect: (moduleId: string) => void
-  customModules: Module[] // <-- add this prop
+  customModules: Module[]
+  onCustomModulesChange: (modules: Module[]) => void // <-- add this prop
 }
 
 export const predefinedModules: Module[] = [
@@ -42,7 +43,7 @@ export const predefinedModules: Module[] = [
   { id: "KU-GZMB", name: "KU-GZMB", type: "overexpression" }
 ]
 
-export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDeselect, customModules }: ModuleSelectorProps) => {
+export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDeselect, customModules, onCustomModulesChange }: ModuleSelectorProps) => {
   const [searchTerm, setSearchTerm] = useState("")
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -52,6 +53,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const dropdownRef = useRef<HTMLDivElement>(null)
   const nameCache = useRef<Map<string, string>>(new Map())
   let searchTimeout = useRef<NodeJS.Timeout | null>(null)
+  const [selectedSuggestion, setSelectedSuggestion] = useState<any | null>(null)
 
   // Fetch suggestions from HGNC
   async function hgncSuggest(query: string) {
@@ -112,7 +114,22 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     setSearchTerm(suggestion.symbol)
     setShowDropdown(false)
     setSuggestions([])
-    // Optionally, you could auto-add here or enable the Add button
+    setSelectedSuggestion(suggestion)
+  }
+
+  function handleAddGene() {
+    if (!selectedSuggestion) return
+    // Prevent duplicates
+    if (customModules.some(m => m.id === selectedSuggestion.symbol)) return
+    const newModule = {
+      id: selectedSuggestion.symbol,
+      name: selectedSuggestion.symbol,
+      type: "overexpression" as const,
+      description: selectedSuggestion.name
+    }
+    onCustomModulesChange([...customModules, newModule])
+    setSearchTerm("")
+    setSelectedSuggestion(null)
   }
 
   // Close dropdown on outside click
@@ -159,7 +176,10 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             ref={inputRef}
             placeholder="Search or enter gene symbol..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={e => {
+              setSearchTerm(e.target.value)
+              setSelectedSuggestion(null)
+            }}
             onKeyDown={handleKeyDown}
             className="pl-10"
             autoComplete="off"
@@ -184,7 +204,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             </div>
           )}
         </div>
-        <Button variant="secondary" size="icon">
+        <Button variant="secondary" size="icon" onClick={handleAddGene} disabled={!selectedSuggestion}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>
