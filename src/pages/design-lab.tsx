@@ -124,13 +124,6 @@ const DesignLab = () => {
               />
             )}
             
-            <LibraryManager
-              customModules={customModules}
-              onCustomModulesChange={setCustomModules}
-              constructModules={constructModules}
-              onConstructModulesChange={setConstructModules}
-            />
-            
             {inputMode === 'natural' && (
               <NaturalLanguageMode
                 onSuggestedConstruct={modules => setConstructModules(modules)}
@@ -141,12 +134,19 @@ const DesignLab = () => {
               <DragDropContext onDragEnd={handleDragEnd}>
                 <div className="flex flex-row gap-4 items-start">
                   <div className="flex-1">
+                    {/* Move ModuleSelector above LibraryManager */}
                     <ModuleSelector
                       selectedModules={selectedModules}
                       onModuleSelect={handleModuleSelect}
                       onModuleDeselect={handleModuleDeselect}
                       customModules={customModules}
                       onCustomModulesChange={setCustomModules}
+                    />
+                    <LibraryManager
+                      customModules={customModules}
+                      onCustomModulesChange={setCustomModules}
+                      constructModules={constructModules}
+                      onConstructModulesChange={setConstructModules}
                     />
                     <ConstructLayout
                       constructModules={constructModules}
@@ -155,7 +155,6 @@ const DesignLab = () => {
                       onReset={handleReset}
                     />
                   </div>
-                  {/* REMOVE the trash area here, it is now inside ConstructLayout */}
                 </div>
               </DragDropContext>
             )}
