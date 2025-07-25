@@ -41,55 +41,71 @@ export const ConstructLayout = ({
       </div>
 
       <div className="border-2 border-dashed border-border rounded-lg p-6 min-h-[120px] bg-gradient-surface">
-        <Droppable droppableId="construct" direction="horizontal">
-          {(provided, snapshot) => (
-            <div
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-              className="flex items-center gap-3 flex-wrap min-h-[48px] w-full"
-              style={{ minHeight: 48 }}
-            >
-              {constructModules.length === 0 ? (
-                <div className="w-full text-center text-muted-foreground pointer-events-none select-none">
-                  <p>Drop modules here to build your construct</p>
-                  <p className="text-sm mt-1">Maximum 5 perturbations</p>
-                </div>
-              ) : (
-                constructModules.map((module, index) => (
-                  <div key={module.id} className="flex items-center gap-2">
-                    <Draggable draggableId={module.id} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          className={`relative group ${snapshot.isDragging ? 'z-10' : ''}`}
-                        >
-                          <ModuleButton
-                            moduleType={module.type}
-                            className="cursor-move"
-                          >
-                            {module.name}
-                          </ModuleButton>
-                          <button
-                            onClick={() => onModuleRemove(module.id)}
-                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      )}
-                    </Draggable>
-                    {index < constructModules.length - 1 && (
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                    )}
+        <div className="flex flex-row items-center w-full gap-4">
+          <Droppable droppableId="construct" direction="horizontal">
+            {(provided, snapshot) => (
+              <div
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+                className="flex items-center gap-3 flex-wrap min-h-[48px] flex-1"
+                style={{ minHeight: 48 }}
+              >
+                {constructModules.length === 0 ? (
+                  <div className="w-full text-center text-muted-foreground pointer-events-none select-none">
+                    <p>Drop modules here to build your construct</p>
+                    <p className="text-sm mt-1">Maximum 5 perturbations</p>
                   </div>
-                ))
-              )}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
+                ) : (
+                  constructModules.map((module, index) => (
+                    <div key={module.id} className="flex items-center gap-2">
+                      <Draggable draggableId={module.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className={`relative group ${snapshot.isDragging ? 'z-10' : ''}`}
+                          >
+                            <ModuleButton
+                              moduleType={module.type}
+                              className="cursor-move"
+                            >
+                              {module.name}
+                            </ModuleButton>
+                            <button
+                              onClick={() => onModuleRemove(module.id)}
+                              className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
+                      </Draggable>
+                      {index < constructModules.length - 1 && (
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  ))
+                )}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+          {/* Inline Trash Area inside the dashed border */}
+          <Droppable droppableId="trash">
+            {(provided, snapshot) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className={`flex flex-col items-center justify-center w-14 h-16 rounded-lg border border-border bg-muted transition-colors select-none shadow-sm ml-2 ${snapshot.isDraggingOver ? 'bg-destructive/20 border-destructive' : ''}`}
+              >
+                <Trash2 className={`h-5 w-5 mb-1 ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
+                <span className="text-xs text-muted-foreground">Trash</span>
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </div>
       </div>
 
       {constructModules.length > 0 && (
