@@ -9,6 +9,7 @@ import { MultiCassetteSetup } from "@/components/design-lab/multi-cassette-dialo
 import { NaturalLanguageMode } from "@/components/design-lab/natural-language-mode"
 import { LibraryManager } from "@/components/design-lab/library-manager"
 import { Trash2 } from "lucide-react"
+import React from "react"
 
 interface Module {
   id: string
@@ -27,7 +28,12 @@ const DesignLab = () => {
   const [knockoutCount, setKnockoutCount] = useState(0)
   const [knockdownCount, setKnockdownCount] = useState(0)
   const [customModules, setCustomModules] = useState<Module[]>([])
-  const [folders, setFolders] = useState<any[]>([])
+  const [folders, setFolders] = useState<any[]>([{
+    id: 'total-library',
+    name: 'Total Library',
+    modules: [],
+    open: true
+  }])
 
   const handleModuleSelect = (module: Module) => {
     if (constructModules.length >= 5) {
@@ -150,6 +156,27 @@ const DesignLab = () => {
     setConstructModules([])
     setSelectedModules([])
   }
+
+  // Ensure Total Library always exists and contains all modules
+  React.useEffect(() => {
+    setFolders(currentFolders => {
+      const totalLibrary = currentFolders.find(f => f.id === 'total-library')
+      if (!totalLibrary) {
+        return [{
+          id: 'total-library',
+          name: 'Total Library',
+          modules: customModules.map(m => m.id),
+          open: true
+        }, ...currentFolders]
+      }
+      // Update Total Library to include all modules
+      return currentFolders.map(folder => 
+        folder.id === 'total-library'
+          ? { ...folder, modules: customModules.map(m => m.id) }
+          : folder
+      )
+    })
+  }, [customModules])
 
   return (
     <div className="min-h-screen bg-background p-6">

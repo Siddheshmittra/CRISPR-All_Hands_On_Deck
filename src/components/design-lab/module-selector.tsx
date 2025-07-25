@@ -157,19 +157,10 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     onCustomModulesChange([...customModules, newModule])
 
     // Then handle folder placement
-    if (folders.length === 0) {
-      // Create a default folder if none exists
-      setFolders([{
-        id: 'default',
-        name: 'Library',
-        modules: [newModule.id],
-        open: true
-      }])
-      setActiveFolderId('default')
-      setSelectedFolderId('default')
-    } else {
+    // Add to selected folder if one is selected (and it's not the Total Library)
+    if (selectedFolderId && selectedFolderId !== 'total-library') {
       setFolders(folders.map(folder =>
-        folder.id === (selectedFolderId || folders[0].id)
+        folder.id === selectedFolderId
           ? { ...folder, modules: [...folder.modules, newModule.id], open: true }
           : folder
       ))
@@ -183,11 +174,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
 
   // Always show at least one folder
   React.useEffect(() => {
-    if (folders.length === 0 && customModules.length > 0) {
-      setFolders([{ id: 'default', name: 'Library', modules: customModules.map(m => m.id), open: true }])
-      setActiveFolderId('default')
-      setSelectedFolderId('default')
-    }
     // If folders change and selectedFolderId is missing, default to first
     if (folders.length > 0 && (!selectedFolderId || !folders.some(f => f.id === selectedFolderId))) {
       setSelectedFolderId(folders[0].id)
