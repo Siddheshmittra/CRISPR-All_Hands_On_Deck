@@ -150,16 +150,20 @@ const DesignLab = () => {
                   onReset={handleReset}
                 />
                 {/* Trash Area for drag-to-remove */}
-                <div className="flex justify-center mt-6">
+                <div className="flex justify-center mt-4">
                   <Droppable droppableId="trash">
                     {(provided, snapshot) => (
                       <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className={`flex flex-col items-center justify-center w-24 h-24 rounded-full border-2 border-dashed transition-colors ${snapshot.isDraggingOver ? 'bg-destructive/20 border-destructive' : 'bg-muted border-border'}`}
+                        className={`flex flex-col items-center transition-colors select-none`}
                       >
-                        <Trash2 className={`h-10 w-10 ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
-                        <span className="text-xs mt-2 text-muted-foreground">Trash</span>
+                        <div
+                          className={`rounded-full p-1 transition-colors ${snapshot.isDraggingOver ? 'bg-destructive/20' : 'bg-transparent'} hover:bg-destructive/10`}
+                        >
+                          <Trash2 className={`h-6 w-6 ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
+                        </div>
+                        <span className="text-xs mt-1 text-muted-foreground">Trash</span>
                         {provided.placeholder}
                       </div>
                     )}
