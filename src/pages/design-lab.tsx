@@ -129,6 +129,8 @@ const DesignLab = () => {
             <LibraryManager
               customModules={customModules}
               onCustomModulesChange={setCustomModules}
+              constructModules={constructModules}
+              onConstructModulesChange={setConstructModules}
             />
             
             {inputMode === 'natural' && (

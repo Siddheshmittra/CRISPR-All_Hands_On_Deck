@@ -17,9 +17,11 @@ interface Module {
 interface LibraryManagerProps {
   customModules: Module[]
   onCustomModulesChange: (modules: Module[]) => void
+  constructModules: Module[]
+  onConstructModulesChange: (modules: Module[]) => void
 }
 
-export const LibraryManager = ({ customModules, onCustomModulesChange }: LibraryManagerProps) => {
+export const LibraryManager = ({ customModules, onCustomModulesChange, constructModules, onConstructModulesChange }: LibraryManagerProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newModule, setNewModule] = useState({ name: "", type: "overexpression" as const })
   
@@ -73,6 +75,9 @@ export const LibraryManager = ({ customModules, onCustomModulesChange }: Library
 
   const handleDeleteCustomModule = (moduleId: string) => {
     onCustomModulesChange(customModules.filter(m => m.id !== moduleId))
+    // Remove all instances from construct layout
+    const baseId = moduleId.split('-')[0]
+    onConstructModulesChange(constructModules.filter(m => !m.id.startsWith(baseId)))
   }
 
   return (
