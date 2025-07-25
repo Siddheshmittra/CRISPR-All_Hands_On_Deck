@@ -151,22 +151,7 @@ const DesignLab = () => {
                       onReset={handleReset}
                     />
                   </div>
-                  {/* Inline Trash Area */}
-                  <div className="flex flex-col items-center mt-2">
-                    <Droppable droppableId="trash">
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          className={`flex flex-col items-center justify-center w-16 h-20 rounded-lg border border-border bg-muted transition-colors select-none shadow-sm ml-2 ${snapshot.isDraggingOver ? 'bg-destructive/20 border-destructive' : ''}`}
-                        >
-                          <Trash2 className={`h-6 w-6 mb-1 ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
-                          <span className="text-xs text-muted-foreground">Trash</span>
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </div>
+                  {/* REMOVE the trash area here, it is now inside ConstructLayout */}
                 </div>
               </DragDropContext>
             )}
