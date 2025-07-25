@@ -288,6 +288,8 @@ const DesignLab = () => {
                         setKnockdownCount={setKnockdownCount}
                         showGoButton={true}
                         onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
+                        folders={folders}
+                        customModules={customModules}
                       />
                     )}
                     <ConstructLayout
