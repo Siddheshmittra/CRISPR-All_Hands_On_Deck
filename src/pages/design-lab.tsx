@@ -27,6 +27,7 @@ const DesignLab = () => {
   const [knockoutCount, setKnockoutCount] = useState(0)
   const [knockdownCount, setKnockdownCount] = useState(0)
   const [customModules, setCustomModules] = useState<Module[]>([])
+  const [folders, setFolders] = useState<any[]>([])
 
   const handleModuleSelect = (module: Module) => {
     if (constructModules.length >= 5) {
@@ -46,9 +47,18 @@ const DesignLab = () => {
     setSelectedModules(prev => prev.filter(m => m.id !== moduleId))
   }
 
+  const handleModuleClick = (module: Module) => {
+    if (selectedModules.some(m => m.id === module.id)) {
+      handleModuleDeselect(module.id)
+    } else {
+      handleModuleSelect(module)
+    }
+  }
+
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return
 
+    // Reorder within construct
     if (
       result.source.droppableId === "construct" &&
       result.destination.droppableId === "construct"
@@ -57,21 +67,64 @@ const DesignLab = () => {
       const [reorderedItem] = items.splice(result.source.index, 1)
       items.splice(result.destination.index, 0, reorderedItem)
       setConstructModules(items)
+      return
     }
 
+    // Move from folder to construct
+    const folderIds = folders.map(f => f.id)
     if (
-      result.source.droppableId === "available-modules" &&
+      folderIds.includes(result.source.droppableId) &&
       result.destination.droppableId === "construct"
     ) {
-      // Find the module by its ID directly
-      const module = customModules.find(m => m.id === result.draggableId)
+      const sourceFolderId = result.source.droppableId
+      const moduleId = result.draggableId
+      const module = customModules.find(m => m.id === moduleId)
       if (!module) return
       if (constructModules.length >= 5) return
-      // Create a new unique ID for this instance
-      const uniqueId = `${module.id}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
-      const newModule = { ...module, id: uniqueId }
-      setConstructModules(prev => [...prev, newModule])
-      setSelectedModules(prev => [...prev, newModule])
+      setFolders(folders.map(folder =>
+        folder.id === sourceFolderId
+          ? { ...folder, modules: folder.modules.filter(id => id !== moduleId) }
+          : folder
+      ))
+      setConstructModules(prev => [...prev, module])
+      setSelectedModules(prev => [...prev, module])
+      return
+    }
+
+    // Move between folders
+    if (
+      folderIds.includes(result.source.droppableId) &&
+      folderIds.includes(result.destination.droppableId)
+    ) {
+      const { source, destination, draggableId } = result
+      if (
+        source.droppableId === destination.droppableId &&
+        source.index === destination.index
+      ) {
+        return
+      }
+      let newFolders = folders.map(folder => {
+        if (folder.id === source.droppableId) {
+          return {
+            ...folder,
+            modules: folder.modules.filter(id => id !== draggableId)
+          }
+        }
+        return folder
+      })
+      newFolders = newFolders.map(folder => {
+        if (folder.id === destination.droppableId) {
+          const newModules = Array.from(folder.modules)
+          newModules.splice(destination.index, 0, draggableId)
+          return {
+            ...folder,
+            modules: newModules
+          }
+        }
+        return folder
+      })
+      setFolders(newFolders)
+      return
     }
 
     // Remove from construct if dropped in trash
@@ -139,6 +192,9 @@ const DesignLab = () => {
                       onModuleDeselect={handleModuleDeselect}
                       customModules={customModules}
                       onCustomModulesChange={setCustomModules}
+                      folders={folders}
+                      setFolders={setFolders}
+                      handleModuleClick={handleModuleClick}
                     />
                     <ConstructLayout
                       constructModules={constructModules}

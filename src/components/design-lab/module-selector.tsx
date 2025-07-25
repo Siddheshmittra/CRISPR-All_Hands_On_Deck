@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ModuleButton } from "@/components/ui/module-button"
 import { Search, Plus, Trash2, ChevronDown, FolderPlus } from "lucide-react"
-import { Draggable, Droppable, DragDropContext } from "@hello-pangea/dnd"
+import { Draggable, Droppable } from "@hello-pangea/dnd"
 import { Badge } from "@/components/ui/badge"
 
 interface Module {
@@ -20,9 +20,12 @@ interface ModuleSelectorProps {
   onModuleDeselect: (moduleId: string) => void
   customModules: Module[]
   onCustomModulesChange: (modules: Module[]) => void
+  folders: any[]
+  setFolders: (folders: any[]) => void
+  handleModuleClick: (module: Module) => void
 }
 
-export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDeselect, customModules, onCustomModulesChange }: ModuleSelectorProps) => {
+export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDeselect, customModules, onCustomModulesChange, folders, setFolders, handleModuleClick }: ModuleSelectorProps) => {
   const [searchTerm, setSearchTerm] = useState("")
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -42,8 +45,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     { value: 'knockin', label: 'KI' },
   ]
 
-  // Folder/Library demo state
-  const [folders, setFolders] = useState<any[]>([])
   const [newFolderName, setNewFolderName] = useState("")
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
@@ -55,7 +56,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   function handleCreateFolder() {
     if (!newFolderName.trim()) return
     const newId = Date.now() + '-' + Math.random()
-    setFolders(folders => [
+    setFolders([
       ...folders,
       { id: newId, name: newFolderName.trim(), modules: [], open: true }
     ])
@@ -65,7 +66,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   }
   
   function handleToggleFolder(id: string) {
-    setFolders(folders => folders.map(f => f.id === id ? { ...f, open: !f.open } : f))
+    setFolders(folders.map(f => f.id === id ? { ...f, open: !f.open } : f))
     setActiveFolderId(id)
   }
 
@@ -167,13 +168,11 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       setActiveFolderId('default')
       setSelectedFolderId('default')
     } else {
-      setFolders(currentFolders =>
-        currentFolders.map(folder =>
-          folder.id === (selectedFolderId || currentFolders[0].id)
-            ? { ...folder, modules: [...folder.modules, newModule.id], open: true }
-            : folder
-        )
-      )
+      setFolders(folders.map(folder =>
+        folder.id === (selectedFolderId || folders[0].id)
+          ? { ...folder, modules: [...folder.modules, newModule.id], open: true }
+          : folder
+      ))
     }
 
     // Clear the search
@@ -193,7 +192,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     if (folders.length > 0 && (!selectedFolderId || !folders.some(f => f.id === selectedFolderId))) {
       setSelectedFolderId(folders[0].id)
     }
-  }, [folders.length, customModules.length])
+  }, [folders, customModules.length])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -215,14 +214,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const filteredModules = customModules.filter(module =>
     module.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
-
-  const handleModuleClick = (module: Module) => {
-    if (isSelected(module.id)) {
-      onModuleDeselect(module.id)
-    } else {
-      onModuleSelect(module)
-    }
-  }
 
   const isSelected = (moduleId: string) => 
     selectedModules.some(m => m.id === moduleId)
@@ -268,44 +259,8 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     URL.revokeObjectURL(url)
   }
 
-  function handleDragEnd(result: any) {
-    const { source, destination, draggableId } = result;
-    if (!destination) return;
-    // If dropped in same list and position, do nothing
-    if (
-      source.droppableId === destination.droppableId &&
-      source.index === destination.index
-    ) {
-      return;
-    }
-    setFolders(prevFolders => {
-      let newFolders = prevFolders.map(folder => {
-        if (folder.id === source.droppableId) {
-          return {
-            ...folder,
-            modules: folder.modules.filter(id => id !== draggableId)
-          }
-        }
-        return folder;
-      });
-      newFolders = newFolders.map(folder => {
-        if (folder.id === destination.droppableId) {
-          const newModules = Array.from(folder.modules);
-          newModules.splice(destination.index, 0, draggableId);
-          return {
-            ...folder,
-            modules: newModules
-          }
-        }
-        return folder;
-      });
-      return newFolders;
-    });
-  }
-
   return (
     <Card className="p-6">
-      <DragDropContext onDragEnd={handleDragEnd}>
       <h2 className="text-lg font-semibold mb-4">2. Select Modules</h2>
       {/* Type selector + search + add button row */}
       <div className="flex gap-2 mb-4 items-center">
@@ -453,20 +408,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           </div>
         ))}
       </div>
-      </DragDropContext>
-      
-      {/* Hidden droppable area for drag source */}
-      <Droppable droppableId="available-modules" direction="horizontal">
-        {(provided) => (
-          <div 
-            ref={provided.innerRef} 
-            {...provided.droppableProps}
-            style={{ display: 'none' }}
-          >
-            {provided.placeholder}
-          </div>
-        )}
-      </Droppable>
     </Card>
   )
 }
