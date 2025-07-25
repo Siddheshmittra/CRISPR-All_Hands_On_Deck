@@ -33,6 +33,14 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const nameCache = useRef<Map<string, string>>(new Map())
   let searchTimeout = useRef<NodeJS.Timeout | null>(null)
   const [selectedSuggestion, setSelectedSuggestion] = useState<any | null>(null)
+  // Type selector state
+  const [selectedType, setSelectedType] = useState<'overexpression' | 'knockout' | 'knockdown' | 'knockin'>('overexpression')
+  const typeOptions = [
+    { value: 'overexpression', label: 'OE' },
+    { value: 'knockout', label: 'KO' },
+    { value: 'knockdown', label: 'KD' },
+    { value: 'knockin', label: 'KI' },
+  ]
 
   // Fetch suggestions from HGNC
   async function hgncSuggest(query: string) {
@@ -103,7 +111,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     const newModule = {
       id: selectedSuggestion.symbol,
       name: selectedSuggestion.symbol,
-      type: "overexpression" as const,
+      type: selectedType as any,
       description: selectedSuggestion.name
     }
     onCustomModulesChange([...customModules, newModule])
@@ -194,7 +202,21 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           onChange={handleFileChange}
         />
       </div>
-      <div className="flex gap-2 mb-4">
+      {/* Type selector + search + add button row */}
+      <div className="flex gap-2 mb-4 items-center">
+        <div className="flex flex-col gap-1">
+          {typeOptions.map(opt => (
+            <Button
+              key={opt.value}
+              variant={selectedType === opt.value ? 'default' : 'outline'}
+              size="sm"
+              className="px-2 py-1 h-7 w-12"
+              onClick={() => setSelectedType(opt.value as any)}
+            >
+              {opt.label}
+            </Button>
+          ))}
+        </div>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
