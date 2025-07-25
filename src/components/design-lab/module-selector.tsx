@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ModuleButton } from "@/components/ui/module-button"
-import { Search, Plus, Trash2 } from "lucide-react"
+import { Search, Plus, Trash2, ChevronDown, FolderPlus } from "lucide-react"
 import { Droppable, Draggable } from "@hello-pangea/dnd"
 import { Badge } from "@/components/ui/badge"
 
@@ -41,6 +41,32 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     { value: 'knockdown', label: 'KD' },
     { value: 'knockin', label: 'KI' },
   ]
+
+  // Folder/Library demo state
+  const [folders, setFolders] = useState([
+    { id: 'default', name: 'Unsorted', modules: customModules.map(m => m.id), open: true }
+  ])
+  const [newFolderName, setNewFolderName] = useState("")
+  function handleCreateFolder() {
+    if (!newFolderName.trim()) return
+    setFolders(folders => [
+      ...folders,
+      { id: Date.now() + '-' + Math.random(), name: newFolderName.trim(), modules: [], open: true }
+    ])
+    setNewFolderName("")
+  }
+  function handleToggleFolder(id: string) {
+    setFolders(folders => folders.map(f => f.id === id ? { ...f, open: !f.open } : f))
+  }
+  function handleDropModuleToFolder(moduleId: string, folderId: string) {
+    setFolders(folders => folders.map(f => {
+      if (f.id === folderId) {
+        return { ...f, modules: [...new Set([...f.modules, moduleId])] }
+      } else {
+        return { ...f, modules: f.modules.filter(mid => mid !== moduleId) }
+      }
+    }))
+  }
 
   // Fetch suggestions from HGNC
   async function hgncSuggest(query: string) {
@@ -205,6 +231,58 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />
+      </div>
+      {/* Folder/Library creation demo */}
+      <div className="flex gap-2 mb-4 items-center">
+        <input
+          type="text"
+          placeholder="New library name..."
+          value={newFolderName}
+          onChange={e => setNewFolderName(e.target.value)}
+          className="border border-border rounded px-2 py-1 text-sm"
+        />
+        <Button variant="outline" size="sm" onClick={handleCreateFolder}>
+          <FolderPlus className="h-4 w-4 mr-1" />Create Library
+        </Button>
+      </div>
+      {/* Folder/Library toggles demo */}
+      <div className="mb-4">
+        {folders.map(folder => (
+          <div key={folder.id} className="mb-2 border rounded bg-muted">
+            <div
+              className="flex items-center cursor-pointer px-2 py-1 select-none"
+              onClick={() => handleToggleFolder(folder.id)}
+            >
+              <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${folder.open ? '' : '-rotate-90'}`} />
+              <span className="font-semibold text-sm">{folder.name}</span>
+            </div>
+            {folder.open && (
+              <div className="pl-6 pb-2 pt-1 flex flex-wrap gap-2">
+                {folder.modules.length === 0 && <span className="text-xs text-muted-foreground">No modules</span>}
+                {folder.modules.map(mid => {
+                  const module = customModules.find(m => m.id === mid)
+                  if (!module) return null
+                  return (
+                    <Draggable key={module.id + '-folder'} draggableId={module.id + '-folder'} index={0}>
+                      {(dragProvided) => (
+                        <div
+                          ref={dragProvided.innerRef}
+                          {...dragProvided.draggableProps}
+                          {...dragProvided.dragHandleProps}
+                          className="cursor-move"
+                        >
+                          <Badge variant="secondary" className="text-xs">
+                            {module.name}
+                          </Badge>
+                        </div>
+                      )}
+                    </Draggable>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
       {/* Type selector + search + add button row */}
       <div className="flex gap-2 mb-4 items-center">
