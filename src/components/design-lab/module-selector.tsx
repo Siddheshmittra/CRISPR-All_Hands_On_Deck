@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ModuleButton } from "@/components/ui/module-button"
 import { Search, Plus, Trash2, ChevronDown, FolderPlus } from "lucide-react"
-import { Droppable, Draggable, DragDropContext } from "@hello-pangea/dnd"
+import { Draggable, Droppable } from "@hello-pangea/dnd"
 import { Badge } from "@/components/ui/badge"
 
 interface Module {
@@ -19,7 +19,7 @@ interface ModuleSelectorProps {
   onModuleSelect: (module: Module) => void
   onModuleDeselect: (moduleId: string) => void
   customModules: Module[]
-  onCustomModulesChange: (modules: Module[]) => void // <-- add this prop
+  onCustomModulesChange: (modules: Module[]) => void
 }
 
 export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDeselect, customModules, onCustomModulesChange }: ModuleSelectorProps) => {
@@ -50,9 +50,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const folderedModuleIds = folders.flatMap(f => f.modules)
   const unassignedModules = customModules.filter(m => !folderedModuleIds.includes(m.id))
 
-  // Compute all modules in all folders for drag-and-drop to construct
-  const allFolderedModules = folders.flatMap(f => f.modules.map(mid => customModules.find(m => m.id === mid)).filter(Boolean))
-
   function handleCreateFolder() {
     if (!newFolderName.trim()) return
     setFolders(folders => [
@@ -61,31 +58,9 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     ])
     setNewFolderName("")
   }
+  
   function handleToggleFolder(id: string) {
     setFolders(folders => folders.map(f => f.id === id ? { ...f, open: !f.open } : f))
-  }
-  function handleDropModuleToFolder(moduleId: string, folderId: string) {
-    setFolders(folders => folders.map(f => {
-      if (f.id === folderId) {
-        return { ...f, modules: [...new Set([...f.modules, moduleId])] }
-      } else {
-        return { ...f, modules: f.modules.filter(mid => mid !== moduleId) }
-      }
-    }))
-  }
-
-  // Handle drag end for folders
-  function handleDragEnd(result: any) {
-    if (!result.destination) return
-    const moduleId = result.draggableId.split('-')[0]
-    const destFolderId = result.destination.droppableId
-    setFolders(folders => folders.map(f => {
-      if (f.id === destFolderId) {
-        return { ...f, modules: [...new Set([...f.modules, moduleId])] }
-      } else {
-        return { ...f, modules: f.modules.filter(mid => mid !== moduleId) }
-      }
-    }))
   }
 
   // Fetch suggestions from HGNC
@@ -238,6 +213,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       reader.readAsText(file)
     }
   }
+  
   // Export: prompt for folder selection
   function handleExportLibrary() {
     if (folders.length === 0) return
@@ -258,7 +234,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     URL.revokeObjectURL(url)
   }
 
-  // Remove isSelected logic from Draggable rendering, so all modules are always draggable
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-4">2. Select Modules</h2>
@@ -346,71 +321,62 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           <FolderPlus className="h-4 w-4 mr-1" />Create Library
         </Button>
       </div>
-      {/* Folder/Library toggles demo */}
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="mb-4">
-          {folders.map(folder => (
-            <Droppable droppableId={folder.id} key={folder.id} direction="horizontal">
-              {(provided) => (
-                <div className="mb-2 border rounded bg-muted">
-                  <div
-                    className="flex items-center cursor-pointer px-2 py-1 select-none"
-                    onClick={() => handleToggleFolder(folder.id)}
-                  >
-                    <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${folder.open ? '' : '-rotate-90'}`} />
-                    <span className="font-semibold text-sm">{folder.name}</span>
-                  </div>
-                  {folder.open && (
-                    <div className="pl-6 pb-2 pt-1 flex flex-wrap gap-2"
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                    >
-                      {folder.modules.length === 0 && <span className="text-xs text-muted-foreground">No modules</span>}
-                      {folder.modules.map((mid, idx) => {
-                        const module = customModules.find(m => m.id === mid)
-                        if (!module) return null
-                        // Use module.id as draggableId for construct compatibility
-                        return (
-                          <Draggable key={module.id} draggableId={module.id} index={idx}>
-                            {(dragProvided) => (
-                              <div
-                                ref={dragProvided.innerRef}
-                                {...dragProvided.draggableProps}
-                                {...dragProvided.dragHandleProps}
-                                className="cursor-move"
-                              >
-                                <Badge variant="secondary" className="text-xs">
-                                  {module.name}
-                                </Badge>
-                              </div>
-                            )}
-                          </Draggable>
-                        )
-                      })}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </div>
-              )}
-            </Droppable>
-          ))}
-        </div>
-        {/* Hidden droppable for construct layout drag source */}
-        <Droppable droppableId="available-modules" direction="horizontal">
-          {(provided) => (
-            <div ref={provided.innerRef} style={{ display: 'none' }} {...provided.droppableProps}>
-              {allFolderedModules.map((module, idx) => (
-                <Draggable key={module!.id} draggableId={module!.id} index={idx}>
-                  {(dragProvided) => (
-                    <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} {...dragProvided.dragHandleProps} />
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
+      {/* Folder/Library display */}
+      <div className="mb-4">
+        {folders.map(folder => (
+          <div key={folder.id} className="mb-2 border rounded bg-muted">
+            <div
+              className="flex items-center cursor-pointer px-2 py-1 select-none"
+              onClick={() => handleToggleFolder(folder.id)}
+            >
+              <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${folder.open ? '' : '-rotate-90'}`} />
+              <span className="font-semibold text-sm">{folder.name}</span>
             </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+            {folder.open && (
+              <div className="pl-6 pb-2 pt-1 flex flex-wrap gap-2">
+                {folder.modules.length === 0 && <span className="text-xs text-muted-foreground">No modules</span>}
+                {folder.modules.map((mid, idx) => {
+                  const module = customModules.find(m => m.id === mid)
+                  if (!module) return null
+                  return (
+                    <Draggable key={module.id} draggableId={module.id} index={idx}>
+                      {(dragProvided, dragSnapshot) => (
+                        <div
+                          ref={dragProvided.innerRef}
+                          {...dragProvided.draggableProps}
+                          {...dragProvided.dragHandleProps}
+                          className={`cursor-move transition-transform ${dragSnapshot.isDragging ? 'scale-105 rotate-2 z-50' : 'hover:scale-105'}`}
+                        >
+                          <Badge 
+                            variant="secondary" 
+                            className={`text-xs ${isSelected(module.id) ? 'bg-primary text-primary-foreground' : ''} ${dragSnapshot.isDragging ? 'shadow-lg' : ''}`}
+                            onClick={() => handleModuleClick(module)}
+                          >
+                            {module.name}
+                          </Badge>
+                        </div>
+                      )}
+                    </Draggable>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      
+      {/* Hidden droppable area for drag source */}
+      <Droppable droppableId="available-modules" direction="horizontal">
+        {(provided) => (
+          <div 
+            ref={provided.innerRef} 
+            {...provided.droppableProps}
+            style={{ display: 'none' }}
+          >
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
     </Card>
   )
 }

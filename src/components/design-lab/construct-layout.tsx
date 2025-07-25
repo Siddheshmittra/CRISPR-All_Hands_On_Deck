@@ -47,7 +47,11 @@ export const ConstructLayout = ({
               <div
                 {...provided.droppableProps}
                 ref={provided.innerRef}
-                className="flex items-center gap-3 flex-wrap min-h-[48px] flex-1"
+                className={`flex items-center gap-3 flex-wrap min-h-[48px] flex-1 transition-all duration-200 ${
+                  snapshot.isDraggingOver 
+                    ? 'bg-primary/10 border-2 border-dashed border-primary rounded-lg' 
+                    : ''
+                }`}
                 style={{ minHeight: 48 }}
               >
                 {constructModules.length === 0 ? (
