@@ -81,11 +81,6 @@ const DesignLab = () => {
       const module = customModules.find(m => m.id === moduleId)
       if (!module) return
       if (constructModules.length >= 5) return
-      setFolders(folders.map(folder =>
-        folder.id === sourceFolderId
-          ? { ...folder, modules: folder.modules.filter(id => id !== moduleId) }
-          : folder
-      ))
       setConstructModules(prev => [...prev, module])
       setSelectedModules(prev => [...prev, module])
       return
