@@ -8,6 +8,7 @@ import { FinalConstruct } from "@/components/design-lab/final-construct"
 import { MultiCassetteSetup } from "@/components/design-lab/multi-cassette-dialog"
 import { NaturalLanguageMode } from "@/components/design-lab/natural-language-mode"
 import { LibraryManager } from "@/components/design-lab/library-manager"
+import { CassetteBatch } from "@/components/design-lab/cassette-batch"
 import { Trash2 } from "lucide-react"
 import React from "react"
 
@@ -16,6 +17,12 @@ interface Module {
   name: string
   type: "overexpression" | "knockout" | "knockdown"
   description?: string
+  sequence?: string
+}
+
+interface Cassette {
+  id: string
+  modules: Module[]
 }
 
 const DesignLab = () => {
@@ -34,6 +41,7 @@ const DesignLab = () => {
     modules: [],
     open: true
   }])
+  const [cassetteBatch, setCassetteBatch] = useState<Cassette[]>([])
 
   const handleModuleSelect = (module: Module) => {
     if (constructModules.length >= 5) {
@@ -62,6 +70,29 @@ const DesignLab = () => {
     } else {
       handleModuleSelect(module)
     }
+  }
+
+  const handleAddCassette = (modules: Module[]) => {
+    const newCassette: Cassette = {
+      id: `cassette-${Date.now()}`,
+      modules: modules
+    }
+    setCassetteBatch(prev => [...prev, newCassette])
+  }
+
+  const handleDeleteCassette = (cassetteId: string) => {
+    setCassetteBatch(prev => prev.filter(c => c.id !== cassetteId))
+  }
+
+  const handleExportBatch = () => {
+    const dataStr = JSON.stringify(cassetteBatch, null, 2)
+    const dataBlob = new Blob([dataStr], { type: 'application/json' })
+    const url = URL.createObjectURL(dataBlob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'cassette-batch.json'
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   const handleDragEnd = (result: DropResult) => {
@@ -256,6 +287,7 @@ const DesignLab = () => {
                         knockdownCount={knockdownCount}
                         setKnockdownCount={setKnockdownCount}
                         showGoButton={true}
+                        onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
                       />
                     )}
                     <ConstructLayout
@@ -263,6 +295,13 @@ const DesignLab = () => {
                       onModuleRemove={handleModuleRemove}
                       onRandomize={handleRandomize}
                       onReset={handleReset}
+                      isMultiCassetteMode={cassetteMode === 'multi'}
+                      onAddCassette={handleAddCassette}
+                    />
+                    <CassetteBatch 
+                      cassetteBatch={cassetteBatch}
+                      onDeleteCassette={handleDeleteCassette}
+                      onExportBatch={handleExportBatch}
                     />
                   </div>
                 </div>

@@ -16,6 +16,8 @@ interface ConstructLayoutProps {
   onModuleRemove: (moduleId: string) => void
   onRandomize: () => void
   onReset: () => void
+  onAddCassette?: (modules: Module[]) => void
+  isMultiCassetteMode?: boolean
 }
 
 // Helper to get arrow for module type
@@ -33,7 +35,9 @@ export const ConstructLayout = ({
   constructModules,
   onModuleRemove,
   onRandomize,
-  onReset
+  onReset,
+  onAddCassette,
+  isMultiCassetteMode = false
 }: ConstructLayoutProps) => {
   return (
     <Card className="p-6">
@@ -48,6 +52,11 @@ export const ConstructLayout = ({
             <RotateCcw className="h-4 w-4 mr-2" />
             Reset
           </Button>
+          {isMultiCassetteMode && onAddCassette && constructModules.length > 0 && (
+            <Button variant="default" size="sm" onClick={() => onAddCassette(constructModules)}>
+              Add to Batch
+            </Button>
+          )}
         </div>
       </div>
 

@@ -3,6 +3,14 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
+interface Module {
+  id: string;
+  name: string;
+  type: "overexpression" | "knockout" | "knockdown";
+  description?: string;
+  sequence?: string;
+}
+
 interface MultiCassetteSetupProps {
   cassetteCount: number
   setCassetteCount: (n: number) => void
@@ -13,6 +21,7 @@ interface MultiCassetteSetupProps {
   knockdownCount: number
   setKnockdownCount: (n: number) => void
   showGoButton?: boolean
+  onAddCassettes?: (cassettes: Module[][]) => void
 }
 
 export const MultiCassetteSetup = ({
@@ -24,7 +33,8 @@ export const MultiCassetteSetup = ({
   setKnockoutCount,
   knockdownCount,
   setKnockdownCount,
-  showGoButton = false
+  showGoButton = false,
+  onAddCassettes
 }: MultiCassetteSetupProps) => {
   const [mode, setMode] = useState<'manual' | 'suggest'>('manual')
   const [prompt, setPrompt] = useState("")
@@ -54,15 +64,24 @@ export const MultiCassetteSetup = ({
   function handleSuggest() {
     // Demo: generate random cassette suggestions
     const genes = ["CD69", "TP53", "MYC", "EGFR", "BCL2", "KRAS", "GATA3"]
-    const cassettes: string[][] = []
+    const cassettes: Module[][] = []
     for (let i = 0; i < cassetteCount; i++) {
-      const cassette: string[] = []
+      const cassette: Module[] = []
       for (let j = 0; j < 2 + Math.floor(Math.random() * 2); j++) {
-        cassette.push(genes[Math.floor(Math.random() * genes.length)])
+        const geneName = genes[Math.floor(Math.random() * genes.length)]
+        cassette.push({
+          id: `${geneName}-${i}-${j}`,
+          name: geneName,
+          type: "overexpression",
+          sequence: "ATCG"
+        })
       }
       cassettes.push(cassette)
     }
-    setSuggested(cassettes)
+    setSuggested(cassettes.map(c => c.map(m => m.name)))
+    if (onAddCassettes) {
+      onAddCassettes(cassettes)
+    }
   }
 
   return (
