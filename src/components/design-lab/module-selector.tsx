@@ -43,10 +43,13 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   ]
 
   // Folder/Library demo state
-  const [folders, setFolders] = useState([
-    { id: 'default', name: 'Unsorted', modules: customModules.map(m => m.id), open: true }
-  ])
+  const [folders, setFolders] = useState<any[]>([])
   const [newFolderName, setNewFolderName] = useState("")
+
+  // Compute modules not in any folder
+  const folderedModuleIds = folders.flatMap(f => f.modules)
+  const unassignedModules = customModules.filter(m => !folderedModuleIds.includes(m.id))
+
   function handleCreateFolder() {
     if (!newFolderName.trim()) return
     setFolders(folders => [
@@ -216,77 +219,8 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-4">2. Select Modules</h2>
-      {/* Import/Export buttons */}
-      <div className="flex gap-2 mb-2">
-        <Button variant="outline" size="sm" onClick={handleImportLibrary}>
-          Import
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleExportLibrary}>
-          Export
-        </Button>
-        <input
-          type="file"
-          accept=".json"
-          ref={fileInputRef}
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
-      </div>
-      {/* Folder/Library creation demo */}
-      <div className="flex gap-2 mb-4 items-center">
-        <input
-          type="text"
-          placeholder="New library name..."
-          value={newFolderName}
-          onChange={e => setNewFolderName(e.target.value)}
-          className="border border-border rounded px-2 py-1 text-sm"
-        />
-        <Button variant="outline" size="sm" onClick={handleCreateFolder}>
-          <FolderPlus className="h-4 w-4 mr-1" />Create Library
-        </Button>
-      </div>
-      {/* Folder/Library toggles demo */}
-      <div className="mb-4">
-        {folders.map(folder => (
-          <div key={folder.id} className="mb-2 border rounded bg-muted">
-            <div
-              className="flex items-center cursor-pointer px-2 py-1 select-none"
-              onClick={() => handleToggleFolder(folder.id)}
-            >
-              <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${folder.open ? '' : '-rotate-90'}`} />
-              <span className="font-semibold text-sm">{folder.name}</span>
-            </div>
-            {folder.open && (
-              <div className="pl-6 pb-2 pt-1 flex flex-wrap gap-2">
-                {folder.modules.length === 0 && <span className="text-xs text-muted-foreground">No modules</span>}
-                {folder.modules.map(mid => {
-                  const module = customModules.find(m => m.id === mid)
-                  if (!module) return null
-                  return (
-                    <Draggable key={module.id + '-folder'} draggableId={module.id + '-folder'} index={0}>
-                      {(dragProvided) => (
-                        <div
-                          ref={dragProvided.innerRef}
-                          {...dragProvided.draggableProps}
-                          {...dragProvided.dragHandleProps}
-                          className="cursor-move"
-                        >
-                          <Badge variant="secondary" className="text-xs">
-                            {module.name}
-                          </Badge>
-                        </div>
-                      )}
-                    </Draggable>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
       {/* Type selector + search + add button row */}
       <div className="flex gap-2 mb-4 items-center">
-        {/* Segmented toggle for type */}
         <select
           value={selectedType}
           onChange={e => setSelectedType(e.target.value as any)}
@@ -341,6 +275,119 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       </p>
       {/* Divider */}
       <div className="border-t border-border my-4" />
+      {/* Import/Export and Folder/Library creation below search */}
+      <div className="flex gap-2 mb-2">
+        <Button variant="outline" size="sm" onClick={handleImportLibrary}>
+          Import
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleExportLibrary}>
+          Export
+        </Button>
+        <input
+          type="file"
+          accept=".json"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+        />
+      </div>
+      <div className="flex gap-2 mb-4 items-center">
+        <input
+          type="text"
+          placeholder="New library name..."
+          value={newFolderName}
+          onChange={e => setNewFolderName(e.target.value)}
+          className="border border-border rounded px-2 py-1 text-sm"
+        />
+        <Button variant="outline" size="sm" onClick={handleCreateFolder}>
+          <FolderPlus className="h-4 w-4 mr-1" />Create Library
+        </Button>
+      </div>
+      {/* Unassigned modules list (draggable into folders) */}
+      {unassignedModules.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-sm font-medium text-muted-foreground mb-2">
+            Modules ({unassignedModules.length})
+          </h3>
+          <Droppable droppableId="unassigned-modules" direction="horizontal">
+            {(provided) => (
+              <div
+                className="flex flex-wrap gap-2"
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+              >
+                {unassignedModules.map((module, index) => (
+                  <Draggable key={module.id + '-' + index} draggableId={module.id + '-' + index} index={index}>
+                    {(dragProvided) => (
+                      <div
+                        ref={dragProvided.innerRef}
+                        {...dragProvided.draggableProps}
+                        {...dragProvided.dragHandleProps}
+                        className="cursor-move"
+                      >
+                        <ModuleButton
+                          moduleType={module.type}
+                          onClick={() => handleModuleClick(module)}
+                        >
+                          {module.name}
+                        </ModuleButton>
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </div>
+      )}
+      {/* Folder/Library toggles demo */}
+      <div className="mb-4">
+        {folders.map(folder => (
+          <Droppable droppableId={folder.id} key={folder.id} direction="horizontal">
+            {(provided) => (
+              <div className="mb-2 border rounded bg-muted">
+                <div
+                  className="flex items-center cursor-pointer px-2 py-1 select-none"
+                  onClick={() => handleToggleFolder(folder.id)}
+                >
+                  <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${folder.open ? '' : '-rotate-90'}`} />
+                  <span className="font-semibold text-sm">{folder.name}</span>
+                </div>
+                {folder.open && (
+                  <div className="pl-6 pb-2 pt-1 flex flex-wrap gap-2"
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                  >
+                    {folder.modules.length === 0 && <span className="text-xs text-muted-foreground">No modules</span>}
+                    {folder.modules.map((mid, idx) => {
+                      const module = customModules.find(m => m.id === mid)
+                      if (!module) return null
+                      return (
+                        <Draggable key={module.id + '-folder'} draggableId={module.id + '-folder'} index={idx}>
+                          {(dragProvided) => (
+                            <div
+                              ref={dragProvided.innerRef}
+                              {...dragProvided.draggableProps}
+                              {...dragProvided.dragHandleProps}
+                              className="cursor-move"
+                            >
+                              <Badge variant="secondary" className="text-xs">
+                                {module.name}
+                              </Badge>
+                            </div>
+                          )}
+                        </Draggable>
+                      )
+                    })}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </div>
+            )}
+          </Droppable>
+        ))}
+      </div>
       {/* Custom Modules Library (badges with delete buttons) */}
       {customModules.length > 0 && (
         <div className="mb-4">
