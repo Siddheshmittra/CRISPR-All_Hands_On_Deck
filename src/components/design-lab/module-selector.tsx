@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ModuleButton } from "@/components/ui/module-button"
-import { Search, Plus, Trash2, ChevronDown, FolderPlus } from "lucide-react"
+import { Search, Plus, Trash2, ChevronDown, FolderPlus, X } from "lucide-react"
 import { Draggable, Droppable } from "@hello-pangea/dnd"
 import { Badge } from "@/components/ui/badge"
 
@@ -173,6 +173,11 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     setSearchTerm("")
     setSelectedSuggestion(null)
     setShowDropdown(false)
+  }
+
+  function handleDeleteModule(moduleId: string) {
+    // Remove from customModules (parent will update folders and construct)
+    onCustomModulesChange(customModules.filter(m => m.id !== moduleId))
   }
 
   // Always show at least one folder
@@ -386,7 +391,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                               ref={dragProvided.innerRef}
                               {...dragProvided.draggableProps}
                               {...dragProvided.dragHandleProps}
-                              className={`cursor-move transition-transform ${dragSnapshot.isDragging ? 'scale-105 rotate-2 z-50' : 'hover:scale-105'}`}
+                              className={`cursor-move transition-transform ${dragSnapshot.isDragging ? 'scale-105 rotate-2 z-50' : 'hover:scale-105'} relative flex items-center`}
                             >
                               <Badge 
                                 variant="secondary" 
@@ -395,6 +400,16 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                               >
                                 {getTypeArrow(module.type)} {module.name}
                               </Badge>
+                              {/* Show delete button only in Total Library */}
+                              {folder.id === 'total-library' && (
+                                <button
+                                  className="ml-1 p-0.5 rounded hover:bg-destructive/20 text-destructive absolute -top-2 -right-2"
+                                  title="Remove from Total Library"
+                                  onClick={e => { e.stopPropagation(); handleDeleteModule(module.id); }}
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              )}
                             </div>
                           )}
                         </Draggable>
