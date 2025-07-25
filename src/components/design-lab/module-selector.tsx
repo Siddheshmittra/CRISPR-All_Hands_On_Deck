@@ -204,19 +204,17 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       </div>
       {/* Type selector + search + add button row */}
       <div className="flex gap-2 mb-4 items-center">
-        <div className="flex flex-col gap-1">
+        {/* Segmented toggle for type */}
+        <select
+          value={selectedType}
+          onChange={e => setSelectedType(e.target.value as any)}
+          className="h-9 px-2 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+          style={{ minWidth: 70 }}
+        >
           {typeOptions.map(opt => (
-            <Button
-              key={opt.value}
-              variant={selectedType === opt.value ? 'default' : 'outline'}
-              size="sm"
-              className="px-2 py-1 h-7 w-12"
-              onClick={() => setSelectedType(opt.value as any)}
-            >
-              {opt.label}
-            </Button>
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
-        </div>
+        </select>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
