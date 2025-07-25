@@ -8,12 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Download, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 
-interface Module {
-  id: string
-  name: string
-  type: "overexpression" | "knockout" | "knockdown"
-  sequence?: string
-}
+import { Module } from "@/lib/types"
 
 interface FinalConstructProps {
   constructModules: Module[]

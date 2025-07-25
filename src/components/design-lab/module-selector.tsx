@@ -3,18 +3,12 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ModuleButton } from "@/components/ui/module-button"
-import { Search, Plus, Trash2, ChevronDown, FolderPlus, X } from "lucide-react"
+import { Search, Plus, Trash2, ChevronDown, FolderPlus, X, Loader2 } from "lucide-react"
 import { Draggable, Droppable } from "@hello-pangea/dnd"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-
-interface Module {
-  id: string
-  name: string
-  type: "overexpression" | "knockout" | "knockdown"
-  description?: string
-  sequence?: string
-}
+import { enrichModuleWithSequence } from "@/lib/ensembl"
+import { Module, EnsemblModule } from "@/lib/types"
 
 interface ModuleSelectorProps {
   selectedModules: Module[]
@@ -38,6 +32,8 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const nameCache = useRef<Map<string, string>>(new Map())
   let searchTimeout = useRef<NodeJS.Timeout | null>(null)
   const [selectedSuggestion, setSelectedSuggestion] = useState<any | null>(null)
+  const [addingModule, setAddingModule] = useState(false)
+  
   // Type selector state
   const [selectedType, setSelectedType] = useState<'overexpression' | 'knockout' | 'knockdown' | 'knockin'>('overexpression')
   const typeOptions = [
@@ -88,20 +84,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       return { symbol, name, hgnc_id }
     })
     return Promise.all(promises)
-  }
-
-  async function fetchSequence(symbol: string) {
-    try {
-      const xrefRes = await fetch(`https://rest.ensembl.org/xrefs/symbol/homo_sapiens/${symbol}?content-type=application/json`).then(r => r.json())
-      const ensemblId = xrefRes?.[0]?.id
-      if (!ensemblId) return ""
-      const seqRes = await fetch(`https://rest.ensembl.org/sequence/id/${ensemblId}?content-type=text/plain`)
-      return await seqRes.text()
-    } catch (err) {
-      console.error('Failed to fetch sequence', err)
-      toast.error('Failed to download sequence')
-      return ""
-    }
   }
 
   // Handle input changes and fetch suggestions
@@ -165,39 +147,50 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       return
     }
 
-    const sequence = await fetchSequence(selectedSuggestion.symbol)
+    setAddingModule(true)
+    try {
+      // Create base module
+      const baseModule: Module = {
+        id: selectedSuggestion.symbol,
+        name: selectedSuggestion.symbol,
+        type: selectedType,
+        description: selectedSuggestion.name,
+      }
 
-    const newModule = {
-      id: selectedSuggestion.symbol,
-      name: selectedSuggestion.symbol,
-      type: selectedType as any,
-      description: selectedSuggestion.name,
-      sequence
+      // Enrich with Ensembl data
+      const enrichedModule = await enrichModuleWithSequence(baseModule)
+
+      // First add to customModules
+      onCustomModulesChange([...customModules, enrichedModule])
+
+      // Then handle folder placement
+      // Add to selected folder if one is selected (and it's not the Total Library)
+      if (selectedFolderId && selectedFolderId !== 'total-library') {
+        setFolders(folders.map(folder =>
+          folder.id === selectedFolderId
+            ? { ...folder, modules: [...folder.modules, enrichedModule.id], open: true }
+            : folder
+        ))
+      }
+
+      toast.success(`Added ${enrichedModule.name} to library`)
+    } catch (error) {
+      console.error('Failed to add gene:', error)
+      toast.error(`Failed to add ${selectedSuggestion.symbol}`)
+    } finally {
+      setAddingModule(false)
+      // Clear the search
+      setSearchTerm("")
+      setSelectedSuggestion(null)
+      setShowDropdown(false)
     }
-
-    // First add to customModules
-    onCustomModulesChange([...customModules, newModule])
-
-    // Then handle folder placement
-    // Add to selected folder if one is selected (and it's not the Total Library)
-    if (selectedFolderId && selectedFolderId !== 'total-library') {
-      setFolders(folders.map(folder =>
-        folder.id === selectedFolderId
-          ? { ...folder, modules: [...folder.modules, newModule.id], open: true }
-          : folder
-      ))
-    }
-
-    // Clear the search
-    setSearchTerm("")
-    setSelectedSuggestion(null)
-    setShowDropdown(false)
   }
 
   function handleDeleteModule(moduleId: string, folderId: string) {
     if (folderId === 'total-library') {
       // Remove from customModules (parent will update folders and construct)
       onCustomModulesChange(customModules.filter(m => m.id !== moduleId))
+      toast.success('Module removed from all libraries')
     } else {
       // Remove only from this folder
       setFolders(folders.map(folder =>
@@ -205,6 +198,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           ? { ...folder, modules: folder.modules.filter(id => id !== moduleId) }
           : folder
       ))
+      toast.success('Module removed from library')
     }
   }
 
@@ -245,16 +239,33 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   function handleImportLibrary() {
     if (fileInputRef.current) fileInputRef.current.click()
   }
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) {
       const reader = new FileReader()
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const imported = JSON.parse(e.target?.result as string)
-          onCustomModulesChange([...customModules, ...imported])
+          // If modules don't have sequences, try to enrich them
+          const enrichedModules = await Promise.all(
+            imported.map(async (module: Module) => {
+              if (!module.sequence) {
+                try {
+                  return await enrichModuleWithSequence(module)
+                } catch (error) {
+                  console.error(`Failed to enrich ${module.name}:`, error)
+                  return module
+                }
+              }
+              return module
+            })
+          )
+          onCustomModulesChange([...customModules, ...enrichedModules])
+          toast.success(`Imported ${enrichedModules.length} modules`)
         } catch (error) {
           console.error('Failed to import library:', error)
+          toast.error('Failed to import library')
         }
       }
       reader.readAsText(file)
@@ -279,6 +290,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     link.download = `${folder.name.replace(/\s+/g, '_').toLowerCase()}-library.json`
     link.click()
     URL.revokeObjectURL(url)
+    toast.success(`Exported ${modulesToExport.length} modules`)
   }
 
   // Helper to get arrow for module type
@@ -352,12 +364,21 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             <option key={folder.id} value={folder.id}>{folder.name}</option>
           ))}
         </select>
-        <Button variant="secondary" size="icon" onClick={handleAddGene} disabled={!selectedSuggestion}>
-          <Plus className="h-4 w-4" />
+        <Button 
+          variant="secondary" 
+          size="icon" 
+          onClick={handleAddGene} 
+          disabled={!selectedSuggestion || addingModule}
+        >
+          {addingModule ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Plus className="h-4 w-4" />
+          )}
         </Button>
       </div>
       <p className="text-sm text-muted-foreground mb-4">
-        Powered by NCBI GeneBank
+        Powered by Ensembl REST API
       </p>
       {/* Divider */}
       <div className="border-t border-border my-4" />
