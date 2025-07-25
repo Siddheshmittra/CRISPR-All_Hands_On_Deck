@@ -151,6 +151,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     setSelectedSuggestion(suggestion)
   }
 
+  // When adding a new module, place it in the first folder or create a default folder if none exist
   function handleAddGene() {
     if (!selectedSuggestion) return
     // Prevent duplicates
@@ -164,7 +165,23 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     onCustomModulesChange([...customModules, newModule])
     setSearchTerm("")
     setSelectedSuggestion(null)
+    setFolders(folders => {
+      if (folders.length === 0) {
+        // Create a default folder and add the module
+        return [{ id: 'default', name: 'Library', modules: [newModule.id], open: true }]
+      } else {
+        // Add to the first folder
+        return folders.map((f, i) => i === 0 ? { ...f, modules: [...f.modules, newModule.id] } : f)
+      }
+    })
   }
+
+  // Always show at least one folder
+  React.useEffect(() => {
+    if (folders.length === 0 && customModules.length > 0) {
+      setFolders([{ id: 'default', name: 'Library', modules: customModules.map(m => m.id), open: true }])
+    }
+  }, [folders.length, customModules.length])
 
   // Close dropdown on outside click
   useEffect(() => {
