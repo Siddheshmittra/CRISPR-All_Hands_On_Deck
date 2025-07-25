@@ -18,6 +18,17 @@ interface ConstructLayoutProps {
   onReset: () => void
 }
 
+// Helper to get arrow for module type
+function getTypeArrow(type: string) {
+  switch (type) {
+    case 'knockdown': return '↓';
+    case 'knockout': return '✖';
+    case 'knockin': return '→';
+    case 'overexpression': return '↑';
+    default: return '';
+  }
+}
+
 export const ConstructLayout = ({
   constructModules,
   onModuleRemove,
@@ -74,7 +85,7 @@ export const ConstructLayout = ({
                               moduleType={module.type}
                               className="cursor-move"
                             >
-                              {module.name}
+                              {getTypeArrow(module.type)} {module.name}
                             </ModuleButton>
                             <button
                               onClick={() => onModuleRemove(module.id)}
