@@ -238,13 +238,22 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       reader.readAsText(file)
     }
   }
+  // Export: prompt for folder selection
   function handleExportLibrary() {
-    const dataStr = JSON.stringify(customModules, null, 2)
+    if (folders.length === 0) return
+    const folderName = window.prompt(
+      'Export which folder?\n' + folders.map((f, i) => `${i + 1}: ${f.name}`).join('\n'),
+      folders[0].name
+    )
+    if (!folderName) return
+    const folder = folders.find(f => f.name === folderName) || folders[0]
+    const modulesToExport = folder.modules.map(mid => customModules.find(m => m.id === mid)).filter(Boolean)
+    const dataStr = JSON.stringify(modulesToExport, null, 2)
     const dataBlob = new Blob([dataStr], { type: 'application/json' })
     const url = URL.createObjectURL(dataBlob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'gene-library.json'
+    link.download = `${folder.name.replace(/\s+/g, '_').toLowerCase()}-library.json`
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -360,9 +369,9 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                       {folder.modules.map((mid, idx) => {
                         const module = customModules.find(m => m.id === mid)
                         if (!module) return null
-                        // Use consistent draggableId for construct layout
+                        // Use module.id as draggableId for construct compatibility
                         return (
-                          <Draggable key={module.id + '-' + folder.id} draggableId={module.id + '-' + folder.id} index={idx}>
+                          <Draggable key={module.id} draggableId={module.id} index={idx}>
                             {(dragProvided) => (
                               <div
                                 ref={dragProvided.innerRef}
@@ -391,7 +400,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           {(provided) => (
             <div ref={provided.innerRef} style={{ display: 'none' }} {...provided.droppableProps}>
               {allFolderedModules.map((module, idx) => (
-                <Draggable key={module!.id + '-main'} draggableId={module!.id + '-main'} index={idx}>
+                <Draggable key={module!.id} draggableId={module!.id} index={idx}>
                   {(dragProvided) => (
                     <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} {...dragProvided.dragHandleProps} />
                   )}
