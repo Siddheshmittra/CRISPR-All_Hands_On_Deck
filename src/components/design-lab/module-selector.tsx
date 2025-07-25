@@ -45,6 +45,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   // Folder/Library demo state
   const [folders, setFolders] = useState<any[]>([])
   const [newFolderName, setNewFolderName] = useState("")
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
 
   // Compute modules not in any folder
   const folderedModuleIds = folders.flatMap(f => f.modules)
@@ -52,15 +53,18 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
 
   function handleCreateFolder() {
     if (!newFolderName.trim()) return
+    const newId = Date.now() + '-' + Math.random()
     setFolders(folders => [
       ...folders,
-      { id: Date.now() + '-' + Math.random(), name: newFolderName.trim(), modules: [], open: true }
+      { id: newId, name: newFolderName.trim(), modules: [], open: true }
     ])
     setNewFolderName("")
+    setActiveFolderId(newId)
   }
   
   function handleToggleFolder(id: string) {
     setFolders(folders => folders.map(f => f.id === id ? { ...f, open: !f.open } : f))
+    setActiveFolderId(id)
   }
 
   // Fetch suggestions from HGNC
@@ -129,7 +133,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     setSelectedSuggestion(suggestion)
   }
 
-  // When adding a new module, place it in the first folder or create a default folder if none exist
+  // When adding a new module, place it in the active folder or create a default folder if none exist
   function handleAddGene() {
     if (!selectedSuggestion) return
     // Prevent duplicates
@@ -158,11 +162,11 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         modules: [newModule.id],
         open: true
       }])
+      setActiveFolderId('default')
     } else {
-      // Add to the first folder and ensure it's open
-      setFolders(currentFolders => 
-        currentFolders.map((folder, index) => 
-          index === 0 
+      setFolders(currentFolders =>
+        currentFolders.map(folder =>
+          folder.id === (activeFolderId || currentFolders[0].id)
             ? { ...folder, modules: [...folder.modules, newModule.id], open: true }
             : folder
         )
@@ -179,6 +183,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   React.useEffect(() => {
     if (folders.length === 0 && customModules.length > 0) {
       setFolders([{ id: 'default', name: 'Library', modules: customModules.map(m => m.id), open: true }])
+      setActiveFolderId('default')
     }
   }, [folders.length, customModules.length])
 
