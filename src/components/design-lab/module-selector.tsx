@@ -50,6 +50,9 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const folderedModuleIds = folders.flatMap(f => f.modules)
   const unassignedModules = customModules.filter(m => !folderedModuleIds.includes(m.id))
 
+  // Compute all modules in all folders for drag-and-drop to construct
+  const allFolderedModules = folders.flatMap(f => f.modules.map(mid => customModules.find(m => m.id === mid)).filter(Boolean))
+
   function handleCreateFolder() {
     if (!newFolderName.trim()) return
     setFolders(folders => [
@@ -357,8 +360,9 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                       {folder.modules.map((mid, idx) => {
                         const module = customModules.find(m => m.id === mid)
                         if (!module) return null
+                        // Use consistent draggableId for construct layout
                         return (
-                          <Draggable key={module.id + '-folder'} draggableId={module.id + '-folder'} index={idx}>
+                          <Draggable key={module.id + '-' + folder.id} draggableId={module.id + '-' + folder.id} index={idx}>
                             {(dragProvided) => (
                               <div
                                 ref={dragProvided.innerRef}
@@ -382,6 +386,21 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             </Droppable>
           ))}
         </div>
+        {/* Hidden droppable for construct layout drag source */}
+        <Droppable droppableId="available-modules" direction="horizontal">
+          {(provided) => (
+            <div ref={provided.innerRef} style={{ display: 'none' }} {...provided.droppableProps}>
+              {allFolderedModules.map((module, idx) => (
+                <Draggable key={module!.id + '-main'} draggableId={module!.id + '-main'} index={idx}>
+                  {(dragProvided) => (
+                    <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} {...dragProvided.dragHandleProps} />
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
       </DragDropContext>
     </Card>
   )
