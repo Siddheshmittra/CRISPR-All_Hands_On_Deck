@@ -248,6 +248,17 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     URL.revokeObjectURL(url)
   }
 
+  // Helper to get arrow for module type
+  function getTypeArrow(type: string) {
+    switch (type) {
+      case 'knockdown': return '↓';
+      case 'knockout': return '✖';
+      case 'knockin': return '→';
+      case 'overexpression': return '↑';
+      default: return '';
+    }
+  }
+
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-4">2. Select Modules</h2>
@@ -382,7 +393,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                                 className={`text-xs ${isSelected(module.id) ? 'bg-primary text-primary-foreground' : ''} ${dragSnapshot.isDragging ? 'shadow-lg' : ''}`}
                                 onClick={() => handleModuleClick(module)}
                               >
-                                {module.name}
+                                {getTypeArrow(module.type)} {module.name}
                               </Badge>
                             </div>
                           )}
