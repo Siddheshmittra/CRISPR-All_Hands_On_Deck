@@ -133,25 +133,46 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   function handleAddGene() {
     if (!selectedSuggestion) return
     // Prevent duplicates
-    if (customModules.some(m => m.id === selectedSuggestion.symbol)) return
+    if (customModules.some(m => m.id === selectedSuggestion.symbol)) {
+      setSearchTerm("")
+      setSelectedSuggestion(null)
+      return
+    }
+
     const newModule = {
       id: selectedSuggestion.symbol,
       name: selectedSuggestion.symbol,
       type: selectedType as any,
       description: selectedSuggestion.name
     }
+
+    // First add to customModules
     onCustomModulesChange([...customModules, newModule])
+
+    // Then handle folder placement
+    if (folders.length === 0) {
+      // Create a default folder if none exists
+      setFolders([{
+        id: 'default',
+        name: 'Library',
+        modules: [newModule.id],
+        open: true
+      }])
+    } else {
+      // Add to the first folder and ensure it's open
+      setFolders(currentFolders => 
+        currentFolders.map((folder, index) => 
+          index === 0 
+            ? { ...folder, modules: [...folder.modules, newModule.id], open: true }
+            : folder
+        )
+      )
+    }
+
+    // Clear the search
     setSearchTerm("")
     setSelectedSuggestion(null)
-    setFolders(folders => {
-      if (folders.length === 0) {
-        // Create a default folder and add the module
-        return [{ id: 'default', name: 'Library', modules: [newModule.id], open: true }]
-      } else {
-        // Add to the first folder
-        return folders.map((f, i) => i === 0 ? { ...f, modules: [...f.modules, newModule.id] } : f)
-      }
-    })
+    setShowDropdown(false)
   }
 
   // Always show at least one folder
