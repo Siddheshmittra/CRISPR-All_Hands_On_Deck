@@ -67,7 +67,6 @@ const DesignLab = () => {
       const allModules = [...predefinedModules, ...customModules]
       const module = allModules.find(m => m.id === result.draggableId)
       if (!module) return
-      if (constructModules.some(m => m.id === module.id)) return
       if (constructModules.length >= 5) return
       setConstructModules(prev => [...prev, module])
       setSelectedModules(prev => [...prev, module])
