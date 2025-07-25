@@ -6,12 +6,14 @@ import { ModuleButton } from "@/components/ui/module-button"
 import { Search, Plus, Trash2, ChevronDown, FolderPlus, X } from "lucide-react"
 import { Draggable, Droppable } from "@hello-pangea/dnd"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 
 interface Module {
   id: string
   name: string
   type: "overexpression" | "knockout" | "knockdown"
   description?: string
+  sequence?: string
 }
 
 interface ModuleSelectorProps {
@@ -88,6 +90,20 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     return Promise.all(promises)
   }
 
+  async function fetchSequence(symbol: string) {
+    try {
+      const xrefRes = await fetch(`https://rest.ensembl.org/xrefs/symbol/homo_sapiens/${symbol}?content-type=application/json`).then(r => r.json())
+      const ensemblId = xrefRes?.[0]?.id
+      if (!ensemblId) return ""
+      const seqRes = await fetch(`https://rest.ensembl.org/sequence/id/${ensemblId}?content-type=text/plain`)
+      return await seqRes.text()
+    } catch (err) {
+      console.error('Failed to fetch sequence', err)
+      toast.error('Failed to download sequence')
+      return ""
+    }
+  }
+
   // Handle input changes and fetch suggestions
   useEffect(() => {
     if (searchTimeout.current) clearTimeout(searchTimeout.current)
@@ -140,7 +156,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   }
 
   // When adding a new module, place it in the selected folder or create a default folder if none exist
-  function handleAddGene() {
+  async function handleAddGene() {
     if (!selectedSuggestion) return
     // Prevent duplicates
     if (customModules.some(m => m.id === selectedSuggestion.symbol)) {
@@ -149,11 +165,14 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       return
     }
 
+    const sequence = await fetchSequence(selectedSuggestion.symbol)
+
     const newModule = {
       id: selectedSuggestion.symbol,
       name: selectedSuggestion.symbol,
       type: selectedType as any,
-      description: selectedSuggestion.name
+      description: selectedSuggestion.name,
+      sequence
     }
 
     // First add to customModules
@@ -402,13 +421,14 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                               {...dragProvided.dragHandleProps}
                               className={`cursor-move transition-transform ${dragSnapshot.isDragging ? 'scale-105 rotate-2 z-50' : 'hover:scale-105'} relative flex items-center`}
                             >
-                              <Badge 
-                                variant="secondary" 
-                                className={`text-xs ${isSelected(module.id) ? 'bg-primary text-primary-foreground' : ''} ${dragSnapshot.isDragging ? 'shadow-lg' : ''}`}
-                                onClick={() => handleModuleClick(module)}
-                              >
-                                {getTypeArrow(module.type)} {module.name}
-                              </Badge>
+                                <Badge
+                                  variant="secondary"
+                                  className={`text-xs ${isSelected(module.id) ? 'bg-primary text-primary-foreground' : ''} ${dragSnapshot.isDragging ? 'shadow-lg' : ''}`}
+                                  onClick={() => handleModuleClick(module)}
+                                >
+                                  {getTypeArrow(module.type)} {module.name}
+                                  {module.sequence ? ` (${module.sequence.length}bp)` : ''}
+                                </Badge>
                               {/* Show delete button in all folders */}
                               <button
                                 className="ml-1 p-0.5 rounded hover:bg-destructive/20 text-destructive absolute -top-2 -right-2"
