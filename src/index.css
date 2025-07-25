@@ -59,70 +59,54 @@ All colors MUST be HSL.
     --sidebar-border: 7 15% 85%;
     --sidebar-ring: 7 85% 35%;
 
-    font-family: 'Inter', Arial, sans-serif;
+    font-family: 'Proxima Nova', Arial, sans-serif;
   }
 
-  .dark {
-    --background: 7 85% 12%; /* deep cardinal red background */
-    --foreground: 0 0% 98%; /* white for high contrast */
-
-    --card: 7 85% 16%;
-    --card-foreground: 0 0% 98%;
-
-    --popover: 7 85% 16%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 7 85% 35%;
-    --primary-foreground: 0 0% 98%;
-    
-    --primary-light: 7 85% 45%;
-    --primary-dark: 7 85% 25%;
-
-    --secondary: 7 30% 20%;
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 7 30% 20%;
-    --muted-foreground: 0 0% 80%;
-
-    --accent: 210 100% 60%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 85% 35%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 7 30% 25%;
-    --input: 7 30% 25%;
-    --ring: 7 85% 35%;
-
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
-    --gradient-surface: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted)));
-    
-    --shadow-module: 0 2px 8px hsl(0 0% 0% / 0.3);
-    --shadow-elevated: 0 4px 16px hsl(0 0% 0% / 0.4);
-    --sidebar-background: 7 85% 16%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 7 85% 35%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 7 30% 20%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 7 30% 25%;
-    --sidebar-ring: 7 85% 35%;
-
-    font-family: 'Inter', Arial, sans-serif;
+  @font-face {
+    font-family: 'Proxima Nova';
+    src: local('Proxima Nova'), url('/fonts/ProximaNova-Regular.woff2') format('woff2'), url('/fonts/ProximaNova-Regular.woff') format('woff');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Proxima Nova';
+    src: local('Proxima Nova Bold'), url('/fonts/ProximaNova-Bold.woff2') format('woff2'), url('/fonts/ProximaNova-Bold.woff') format('woff');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Proxima Nova';
+    src: local('Proxima Nova Semibold'), url('/fonts/ProximaNova-Semibold.woff2') format('woff2'), url('/fonts/ProximaNova-Semibold.woff') format('woff');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Proxima Nova';
+    src: local('Proxima Nova Extrabold'), url('/fonts/ProximaNova-Extrabold.woff2') format('woff2'), url('/fonts/ProximaNova-Extrabold.woff') format('woff');
+    font-weight: 800;
+    font-style: normal;
+    font-display: swap;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Georgia', 'Times New Roman', serif;
+    font-family: 'Proxima Nova', Arial, sans-serif;
     font-weight: 700;
     letter-spacing: -0.01em;
   }
-
+  h4, h5, h6 {
+    font-weight: 600;
+  }
+  body {
+    font-family: 'Proxima Nova', Arial, sans-serif;
+    font-weight: 400;
+  }
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', Arial, sans-serif;
   }
 }
