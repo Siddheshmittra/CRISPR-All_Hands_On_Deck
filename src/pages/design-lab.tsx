@@ -110,27 +110,59 @@ const DesignLab = () => {
       ) {
         return
       }
-      let newFolders = folders.map(folder => {
-        if (folder.id === source.droppableId) {
-          return {
-            ...folder,
-            modules: folder.modules.filter(id => id !== draggableId)
+
+      // If source is Total Library, create a clone instead of moving
+      if (source.droppableId === 'total-library') {
+        const moduleToClone = customModules.find(m => m.id === draggableId)
+        if (!moduleToClone) return
+        
+        // Create a unique ID for the clone
+        const uniqueId = `${draggableId}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
+        
+        setFolders(prevFolders => 
+          prevFolders.map(folder => {
+            if (folder.id === destination.droppableId) {
+              const newModules = Array.from(folder.modules)
+              newModules.splice(destination.index, 0, uniqueId)
+              return {
+                ...folder,
+                modules: newModules
+              }
+            }
+            return folder
+          })
+        )
+        
+        // Add the cloned module to customModules
+        const clonedModule = { ...moduleToClone, id: uniqueId }
+        setCustomModules(prev => [...prev, clonedModule])
+        return
+      }
+
+      // For moves between regular folders (not involving Total Library)
+      if (destination.droppableId !== 'total-library') {
+        let newFolders = folders.map(folder => {
+          if (folder.id === source.droppableId) {
+            return {
+              ...folder,
+              modules: folder.modules.filter(id => id !== draggableId)
+            }
           }
-        }
-        return folder
-      })
-      newFolders = newFolders.map(folder => {
-        if (folder.id === destination.droppableId) {
-          const newModules = Array.from(folder.modules)
-          newModules.splice(destination.index, 0, draggableId)
-          return {
-            ...folder,
-            modules: newModules
+          return folder
+        })
+        newFolders = newFolders.map(folder => {
+          if (folder.id === destination.droppableId) {
+            const newModules = Array.from(folder.modules)
+            newModules.splice(destination.index, 0, draggableId)
+            return {
+              ...folder,
+              modules: newModules
+            }
           }
-        }
-        return folder
-      })
-      setFolders(newFolders)
+          return folder
+        })
+        setFolders(newFolders)
+      }
       return
     }
 
