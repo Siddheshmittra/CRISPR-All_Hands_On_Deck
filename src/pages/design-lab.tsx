@@ -65,14 +65,13 @@ const DesignLab = () => {
     ) {
       // Try both predefined and custom modules
       const allModules = [...predefinedModules, ...customModules]
-      // Extract the module id from the draggableId (which may have -index)
-      const moduleId = result.draggableId.split('-')[0]
-      const module = allModules.find(m => m.id === moduleId)
+      // Extract the base module id from the draggableId
+      const baseModuleId = result.draggableId.split('-')[0]
+      const module = allModules.find(m => m.id === baseModuleId)
       if (!module) return
       if (constructModules.length >= 5) return
-      // Add a new instance with a unique id
-      const uniqueId = module.id + '-' + Date.now() + '-' + Math.floor(Math.random() * 10000)
-      const newModule = { ...module, id: uniqueId }
+      // Use the full draggableId to maintain uniqueness
+      const newModule = { ...module, id: result.draggableId }
       setConstructModules(prev => [...prev, newModule])
       setSelectedModules(prev => [...prev, newModule])
     }
