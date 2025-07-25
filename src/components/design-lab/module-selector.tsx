@@ -124,23 +124,23 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
 
   // Keyboard navigation for dropdown
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (!showDropdown || !suggestions.length) return
-    if (e.key === "ArrowDown") {
-      e.preventDefault()
-      setSelectedIndex(idx => (idx + 1) % suggestions.length)
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault()
-      setSelectedIndex(idx => (idx - 1 + suggestions.length) % suggestions.length)
-    } else if (e.key === "Enter") {
-      if (selectedIndex >= 0 && suggestions[selectedIndex]) {
-        selectSuggestion(suggestions[selectedIndex])
-        // Add gene immediately after selecting
+    if (e.key === "Enter") {
+      if (showDropdown && suggestions.length > 0) {
+        selectSuggestion(suggestions[0])
         setTimeout(() => handleAddGene(), 0)
       } else if (selectedSuggestion) {
         handleAddGene()
       }
-    } else if (e.key === "Escape") {
-      setShowDropdown(false)
+    } else if (showDropdown && suggestions.length) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault()
+        setSelectedIndex(idx => (idx + 1) % suggestions.length)
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault()
+        setSelectedIndex(idx => (idx - 1 + suggestions.length) % suggestions.length)
+      } else if (e.key === "Escape") {
+        setShowDropdown(false)
+      }
     }
   }
 
