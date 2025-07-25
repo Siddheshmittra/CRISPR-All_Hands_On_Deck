@@ -223,18 +223,6 @@ const DesignLab = () => {
               inputMode={inputMode}
               onInputModeChange={setInputMode}
             />
-            {cassetteMode === 'multi' && (
-              <MultiCassetteSetup
-                cassetteCount={cassetteCount}
-                setCassetteCount={setCassetteCount}
-                overexpressionCount={overexpressionCount}
-                setOverexpressionCount={setOverexpressionCount}
-                knockoutCount={knockoutCount}
-                setKnockoutCount={setKnockoutCount}
-                knockdownCount={knockdownCount}
-                setKnockdownCount={setKnockdownCount}
-              />
-            )}
             
             {inputMode === 'natural' && (
               <NaturalLanguageMode
@@ -256,6 +244,20 @@ const DesignLab = () => {
                       setFolders={setFolders}
                       handleModuleClick={handleModuleClick}
                     />
+                    {/* Show MultiCassetteSetup below Select Modules if in multi mode */}
+                    {cassetteMode === 'multi' && (
+                      <MultiCassetteSetup
+                        cassetteCount={cassetteCount}
+                        setCassetteCount={setCassetteCount}
+                        overexpressionCount={overexpressionCount}
+                        setOverexpressionCount={setOverexpressionCount}
+                        knockoutCount={knockoutCount}
+                        setKnockoutCount={setKnockoutCount}
+                        knockdownCount={knockdownCount}
+                        setKnockdownCount={setKnockdownCount}
+                        showGoButton={true}
+                      />
+                    )}
                     <ConstructLayout
                       constructModules={constructModules}
                       onModuleRemove={handleModuleRemove}

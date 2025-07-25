@@ -12,6 +12,7 @@ interface MultiCassetteSetupProps {
   setKnockoutCount: (n: number) => void
   knockdownCount: number
   setKnockdownCount: (n: number) => void
+  showGoButton?: boolean
 }
 
 export const MultiCassetteSetup = ({
@@ -22,7 +23,8 @@ export const MultiCassetteSetup = ({
   knockoutCount,
   setKnockoutCount,
   knockdownCount,
-  setKnockdownCount
+  setKnockdownCount,
+  showGoButton = false
 }: MultiCassetteSetupProps) => {
   const [mode, setMode] = useState<'manual' | 'suggest'>('manual')
   const [prompt, setPrompt] = useState("")
@@ -135,7 +137,11 @@ export const MultiCassetteSetup = ({
               onChange={e => setPrompt(e.target.value)}
               placeholder="e.g. optimize for knockdown and knockout"
             />
-            <Button className="mt-2" onClick={handleSuggest}>Suggest Cassettes</Button>
+            {showGoButton ? (
+              <Button className="mt-2" onClick={handleSuggest}>Go</Button>
+            ) : (
+              <Button className="mt-2" onClick={handleSuggest}>Suggest Cassettes</Button>
+            )}
           </div>
           {suggested.length > 0 && (
             <div className="mt-4">
