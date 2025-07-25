@@ -63,12 +63,13 @@ const DesignLab = () => {
       result.source.droppableId === "available-modules" &&
       result.destination.droppableId === "construct"
     ) {
-      // Find the module by its ID directly
-      const module = customModules.find(m => m.id === result.draggableId)
+      // Only use custom modules
+      const baseModuleId = result.draggableId.split('-')[0]
+      const module = customModules.find(m => m.id === baseModuleId)
       if (!module) return
       if (constructModules.length >= 5) return
       // Create a new unique ID for this instance
-      const uniqueId = `${module.id}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
+      const uniqueId = `${baseModuleId}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
       const newModule = { ...module, id: uniqueId }
       setConstructModules(prev => [...prev, newModule])
       setSelectedModules(prev => [...prev, newModule])
