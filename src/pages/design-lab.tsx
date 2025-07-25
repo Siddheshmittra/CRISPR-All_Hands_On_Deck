@@ -2,7 +2,7 @@ import { useState } from "react"
 import { DragDropContext, type DropResult, Droppable } from "@hello-pangea/dnd"
 import { Header } from "@/components/design-lab/header"
 import { DesignMode } from "@/components/design-lab/design-mode"
-import { ModuleSelector, predefinedModules } from "@/components/design-lab/module-selector"
+import { ModuleSelector } from "@/components/design-lab/module-selector"
 import { ConstructLayout } from "@/components/design-lab/construct-layout"
 import { FinalConstruct } from "@/components/design-lab/final-construct"
 import { MultiCassetteSetup } from "@/components/design-lab/multi-cassette-dialog"
@@ -63,11 +63,9 @@ const DesignLab = () => {
       result.source.droppableId === "available-modules" &&
       result.destination.droppableId === "construct"
     ) {
-      // Try both predefined and custom modules
-      const allModules = [...predefinedModules, ...customModules]
-      // Extract the base module id from the draggableId
+      // Only use custom modules
       const baseModuleId = result.draggableId.split('-')[0]
-      const module = allModules.find(m => m.id === baseModuleId)
+      const module = customModules.find(m => m.id === baseModuleId)
       if (!module) return
       if (constructModules.length >= 5) return
       // Create a new unique ID for this instance

@@ -21,28 +21,6 @@ interface ModuleSelectorProps {
   onCustomModulesChange: (modules: Module[]) => void // <-- add this prop
 }
 
-export const predefinedModules: Module[] = [
-  { id: "BATF", name: "BATF", type: "overexpression" },
-  { id: "IRF4", name: "IRF4", type: "overexpression" },
-  { id: "c-Jun", name: "c-Jun", type: "overexpression" },
-  { id: "IL-21", name: "IL-21", type: "overexpression" },
-  { id: "dnFD-1", name: "dnFD-1", type: "knockout" },
-  { id: "BCL6", name: "BCL6", type: "knockout" },
-  { id: "KO-PDCD1", name: "KO-PDCD1", type: "knockout" },
-  { id: "KO-CTLA4", name: "KO-CTLA4", type: "knockout" },
-  { id: "KO-LAG3", name: "KO-LAG3", type: "knockout" },
-  { id: "KO-TGK", name: "KO-TGK", type: "knockout" },
-  { id: "KO-TET2", name: "KO-TET2", type: "knockout" },
-  { id: "KD-SOcs1", name: "KD-SOcs1", type: "knockdown" },
-  { id: "KD-CRLS", name: "KD-CRLS", type: "knockdown" },
-  { id: "KD-NFKBIA", name: "KD-NFKBIA", type: "knockdown" },
-  { id: "KD-TGFBR1", name: "KD-TGFBR1", type: "knockdown" },
-  { id: "KU-IL2RA", name: "KU-IL2RA", type: "overexpression" },
-  { id: "KU-TBXAS1", name: "KU-TBXAS1", type: "overexpression" },
-  { id: "KU-IFNG", name: "KU-IFNG", type: "overexpression" },
-  { id: "KU-GZMB", name: "KU-GZMB", type: "overexpression" }
-]
-
 export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDeselect, customModules, onCustomModulesChange }: ModuleSelectorProps) => {
   const [searchTerm, setSearchTerm] = useState("")
   const [suggestions, setSuggestions] = useState<any[]>([])
@@ -148,9 +126,8 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     return () => document.removeEventListener("mousedown", handleClick)
   }, [])
 
-  // Merge predefined and custom modules
-  const allModules = [...predefinedModules, ...customModules]
-  const filteredModules = allModules.filter(module =>
+  // Only use custom modules
+  const filteredModules = customModules.filter(module =>
     module.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 

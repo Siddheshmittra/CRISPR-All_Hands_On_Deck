@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Upload, Download, Plus, Trash2, Library } from "lucide-react"
-import { predefinedModules } from "./module-selector"
 
 interface Module {
   id: string
@@ -48,8 +47,7 @@ export const LibraryManager = ({ customModules, onCustomModulesChange, construct
   }
 
   const handleExportLibrary = () => {
-    const allModules = [...predefinedModules, ...customModules]
-    const dataStr = JSON.stringify(allModules, null, 2)
+    const dataStr = JSON.stringify(customModules, null, 2)
     const dataBlob = new Blob([dataStr], { type: 'application/json' })
     const url = URL.createObjectURL(dataBlob)
     const link = document.createElement('a')
@@ -135,15 +133,6 @@ export const LibraryManager = ({ customModules, onCustomModulesChange, construct
       </div>
 
       <div className="space-y-3">
-        <div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">
-            Predefined Modules ({predefinedModules.length})
-          </h3>
-          <div className="text-sm text-muted-foreground">
-            Standard gene library included
-          </div>
-        </div>
-
         {customModules.length > 0 && (
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-2">
