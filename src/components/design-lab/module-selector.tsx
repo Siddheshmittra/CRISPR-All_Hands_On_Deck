@@ -154,9 +154,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     module.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const isSelected = (moduleId: string) => 
-    selectedModules.some(m => m.id === moduleId)
-
   const handleModuleClick = (module: Module) => {
     if (isSelected(module.id)) {
       onModuleDeselect(module.id)
@@ -165,6 +162,10 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     }
   }
 
+  const isSelected = (moduleId: string) => 
+    selectedModules.some(m => m.id === moduleId)
+
+  // Remove isSelected logic from Draggable rendering, so all modules are always draggable
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-4">2. Select Modules</h2>
@@ -219,7 +220,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             {...provided.droppableProps}
           >
             {filteredModules.map((module, index) => (
-              <Draggable key={module.id} draggableId={module.id} index={index}>
+              <Draggable key={module.id + '-' + index} draggableId={module.id + '-' + index} index={index}>
                 {(dragProvided) => (
                   <div
                     ref={dragProvided.innerRef}
@@ -229,7 +230,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                   >
                     <ModuleButton
                       moduleType={module.type}
-                      isSelected={isSelected(module.id)}
+                      // Remove isSelected logic from here
                       onClick={() => handleModuleClick(module)}
                     >
                       {module.name}
