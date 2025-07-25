@@ -33,8 +33,11 @@ const DesignLab = () => {
     if (constructModules.length >= 5) {
       return // Max 5 modules
     }
-    setSelectedModules(prev => [...prev, module])
-    setConstructModules(prev => [...prev, module])
+    // Create a unique ID for this instance
+    const uniqueId = `${module.id}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
+    const newModule = { ...module, id: uniqueId }
+    setSelectedModules(prev => [...prev, newModule])
+    setConstructModules(prev => [...prev, newModule])
   }
 
   const handleModuleDeselect = (moduleId: string) => {
@@ -81,8 +84,11 @@ const DesignLab = () => {
       const module = customModules.find(m => m.id === moduleId)
       if (!module) return
       if (constructModules.length >= 5) return
-      setConstructModules(prev => [...prev, module])
-      setSelectedModules(prev => [...prev, module])
+      // Create a unique ID for this instance
+      const uniqueId = `${module.id}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
+      const newModule = { ...module, id: uniqueId }
+      setConstructModules(prev => [...prev, newModule])
+      setSelectedModules(prev => [...prev, newModule])
       return
     }
 
