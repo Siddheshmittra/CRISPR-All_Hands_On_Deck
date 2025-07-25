@@ -8,112 +8,121 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Stanford Red Theme */
-    --background: 8 67% 67%; /* Stanford Red as main background */
-    --foreground: 0 0% 98%;
+    /* Stanford Deep Red Theme */
+    --background: 7 80% 98%; /* very light background with a hint of red */
+    --foreground: 0 0% 10%; /* almost black for high contrast */
 
     --card: 0 0% 100%;
-    --card-foreground: 8 15% 15%;
+    --card-foreground: 7 80% 20%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 8 15% 15%;
+    --popover-foreground: 7 80% 20%;
 
-    --primary: 8 67% 67%;
+    --primary: 7 85% 35%; /* Stanford Cardinal Red */
     --primary-foreground: 0 0% 98%;
     
-    --primary-light: 8 67% 77%;
-    --primary-dark: 8 67% 57%;
+    --primary-light: 7 85% 45%;
+    --primary-dark: 7 85% 25%;
 
-    --secondary: 8 10% 92%;
-    --secondary-foreground: 8 15% 15%;
+    --secondary: 7 15% 92%;
+    --secondary-foreground: 7 80% 20%;
 
-    --muted: 8 5% 94%;
-    --muted-foreground: 8 10% 45%;
+    --muted: 7 10% 94%;
+    --muted-foreground: 7 15% 35%;
 
-    --accent: 8 5% 94%;
-    --accent-foreground: 8 15% 15%;
+    --accent: 7 10% 94%;
+    --accent-foreground: 7 80% 20%;
 
-    --destructive: 0 62% 50%;
+    --destructive: 0 85% 35%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 8 10% 85%;
-    --input: 8 5% 96%;
-    --ring: 8 67% 67%;
+    --border: 7 15% 85%;
+    --input: 7 10% 96%;
+    --ring: 7 85% 35%;
 
     /* Stanford Red gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
-    --gradient-surface: linear-gradient(135deg, hsl(0 0% 100% / 0.95), hsl(8 5% 98% / 0.95));
+    --gradient-surface: linear-gradient(135deg, hsl(0 0% 100% / 0.95), hsl(7 10% 98% / 0.95));
     
     /* Shadows */
-    --shadow-module: 0 2px 8px hsl(8 67% 67% / 0.25);
-    --shadow-elevated: 0 20px 40px -12px hsl(8 67% 67% / 0.35);
+    --shadow-module: 0 2px 8px hsl(7 85% 35% / 0.18);
+    --shadow-elevated: 0 20px 40px -12px hsl(7 85% 35% / 0.25);
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-foreground: 0 0% 10%;
+    --sidebar-primary: 7 85% 35%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 7 15% 92%;
+    --sidebar-accent-foreground: 7 85% 35%;
+    --sidebar-border: 7 15% 85%;
+    --sidebar-ring: 7 85% 35%;
+
+    font-family: 'Inter', Arial, sans-serif;
   }
 
   .dark {
-    --background: 0 45% 8%;
-    --foreground: 0 0% 95%;
+    --background: 7 85% 12%; /* deep cardinal red background */
+    --foreground: 0 0% 98%; /* white for high contrast */
 
-    --card: 0 45% 12%;
-    --card-foreground: 0 0% 95%;
+    --card: 7 85% 16%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 45% 12%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 7 85% 16%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 0 45% 55%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 7 85% 35%;
+    --primary-foreground: 0 0% 98%;
     
-    --primary-light: 0 45% 65%;
-    --primary-dark: 0 45% 45%;
+    --primary-light: 7 85% 45%;
+    --primary-dark: 7 85% 25%;
 
-    --secondary: 0 45% 15%;
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 7 30% 20%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 45% 15%;
-    --muted-foreground: 0 10% 65%;
+    --muted: 7 30% 20%;
+    --muted-foreground: 0 0% 80%;
 
     --accent: 210 100% 60%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 85% 35%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 0 45% 18%;
-    --input: 0 45% 18%;
-    --ring: 0 45% 55%;
+    --border: 7 30% 25%;
+    --input: 7 30% 25%;
+    --ring: 7 85% 35%;
 
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
     --gradient-surface: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted)));
     
     --shadow-module: 0 2px 8px hsl(0 0% 0% / 0.3);
     --shadow-elevated: 0 4px 16px hsl(0 0% 0% / 0.4);
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-}
+    --sidebar-background: 7 85% 16%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 7 85% 35%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 7 30% 20%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 7 30% 25%;
+    --sidebar-ring: 7 85% 35%;
 
-@layer base {
+    font-family: 'Inter', Arial, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
   * {
     @apply border-border;
   }
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', Arial, sans-serif;
   }
 }
