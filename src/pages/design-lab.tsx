@@ -70,8 +70,9 @@ const DesignLab = () => {
       const module = allModules.find(m => m.id === baseModuleId)
       if (!module) return
       if (constructModules.length >= 5) return
-      // Use the full draggableId to maintain uniqueness
-      const newModule = { ...module, id: result.draggableId }
+      // Create a new unique ID for this instance
+      const uniqueId = `${baseModuleId}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
+      const newModule = { ...module, id: uniqueId }
       setConstructModules(prev => [...prev, newModule])
       setSelectedModules(prev => [...prev, newModule])
     }
