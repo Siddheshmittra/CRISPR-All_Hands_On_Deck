@@ -12,13 +12,7 @@ import { CassetteBatch } from "@/components/design-lab/cassette-batch"
 import { Trash2 } from "lucide-react"
 import React from "react"
 
-interface Module {
-  id: string
-  name: string
-  type: "overexpression" | "knockout" | "knockdown"
-  description?: string
-  sequence?: string
-}
+import { Module } from "@/lib/types"
 
 interface Cassette {
   id: string
