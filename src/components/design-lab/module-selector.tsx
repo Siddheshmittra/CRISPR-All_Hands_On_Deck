@@ -110,12 +110,14 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault() // Prevent form submission if in a form
-      if (suggestions.length > 0) {
-        // If we have suggestions, always use the first one
+      if (showDropdown && suggestions.length > 0) {
+        // If the dropdown is open, select the first suggestion and add it
         selectSuggestion(suggestions[0])
-        setTimeout(() => handleAddGene(), 0) // Small timeout to ensure state updates
-      } else if (selectedSuggestion) { // If we already selected one
-        handleAddGene() // Just add it
+        // Use a timeout to allow the state to update before adding the gene
+        setTimeout(() => handleAddGene(), 50) 
+      } else if (selectedSuggestion) { 
+        // If a suggestion is already selected, just add it
+        handleAddGene()
       }
     } else if (showDropdown && suggestions.length) {
       if (e.key === "ArrowDown") {
