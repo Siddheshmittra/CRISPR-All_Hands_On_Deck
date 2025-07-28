@@ -11,6 +11,8 @@ import { LibraryManager } from "@/components/design-lab/library-manager"
 import { CassetteBatch } from "@/components/design-lab/cassette-batch"
 import { Trash2 } from "lucide-react"
 import React from "react"
+import { useConstructManager } from "@/hooks/use-construct-manager"
+import { LinkerSelector } from "@/components/design-lab/linker-selector"
 
 import { Module } from "@/lib/types"
 
@@ -23,7 +25,15 @@ const DesignLab = () => {
   const [cassetteMode, setCassetteMode] = useState<'single' | 'multi'>('single')
   const [inputMode, setInputMode] = useState<'manual' | 'natural'>('manual')
   const [selectedModules, setSelectedModules] = useState<Module[]>([])
-  const [constructModules, setConstructModules] = useState<Module[]>([])
+  const {
+    constructModules,
+    setConstructModules,
+    autoLink,
+    setAutoLink,
+    selectedLinkerId,
+    setSelectedLinkerId,
+    constructWithLinkers,
+  } = useConstructManager([])
   const [cassetteCount, setCassetteCount] = useState(2)
   const [overexpressionCount, setOverexpressionCount] = useState(0)
   const [knockoutCount, setKnockoutCount] = useState(0)
@@ -294,6 +304,12 @@ const DesignLab = () => {
                       isMultiCassetteMode={cassetteMode === 'multi'}
                       onAddCassette={handleAddCassette}
                     />
+                    <LinkerSelector
+                        selectedLinker={selectedLinkerId}
+                        onLinkerChange={setSelectedLinkerId}
+                        autoLink={autoLink}
+                        onAutoLinkChange={setAutoLink}
+                    />
                     <CassetteBatch 
                       cassetteBatch={cassetteBatch}
                       onDeleteCassette={handleDeleteCassette}
@@ -304,7 +320,7 @@ const DesignLab = () => {
               </DragDropContext>
             )}
             
-            <FinalConstruct constructModules={constructModules} />
+            <FinalConstruct constructModules={constructWithLinkers} />
           </div>
         </div>
       </div>

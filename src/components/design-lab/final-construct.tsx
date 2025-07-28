@@ -8,10 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Download, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 
-import { Module } from "@/lib/types"
+import { ConstructItem, Module } from "@/lib/types"
 
 interface FinalConstructProps {
-  constructModules: Module[]
+  constructModules: ConstructItem[]
 }
 
 const T2A_SEQUENCE = "GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCT"
@@ -27,13 +27,15 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   const [polyASignal, setPolyASignal] = useState("bGH")
   const [showSequence, setShowSequence] = useState(true)
 
+  const modules = constructModules.filter(item => item.type !== 'linker') as Module[]
+
   // Generate predicted function
   const generatePredictedFunction = () => {
-    if (constructModules.length === 0) return "No modules selected"
+    if (modules.length === 0) return "No modules selected"
     
-    const overexpression = constructModules.filter(m => m.type === "overexpression")
-    const knockout = constructModules.filter(m => m.type === "knockout")
-    const knockdown = constructModules.filter(m => m.type === "knockdown")
+    const overexpression = modules.filter(m => m.type === "overexpression")
+    const knockout = modules.filter(m => m.type === "knockout")
+    const knockdown = modules.filter(m => m.type === "knockdown")
     
     let prediction = "Modulates epigenetic regulation. Enhances TCR signaling strength"
     
@@ -52,52 +54,20 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   
   // Generate nucleotide sequence by concatenating module sequences
   const generateSequence = () => {
-    if (constructModules.length === 0) return ""
-
-    const sortedModules = [...constructModules].sort((a, b) => {
-      if (a.type === 'overexpression' && b.type !== 'overexpression') return -1
-      if (a.type !== 'overexpression' && b.type === 'overexpression') return 1
-      return 0
-    })
-
-    let finalSequence = ""
-    let firstKoKdAdded = false
-    const koKdModules = sortedModules.filter(m => m.type === 'knockout' || m.type === 'knockdown' || m.type === 'knockin')
-    const lastKoKdModule = koKdModules.length > 0 ? koKdModules[koKdModules.length - 1] : null
-
-    sortedModules.forEach(module => {
-      finalSequence += module.sequence || ""
-      
-      if (module.type === 'overexpression') {
-        finalSequence += T2A_SEQUENCE
-      }
-      
-      if (module.type === 'knockout' || module.type === 'knockdown' || module.type === 'knockin') {
-        if (!firstKoKdAdded) {
-          finalSequence = STOP_TAMPLEX_SEQUENCE + finalSequence
-          firstKoKdAdded = true
-        }
-        
-        if (lastKoKdModule && module.id === lastKoKdModule.id) {
-          finalSequence += POLYA_SEQUENCE
-        }
-      }
-    })
-
-    return finalSequence
+    return constructModules.map(item => item.sequence || "").join("")
   }
 
 
 
   const handleExport = () => {
-    if (constructModules.length === 0) {
+    if (modules.length === 0) {
       toast.error("No modules to export")
       return
     }
     
     const exportData = {
       name: constructName,
-      modules: constructModules,
+      modules: modules,
       details: {
         promoter,
         leftArm,

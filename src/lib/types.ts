@@ -6,6 +6,16 @@ export interface Module {
   sequence?: string;
 }
 
+export interface Linker {
+  id: string
+  name: string
+  type: 'linker'
+  sequence: string
+  description?: string
+}
+
+export type ConstructItem = Module | Linker
+
 export interface EnsemblModule extends Module {
   symbol: string;
   hgncId?: string;

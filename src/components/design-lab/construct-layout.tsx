@@ -3,17 +3,11 @@ import { Button } from "@/components/ui/button"
 import { ModuleButton } from "@/components/ui/module-button"
 import { Trash2, RotateCcw, Shuffle, ArrowRight } from "lucide-react"
 import { Droppable, Draggable } from "@hello-pangea/dnd"
-
-interface Module {
-  id: string
-  name: string
-  type: "overexpression" | "knockout" | "knockdown"
-  description?: string
-  sequence?: string
-}
+import { ConstructItem, Module } from "@/lib/types"
+import { Badge } from "../ui/badge"
 
 interface ConstructLayoutProps {
-  constructModules: Module[]
+  constructModules: ConstructItem[]
   onModuleRemove: (moduleId: string) => void
   onRandomize: () => void
   onReset: () => void
@@ -40,6 +34,13 @@ export const ConstructLayout = ({
   onAddCassette,
   isMultiCassetteMode = false
 }: ConstructLayoutProps) => {
+  const handleAddCassetteClick = () => {
+    if (onAddCassette) {
+      const modulesOnly = constructModules.filter(item => item.type !== 'linker') as Module[]
+      onAddCassette(modulesOnly)
+    }
+  }
+
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
@@ -54,7 +55,7 @@ export const ConstructLayout = ({
             Reset
           </Button>
           {isMultiCassetteMode && onAddCassette && constructModules.length > 0 && (
-            <Button variant="default" size="sm" onClick={() => onAddCassette(constructModules)}>
+            <Button variant="default" size="sm" onClick={handleAddCassetteClick}>
               Add to Batch
             </Button>
           )}
@@ -81,31 +82,37 @@ export const ConstructLayout = ({
                     <p className="text-sm mt-1">Maximum 5 perturbations</p>
                   </div>
                 ) : (
-                  constructModules.map((module, index) => (
-                    <div key={module.id} className="flex items-center gap-2">
-                      <Draggable draggableId={module.id} index={index}>
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className={`relative group ${snapshot.isDragging ? 'z-10' : ''}`}
-                          >
-                            <ModuleButton
-                              moduleType={module.type}
-                              className="cursor-move"
+                  constructModules.map((item, index) => (
+                    <div key={item.id} className="flex items-center gap-2">
+                      {item.type === 'linker' ? (
+                        <Badge variant="outline" className="text-xs font-mono">
+                          {item.name}
+                        </Badge>
+                      ) : (
+                        <Draggable draggableId={item.id} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`relative group ${snapshot.isDragging ? 'z-10' : ''}`}
                             >
-                              {getTypeArrow(module.type)} {module.name}
-                            </ModuleButton>
-                            <button
-                              onClick={() => onModuleRemove(module.id)}
-                              className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
-                        )}
-                      </Draggable>
+                              <ModuleButton
+                                moduleType={item.type}
+                                className="cursor-move"
+                              >
+                                {getTypeArrow(item.type)} {item.name}
+                              </ModuleButton>
+                              <button
+                                onClick={() => onModuleRemove(item.id)}
+                                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                        </Draggable>
+                      )}
                       {index < constructModules.length - 1 && (
                         <ArrowRight className="h-4 w-4 text-muted-foreground" />
                       )}
