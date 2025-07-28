@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { Module, EnsemblModule } from "@/lib/types"
+import { BenchlingButton } from "@/components/ui/benchling-button"
 
 interface ModuleSelectorProps {
   selectedModules: Module[]
@@ -46,6 +47,8 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const [newFolderName, setNewFolderName] = useState("")
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
+  const [isBenchlingLinked, setIsBenchlingLinked] = useState(false)
+  const [isBenchlingLinking, setIsBenchlingLinking] = useState(false)
 
   // Compute modules not in any folder
   const folderedModuleIds = folders.flatMap(f => f.modules)
@@ -68,6 +71,15 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     setActiveFolderId(id)
   }
 
+  const handleBenchlingLink = () => {
+    setIsBenchlingLinking(true)
+    setTimeout(() => {
+      setIsBenchlingLinking(false)
+      setIsBenchlingLinked(true)
+      toast.success("Benchling account linked successfully!")
+    }, 2000)
+  }
+  
   // Fetch suggestions from HGNC
   async function hgncSuggest(query: string) {
     if (query.length < 2) return []
@@ -401,6 +413,21 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         <Button variant="outline" size="sm" onClick={handleExportLibrary}>
           Export
         </Button>
+        <BenchlingButton
+          isLinked={isBenchlingLinked}
+          isLinking={isBenchlingLinking}
+          onClick={handleBenchlingLink}
+        />
+        {isBenchlingLinked && (
+          <>
+            <Button variant="outline" size="sm" onClick={() => toast.info("Import from Benchling clicked (demo).")}>
+              Import from Benchling
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => toast.info("Export to Benchling clicked (demo).")}>
+              Export to Benchling
+            </Button>
+          </>
+        )}
         <input
           type="file"
           accept=".json"
