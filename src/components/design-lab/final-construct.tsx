@@ -49,7 +49,12 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   const generateSequence = () => {
     if (constructModules.length === 0) return ""
 
-    const moduleSeq = constructModules.map(m => m.sequence || "").join("")
+    console.log('Construct modules:', constructModules)
+    const moduleSeq = constructModules.map(m => {
+      console.log(`Module ${m.name}: sequence length = ${m.sequence?.length || 0}`)
+      return m.sequence || ""
+    }).join("")
+    console.log('Final sequence length:', moduleSeq.length)
     return moduleSeq
   }
 

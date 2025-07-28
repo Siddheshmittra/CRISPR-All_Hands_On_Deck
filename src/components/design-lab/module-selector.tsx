@@ -157,8 +157,13 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         description: selectedSuggestion.name,
       }
 
+      console.log('Adding gene:', selectedSuggestion.symbol)
+      
       // Enrich with Ensembl data
       const enrichedModule = await enrichModuleWithSequence(baseModule)
+      
+      console.log('Enriched module:', enrichedModule)
+      console.log('Sequence length:', enrichedModule.sequence?.length || 0)
 
       // First add to customModules
       onCustomModulesChange([...customModules, enrichedModule])
@@ -173,10 +178,14 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         ))
       }
 
-      toast.success(`Added ${enrichedModule.name} to library`)
+      if (enrichedModule.sequence) {
+        toast.success(`Added ${enrichedModule.name} to library (${enrichedModule.sequence.length}bp)`)
+      } else {
+        toast.success(`Added ${enrichedModule.name} to library (no sequence available)`)
+      }
     } catch (error) {
       console.error('Failed to add gene:', error)
-      toast.error(`Failed to add ${selectedSuggestion.symbol}`)
+      toast.error(`Failed to add ${selectedSuggestion.symbol}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setAddingModule(false)
       // Clear the search

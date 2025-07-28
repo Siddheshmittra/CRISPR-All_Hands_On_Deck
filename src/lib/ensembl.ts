@@ -121,33 +121,36 @@ export async function resolveGene(
 
 export function pickTranscript(g: LookupGene): string | undefined {
   // 1. Use canonical_transcript if present
-  if (g.canonical_transcript) return g.canonical_transcript;
+  if (g.canonical_transcript) {
+    // Remove version number if present (e.g., ENST00000269305.9 -> ENST00000269305)
+    return g.canonical_transcript.split('.')[0];
+  }
 
   const transcripts = g.transcripts || [];
   
   // 2. Find transcript with is_canonical = 1
   const canonicalTranscript = transcripts.find(tr => tr.is_canonical === 1);
-  if (canonicalTranscript) return canonicalTranscript.id;
+  if (canonicalTranscript) return canonicalTranscript.id.split('.')[0];
 
   // 3. Find MANE Select transcript
   const maneSelect = transcripts.find(tr => tr.is_mane_select === 1);
-  if (maneSelect) return maneSelect.id;
+  if (maneSelect) return maneSelect.id.split('.')[0];
 
   // 4. Find APPRIS principal transcript
   const apprisPrincipal = transcripts.find(tr => 
     tr.appris?.startsWith('principal') || tr.appris === 'P1' || tr.appris === 'P2'
   );
-  if (apprisPrincipal) return apprisPrincipal.id;
+  if (apprisPrincipal) return apprisPrincipal.id.split('.')[0];
 
   // 5. Fall back to longest protein-coding transcript
   const proteinCoding = transcripts
     .filter(tr => tr.biotype === 'protein_coding')
     .sort((a, b) => (b.length || 0) - (a.length || 0))[0];
-  if (proteinCoding) return proteinCoding.id;
+  if (proteinCoding) return proteinCoding.id.split('.')[0];
 
   // 6. Last resort: longest transcript of any type
   const longest = transcripts.sort((a, b) => (b.length || 0) - (a.length || 0))[0];
-  return longest?.id;
+  return longest?.id.split('.')[0];
 }
 
 export async function fetchCdna(
@@ -232,32 +235,29 @@ export interface EnsemblModule extends Module {
 export async function enrichModuleWithSequence(
   module: Module,
   opts?: { base?: string; forceRefresh?: boolean }
-): Promise<EnsemblModule> {
+): Promise<Module> {
   try {
+    console.log(`Enriching module: ${module.name}`);
     const gene = await resolveGene(module.name, 'homo_sapiens', opts);
+    console.log(`Resolved gene:`, gene);
+    
     const transcriptId = pickTranscript(gene);
+    console.log(`Selected transcript ID: ${transcriptId}`);
     
     if (!transcriptId) {
       throw new Error(`No suitable transcript found for ${module.name}`);
     }
 
     const sequence = await fetchCdna(transcriptId, opts);
+    console.log(`Fetched sequence length: ${sequence.length}`);
     
     return {
       ...module,
-      symbol: module.name,
-      ensemblGeneId: gene.id,
-      canonicalTranscriptId: transcriptId,
       sequence,
-      sequenceSource: opts?.base === GRCH37 ? 'ensembl_grch37' : 'ensembl_grch38',
-      ensemblRelease: 'Ensembl REST v15.9', // This should be fetched from API info endpoint in production
     };
   } catch (error) {
     console.error(`Failed to enrich module ${module.name}:`, error);
     // Return original module if enrichment fails
-    return {
-      ...module,
-      symbol: module.name,
-    };
+    return module;
   }
 } 
