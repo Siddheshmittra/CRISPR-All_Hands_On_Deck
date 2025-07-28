@@ -14,6 +14,10 @@ interface FinalConstructProps {
   constructModules: Module[]
 }
 
+const T2A_SEQUENCE = "GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCT"
+const STOP_TAMPLEX_SEQUENCE = "TAATAA" 
+const POLYA_SEQUENCE = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
 export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   const [constructName, setConstructName] = useState("")
   const [promoter, setPromoter] = useState("EF1a")
@@ -45,17 +49,42 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
     
     return prediction + "."
   }
+  
   // Generate nucleotide sequence by concatenating module sequences
   const generateSequence = () => {
     if (constructModules.length === 0) return ""
 
-    console.log('Construct modules:', constructModules)
-    const moduleSeq = constructModules.map(m => {
-      console.log(`Module ${m.name}: sequence length = ${m.sequence?.length || 0}`)
-      return m.sequence || ""
-    }).join("")
-    console.log('Final sequence length:', moduleSeq.length)
-    return moduleSeq
+    const sortedModules = [...constructModules].sort((a, b) => {
+      if (a.type === 'overexpression' && b.type !== 'overexpression') return -1
+      if (a.type !== 'overexpression' && b.type === 'overexpression') return 1
+      return 0
+    })
+
+    let finalSequence = ""
+    let firstKoKdAdded = false
+    const koKdModules = sortedModules.filter(m => m.type === 'knockout' || m.type === 'knockdown' || m.type === 'knockin')
+    const lastKoKdModule = koKdModules.length > 0 ? koKdModules[koKdModules.length - 1] : null
+
+    sortedModules.forEach(module => {
+      finalSequence += module.sequence || ""
+      
+      if (module.type === 'overexpression') {
+        finalSequence += T2A_SEQUENCE
+      }
+      
+      if (module.type === 'knockout' || module.type === 'knockdown' || module.type === 'knockin') {
+        if (!firstKoKdAdded) {
+          finalSequence = STOP_TAMPLEX_SEQUENCE + finalSequence
+          firstKoKdAdded = true
+        }
+        
+        if (lastKoKdModule && module.id === lastKoKdModule.id) {
+          finalSequence += POLYA_SEQUENCE
+        }
+      }
+    })
+
+    return finalSequence
   }
 
 
