@@ -44,7 +44,7 @@ export const ConstructLayout = ({
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">3. Construct Layout</h2>
+        <h2 className="text-lg font-semibold">3. Syntax</h2>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={onRandomize}>
             <Shuffle className="h-4 w-4 mr-2" />
