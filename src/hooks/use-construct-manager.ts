@@ -39,12 +39,12 @@ export function useConstructManager(initialModules: Module[] = []) {
     ordered.forEach((mod, idx) => {
       // Rule 1: intron before every overexpression gene
       if (mod.type === 'overexpression') {
-        result.push(createLinker('Intron', idx))
+        result.push(createLinker('Intron', idx, 'GTAAGTCTTATTTAGTGGAAAGAATAGATCTTCTGTTCTTTCAAAAGCAGAAATGGCAATAACATTTTGTGCCATGAttttttttttCTGCAG'))
       }
 
       // Insert STOP-Triplex-Adaptor immediately before first KO/KD (rule 3)
       if (idx === firstKOIdx && firstKOIdx !== -1) {
-        result.push(createLinker('STOP-Triplex-Adaptor', idx))
+        result.push(createLinker('STOP-Triplex-Adaptor', idx, 'TGAgaattcgattcgtcagtagggttgtaaaggtttttcttttcctgagaaaacaaccttttgttttctcaggttttgctttttggcctttccctagctttaaaaaaaaaaaagcaaaactcaccgaggcagttccataggatggcaagatcctggtattggtctgcgaGTAA'))
       }
 
       // Actual module
@@ -52,17 +52,17 @@ export function useConstructManager(initialModules: Module[] = []) {
 
       // Rule 1: T2A after overexpression gene
       if (mod.type === 'overexpression') {
-        result.push(createLinker('T2A', idx, t2aSeq))
+        result.push(createLinker('T2A', idx, 'GAAGGAAGAGGAAGCCTTCTCACATGCGGAGATGTGGAAGAGAATCCTGGACCA'))
       }
     })
 
     // Rule 4: always add Internal Stuffer-Barcode Array after the last module
-    result.push(createLinker('Internal Stuffer-Barcode Array', ordered.length))
+    result.push(createLinker('Internal Stuffer-Barcode Array', ordered.length, 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCGNNNNNNNNNNNNNAGCG'))
 
     // Rule 5: if the last module is KO/KD, add polyA after IS-BCs
     const lastModule = ordered[ordered.length - 1]
     if (lastModule && (lastModule.type === 'knockout' || lastModule.type === 'knockdown')) {
-      result.push(createLinker('polyA', ordered.length + 1))
+      result.push(createLinker('polyA', ordered.length + 1, 'caccgggtcttcaacttgtttattgcagcttataatggttacaaataaagcaatagcatcacaaatttcacaaataaagcatttttttcactgcattctagttgtggtttgtccaaactcatcaatgtatcttatcatgtctggaagacctgtttacc'))
     }
 
     return result
