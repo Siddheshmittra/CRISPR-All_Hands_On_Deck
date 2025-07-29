@@ -297,7 +297,7 @@ const DesignLab = () => {
                       />
                     )}
                     <ConstructLayout
-                      constructModules={constructModules}
+                      constructModules={constructWithLinkers}
                       onModuleRemove={handleModuleRemove}
                       onRandomize={handleRandomize}
                       onReset={handleReset}
