@@ -99,5 +99,52 @@ All colors MUST be HSL.
   }
   body {
     @apply bg-background text-foreground;
+    font-weight: 500; /* Slightly bolder base text */
+  }
+
+  /* Typography improvements for better readability */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700; /* Bold headings */
+    letter-spacing: -0.02em; /* Tighter letter spacing for headings */
+  }
+
+  h1 {
+    font-weight: 800; /* Extra bold for main headings */
+  }
+
+  h2 {
+    font-weight: 700; /* Bold for section headings */
+  }
+
+  h3, h4 {
+    font-weight: 600; /* Semi-bold for subsection headings */
+  }
+
+  /* Make important UI elements more prominent */
+  .font-medium {
+    font-weight: 600; /* Semi-bold instead of medium */
+  }
+
+  .font-semibold {
+    font-weight: 700; /* Bold instead of semibold */
+  }
+
+  .font-bold {
+    font-weight: 800; /* Extra bold instead of bold */
+  }
+
+  /* Improve button text readability */
+  button {
+    font-weight: 600; /* Semi-bold buttons */
+  }
+
+  /* Make labels more prominent */
+  label {
+    font-weight: 600; /* Semi-bold labels */
+  }
+
+  /* Improve card titles */
+  .card h2, .card h3 {
+    font-weight: 700; /* Bold card titles */
   }
 }
