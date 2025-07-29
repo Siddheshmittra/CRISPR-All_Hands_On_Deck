@@ -2,107 +2,98 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+/* Definition of the design system. All colors, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    /* Stanford Deep Red Theme */
-    --background: 7 80% 98%; /* very light background with a hint of red */
-    --foreground: 0 0% 10%; /* almost black for high contrast */
+    /* ROTH LAB Color Scheme */
+    --background: 0 0% 98%; /* Light background */
+    --foreground: 0 0% 8%; /* Dark text for contrast */
 
-    --card: 0 0% 100%;
-    --card-foreground: 7 80% 20%;
+    --card: 0 0% 100%; /* White cards */
+    --card-foreground: 0 0% 8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 7 80% 20%;
+    --popover-foreground: 0 0% 8%;
 
-    --primary: 7 85% 35%; /* Stanford Cardinal Red */
+    --primary: 0 67% 51%; /* #D62C2C - Bright red (24% usage) */
     --primary-foreground: 0 0% 98%;
     
-    --primary-light: 7 85% 45%;
-    --primary-dark: 7 85% 25%;
+    --primary-light: 0 67% 61%;
+    --primary-dark: 0 67% 41%;
 
-    --secondary: 7 15% 92%;
-    --secondary-foreground: 7 80% 20%;
+    --secondary: 217 52% 31%; /* #264B7A - Deep blue (30% usage) */
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 7 10% 94%;
-    --muted-foreground: 7 15% 35%;
+    --muted: 217 52% 95%; /* Light blue-gray for muted backgrounds (30% usage) */
+    --muted-foreground: 217 52% 31%;
 
-    --accent: 7 10% 94%;
-    --accent-foreground: 7 80% 20%;
+    --accent: 45 91% 57%; /* #F4C930 - Yellow (6% usage) */
+    --accent-foreground: 0 0% 8%;
 
-    --destructive: 0 85% 35%;
+    --destructive: 0 67% 51%; /* Using the same red */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 7 15% 85%;
-    --input: 7 10% 96%;
-    --ring: 7 85% 35%;
+    --border: 217 52% 60%; /* Lighter blue borders for contrast (30% usage) */
+    --input: 217 52% 95%; /* Very light blue inputs (30% usage) */
+    --ring: 0 67% 51%;
 
-    /* Stanford Red gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
-    --gradient-surface: linear-gradient(135deg, hsl(0 0% 100% / 0.95), hsl(7 10% 98% / 0.95));
+    /* ROTH LAB gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(0 67% 51%), hsl(217 52% 31%));
+    --gradient-surface: linear-gradient(135deg, hsl(0 0% 100% / 0.95), hsl(217 52% 95% / 0.95));
     
     /* Shadows */
-    --shadow-module: 0 2px 8px hsl(7 85% 35% / 0.18);
-    --shadow-elevated: 0 20px 40px -12px hsl(7 85% 35% / 0.25);
+    --shadow-module: 0 2px 8px hsl(0 67% 51% / 0.18);
+    --shadow-elevated: 0 20px 40px -12px hsl(0 67% 51% / 0.25);
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 10%;
-    --sidebar-primary: 7 85% 35%;
+    --sidebar-background: 217 52% 31%; /* Deep blue sidebar (30% usage) */
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 0 67% 51%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 7 15% 92%;
-    --sidebar-accent-foreground: 7 85% 35%;
-    --sidebar-border: 7 15% 85%;
-    --sidebar-ring: 7 85% 35%;
+    --sidebar-accent: 203 70% 55%; /* #39A7E0 - Cyan (9% usage) */
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 217 52% 60%;
+    --sidebar-ring: 0 67% 51%;
 
     font-family: 'Proxima Nova', Arial, sans-serif;
   }
 
   @font-face {
     font-family: 'Proxima Nova';
-    src: local('Proxima Nova'), url('/fonts/ProximaNova-Regular.woff2') format('woff2'), url('/fonts/ProximaNova-Regular.woff') format('woff');
+    src: url('https://use.typekit.net/af/123456/0000000000000000000177b8/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3') format('woff2');
     font-weight: 400;
     font-style: normal;
     font-display: swap;
   }
+
   @font-face {
     font-family: 'Proxima Nova';
-    src: local('Proxima Nova Bold'), url('/fonts/ProximaNova-Bold.woff2') format('woff2'), url('/fonts/ProximaNova-Bold.woff') format('woff');
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
-  }
-  @font-face {
-    font-family: 'Proxima Nova';
-    src: local('Proxima Nova Semibold'), url('/fonts/ProximaNova-Semibold.woff2') format('woff2'), url('/fonts/ProximaNova-Semibold.woff') format('woff');
+    src: url('https://use.typekit.net/af/123456/0000000000000000000177b8/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n6&v=3') format('woff2');
     font-weight: 600;
     font-style: normal;
     font-display: swap;
   }
+
   @font-face {
     font-family: 'Proxima Nova';
-    src: local('Proxima Nova Extrabold'), url('/fonts/ProximaNova-Extrabold.woff2') format('woff2'), url('/fonts/ProximaNova-Extrabold.woff') format('woff');
+    src: url('https://use.typekit.net/af/123456/0000000000000000000177b8/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: 'Proxima Nova';
+    src: url('https://use.typekit.net/af/123456/0000000000000000000177b8/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n8&v=3') format('woff2');
     font-weight: 800;
     font-style: normal;
     font-display: swap;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Proxima Nova', Arial, sans-serif;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-  }
-  h4, h5, h6 {
-    font-weight: 600;
-  }
-  body {
-    font-family: 'Proxima Nova', Arial, sans-serif;
-    font-weight: 400;
-  }
   * {
     @apply border-border;
   }
