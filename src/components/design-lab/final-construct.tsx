@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Download, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
+import { annotateSequence, type Annotation } from "@/lib/sequenceAnnotator"
 
 interface Module {
   id: string
@@ -26,6 +27,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   const [barcode, setBarcode] = useState("e.g. Unique 10-20bp")
   const [polyASignal, setPolyASignal] = useState("bGH")
   const [showSequence, setShowSequence] = useState(false)
+  const [annotations, setAnnotations] = useState<Annotation[]>([])
 
   // Generate predicted function
   const generatePredictedFunction = () => {
@@ -62,6 +64,27 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
     }).join("\n\n")
     
     return `Predicted Construct Name: ${constructName || "Untitled_Construct"}\n\n${moduleSequences}\n\n5' UTR: ${baseSequence.substring(0, 100)}\n3' UTR: ${baseSequence.substring(100, 200)}`
+  }
+
+  const sequence = useMemo(
+    () =>
+      generateSequence(),
+    [constructModules, constructName, promoter, leftArm, rightArm, barcode, polyASignal]
+  )
+
+  useEffect(() => {
+    setAnnotations(annotateSequence(sequence))
+  }, [sequence])
+
+  const labelColors: Record<string, string> = {
+    Intron: "bg-green-200",
+    T2A: "bg-blue-200",
+    "Internal Stuffer": "bg-yellow-200",
+    Barcodes: "bg-purple-200",
+    STOP: "bg-red-200",
+    Triplex: "bg-pink-200",
+    Adaptor: "bg-orange-200",
+    PolyA: "bg-teal-200"
   }
 
   const handleExport = () => {
@@ -191,12 +214,45 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
         {showSequence && (
           <div>
             <Label htmlFor="sequence">Nucleotide Sequence:</Label>
-            <Textarea
+            <div
               id="sequence"
-              value={generateSequence()}
-              readOnly
-              className="h-32 font-mono text-xs"
-            />
+              className="font-mono text-xs break-words border rounded p-2 h-32 overflow-auto"
+            >
+              {(() => {
+                const parts = [] as React.ReactNode[]
+                let last = 0
+                annotations.forEach((ann, i) => {
+                  if (ann.start > last) {
+                    parts.push(
+                      <span key={`plain-${i}`}>{sequence.slice(last, ann.start)}</span>
+                    )
+                  }
+                  parts.push(
+                    <span
+                      key={`ann-${i}`}
+                      className={labelColors[ann.label] || 'bg-gray-200'}
+                    >
+                      {sequence.slice(ann.start, ann.end)}
+                    </span>
+                  )
+                  last = ann.end
+                })
+                if (last < sequence.length) {
+                  parts.push(
+                    <span key="plain-end">{sequence.slice(last)}</span>
+                  )
+                }
+                return parts
+              })()}
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {Object.entries(labelColors).map(([label, color]) => (
+                <div key={label} className="flex items-center gap-1 text-xs">
+                  <span className={`w-4 h-4 inline-block ${color}`}></span>
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

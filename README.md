@@ -71,3 +71,10 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Sequence annotation
+
+The final construct view highlights key motifs in generated DNA sequences. When
+the sequence is shown, regions such as introns, T2A sites, adaptors and polyA
+tails are wrapped in colored spans. A legend below the sequence explains the
+colors used for each annotation label.
