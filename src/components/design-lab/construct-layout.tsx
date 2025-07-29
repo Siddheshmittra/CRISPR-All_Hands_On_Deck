@@ -144,7 +144,7 @@ export const ConstructLayout = ({
         <div className="mt-4 p-4 bg-muted rounded-lg">
           <h3 className="font-medium mb-2">Cassette String:</h3>
           <p className="text-sm font-mono break-all">
-            STOP-TAMPLEX → {constructModules.map(m => m.name).join(' → ')} → [PolyA]
+            {constructModules.map(m => m.name).join(' → ')}
           </p>
         </div>
       )}
