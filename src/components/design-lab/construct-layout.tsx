@@ -82,42 +82,48 @@ export const ConstructLayout = ({
                     <p className="text-sm mt-1">Maximum 5 perturbations</p>
                   </div>
                 ) : (
-                  constructModules.map((item, index) => (
-                    <div key={item.id} className="flex items-center gap-2">
-                      {item.type === 'linker' ? (
-                        <Badge variant="outline" className="text-xs font-mono">
-                          {item.name}
-                        </Badge>
-                      ) : (
-                        <Draggable draggableId={item.id} index={index}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={`relative group ${snapshot.isDragging ? 'z-10' : ''}`}
-                            >
-                              <ModuleButton
-                                moduleType={item.type}
-                                className="cursor-move"
-                              >
-                                {getTypeArrow(item.type)} {item.name}
-                              </ModuleButton>
-                              <button
-                                onClick={() => onModuleRemove(item.id)}
-                                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
+                  (() => {
+                    let draggableIndex = 0
+                    return constructModules.map((item, displayIndex) => {
+                      const isLast = displayIndex === constructModules.length - 1
+                      return (
+                        <div key={item.id} className="flex items-center gap-2">
+                          {item.type === 'linker' ? (
+                            <Badge variant="outline" className="text-xs font-mono">
+                              {item.name}
+                            </Badge>
+                          ) : (
+                            <Draggable draggableId={item.id} index={draggableIndex++}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={`relative group ${snapshot.isDragging ? 'z-10' : ''}`}
+                                >
+                                  <ModuleButton
+                                    moduleType={item.type}
+                                    className="cursor-move"
+                                  >
+                                    {getTypeArrow(item.type)} {item.name}
+                                  </ModuleButton>
+                                  <button
+                                    onClick={() => onModuleRemove(item.id)}
+                                    className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              )}
+                            </Draggable>
                           )}
-                        </Draggable>
-                      )}
-                      {index < constructModules.length - 1 && (
-                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                  ))
+                          {!isLast && (
+                            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      )
+                    })
+                  })()
                 )}
                 {provided.placeholder}
               </div>
