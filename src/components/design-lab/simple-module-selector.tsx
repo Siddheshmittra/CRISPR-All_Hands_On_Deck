@@ -208,7 +208,13 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
               key={option.value}
               variant={selectedType === option.value ? "default" : "outline"}
               size="sm"
-              onClick={() => setSelectedType(option.value as any)}
+              onClick={() => {
+                setSelectedType(option.value as any)
+                // If knockin is selected, immediately show synthetic gene selector
+                if (option.value === 'knockin') {
+                  setShowSyntheticSelector(true)
+                }
+              }}
               className="flex-1"
             >
               <span className="mr-2">{option.icon}</span>

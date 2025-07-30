@@ -369,7 +369,14 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       <div className="flex gap-2 mb-4 items-center">
         <select
           value={selectedType}
-          onChange={e => setSelectedType(e.target.value as any)}
+          onChange={e => {
+            const newType = e.target.value as any
+            setSelectedType(newType)
+            // If knockin is selected, immediately show synthetic gene selector
+            if (newType === 'knockin') {
+              setShowSyntheticSelector(true)
+            }
+          }}
           className="h-9 px-2 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
           style={{ minWidth: 70 }}
         >
