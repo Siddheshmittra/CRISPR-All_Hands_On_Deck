@@ -9,7 +9,7 @@ import { toast } from "sonner"
 import { Module, EnsemblModule } from "@/lib/types"
 import { SyntheticGeneSelector } from "./synthetic-gene-selector"
 import { SyntheticGene } from "@/lib/types"
-import { searchEnsembl } from "@/lib/ensembl"
+import { resolveGene } from "@/lib/ensembl"
 
 interface SimpleModuleSelectorProps {
   onModuleAdd: (module: Module) => void
@@ -40,7 +40,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
 
     setLoading(true)
     try {
-      const results = await searchEnsembl(query)
+      const results = await resolveGene(query)
       setSuggestions(results.slice(0, 5)) // Limit to 5 suggestions
     } catch (error) {
       console.error('Search error:', error)
