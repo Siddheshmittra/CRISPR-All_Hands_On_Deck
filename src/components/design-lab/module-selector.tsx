@@ -10,6 +10,8 @@ import { toast } from "sonner"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { Module, EnsemblModule } from "@/lib/types"
 import { BenchlingButton } from "@/components/ui/benchling-button"
+import { SyntheticGeneSelector } from "./synthetic-gene-selector"
+import { SyntheticGene } from "@/lib/types"
 
 interface ModuleSelectorProps {
   selectedModules: Module[]
@@ -34,6 +36,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   let searchTimeout = useRef<NodeJS.Timeout | null>(null)
   const [selectedSuggestion, setSelectedSuggestion] = useState<any | null>(null)
   const [addingModule, setAddingModule] = useState(false)
+  const [showSyntheticSelector, setShowSyntheticSelector] = useState(false)
   
   // Type selector state
   const [selectedType, setSelectedType] = useState<'overexpression' | 'knockout' | 'knockdown' | 'knockin'>('overexpression')
@@ -126,10 +129,10 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         // If the dropdown is open, select the first suggestion and add it
         selectSuggestion(suggestions[0])
         // Use a timeout to allow the state to update before adding the gene
-        setTimeout(() => handleAddGene(), 50) 
+        setTimeout(() => handleAddModule(), 50) 
       } else if (selectedSuggestion) { 
         // If a suggestion is already selected, just add it
-        handleAddGene()
+        handleAddModule()
       }
     } else if (showDropdown && suggestions.length) {
       if (e.key === "ArrowDown") {
@@ -151,62 +154,83 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     setSelectedSuggestion(suggestion)
   }
 
-  // When adding a new module, place it in the selected folder or create a default folder if none exist
-  async function handleAddGene() {
-    if (!selectedSuggestion) return
-    // Prevent duplicates
-    if (customModules.some(m => m.id === selectedSuggestion.symbol)) {
-      setSearchTerm("")
-      setSelectedSuggestion(null)
-      return
-    }
-
+  const handleAddModule = async () => {
+    if (!selectedSuggestion || addingModule) return
+    
     setAddingModule(true)
+    
     try {
-      // Create base module
-      const baseModule: Module = {
-        id: selectedSuggestion.symbol,
-        name: selectedSuggestion.symbol,
-        type: selectedType,
-        description: selectedSuggestion.name,
-      }
-
-      console.log('Adding gene:', selectedSuggestion.symbol)
+      let moduleToAdd = selectedSuggestion
       
-      // Enrich with Ensembl data
-      const enrichedModule = await enrichModuleWithSequence(baseModule)
-      
-      console.log('Enriched module:', enrichedModule)
-      console.log('Sequence length:', enrichedModule.sequence?.length || 0)
-
-      // First add to customModules
-      onCustomModulesChange([...customModules, enrichedModule])
-
-      // Then handle folder placement
-      // Add to selected folder if one is selected (and it's not the Total Library)
-      if (selectedFolderId && selectedFolderId !== 'total-library') {
-        setFolders(folders.map(folder =>
-          folder.id === selectedFolderId
-            ? { ...folder, modules: [...folder.modules, enrichedModule.id], open: true }
-            : folder
-        ))
+      // For knockin modules, show synthetic gene selector
+      if (selectedType === 'knockin') {
+        setShowSyntheticSelector(true)
+        setAddingModule(false)
+        return
       }
-
-      if (enrichedModule.sequence) {
-        toast.success(`Added ${enrichedModule.name} to library (${enrichedModule.sequence.length}bp)`)
+      
+      // For other module types, proceed as normal
+      if (moduleToAdd.sequence) {
+        const newModule: Module = {
+          id: `${moduleToAdd.symbol}-${Date.now()}`,
+          name: moduleToAdd.symbol,
+          type: selectedType,
+          description: moduleToAdd.description || `Human gene ${moduleToAdd.symbol}`,
+          sequence: moduleToAdd.sequence
+        }
+        
+        onCustomModulesChange([...customModules, newModule])
+        setSelectedSuggestion(null)
+        setSearchTerm("")
+        setSuggestions([])
+        toast.success(`Added ${moduleToAdd.symbol} to library`)
       } else {
-        toast.success(`Added ${enrichedModule.name} to library (no sequence available)`)
+        toast.error("No sequence available for this gene")
       }
     } catch (error) {
-      console.error('Failed to add gene:', error)
-      toast.error(`Failed to add ${selectedSuggestion.symbol}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error("Error adding module:", error)
+      toast.error("Failed to add module")
     } finally {
       setAddingModule(false)
-      // Clear the search
-      setSearchTerm("")
-      setSelectedSuggestion(null)
-      setShowDropdown(false)
     }
+  }
+
+  const handleSyntheticGeneSelect = (gene: SyntheticGene) => {
+    const newModule: Module = {
+      id: `${gene.name}-${Date.now()}`,
+      name: gene.name,
+      type: 'knockin',
+      description: gene.description,
+      sequence: gene.sequence,
+      isSynthetic: true,
+      syntheticSequence: gene.sequence
+    }
+    
+    onCustomModulesChange([...customModules, newModule])
+    setShowSyntheticSelector(false)
+    setSelectedSuggestion(null)
+    setSearchTerm("")
+    setSuggestions([])
+    toast.success(`Added synthetic gene ${gene.name} to library`)
+  }
+
+  const handleCustomSequence = (sequence: string) => {
+    const newModule: Module = {
+      id: `custom-synthetic-${Date.now()}`,
+      name: "Custom Synthetic Gene",
+      type: 'knockin',
+      description: "Custom synthetic gene sequence",
+      sequence: sequence,
+      isSynthetic: true,
+      syntheticSequence: sequence
+    }
+    
+    onCustomModulesChange([...customModules, newModule])
+    setShowSyntheticSelector(false)
+    setSelectedSuggestion(null)
+    setSearchTerm("")
+    setSuggestions([])
+    toast.success("Added custom synthetic gene to library")
   }
 
   function handleDeleteModule(moduleId: string, folderId: string) {
@@ -330,6 +354,17 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-4">2. Select Modules</h2>
+      
+      {showSyntheticSelector && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <SyntheticGeneSelector
+            onGeneSelect={handleSyntheticGeneSelect}
+            onCustomSequence={handleCustomSequence}
+            onClose={() => setShowSyntheticSelector(false)}
+          />
+        </div>
+      )}
+      
       {/* Type selector + search + add button row */}
       <div className="flex gap-2 mb-4 items-center">
         <select
@@ -390,7 +425,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         <Button 
           variant="secondary" 
           size="icon" 
-          onClick={handleAddGene} 
+          onClick={handleAddModule} 
           disabled={!selectedSuggestion || addingModule}
         >
           {addingModule ? (

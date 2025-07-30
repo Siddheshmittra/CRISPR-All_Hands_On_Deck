@@ -4,6 +4,17 @@ export interface Module {
   type: "overexpression" | "knockout" | "knockdown" | "knockin";
   description?: string;
   sequence?: string;
+  isSynthetic?: boolean; // Flag for synthetic genes
+  syntheticSequence?: string; // Custom synthetic sequence for knockins
+}
+
+export interface SyntheticGene {
+  id: string;
+  name: string;
+  description: string;
+  sequence: string;
+  category: string; // e.g., "fluorescent", "reporter", "therapeutic", "custom"
+  tags: string[];
 }
 
 export interface Linker {
