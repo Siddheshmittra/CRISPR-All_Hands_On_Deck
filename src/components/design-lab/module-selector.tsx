@@ -44,7 +44,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     { value: 'overexpression', label: 'OE' },
     { value: 'knockout', label: 'KO' },
     { value: 'knockdown', label: 'KD' },
-    { value: 'knockin', label: 'KI' },
+    { value: 'knockin', label: 'KI*' },
   ]
 
   const [newFolderName, setNewFolderName] = useState("")

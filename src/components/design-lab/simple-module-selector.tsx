@@ -9,7 +9,7 @@ import { toast } from "sonner"
 import { Module, EnsemblModule } from "@/lib/types"
 import { SyntheticGeneSelector } from "./synthetic-gene-selector"
 import { SyntheticGene } from "@/lib/types"
-import { resolveGene } from "@/lib/ensembl"
+import { searchEnsembl } from "@/lib/ensembl"
 
 interface SimpleModuleSelectorProps {
   onModuleAdd: (module: Module) => void
@@ -29,7 +29,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
     { value: 'overexpression', label: 'OE', icon: '↑' },
     { value: 'knockout', label: 'KO', icon: '✖' },
     { value: 'knockdown', label: 'KD', icon: '↓' },
-    { value: 'knockin', label: 'KI', icon: '→' },
+    { value: 'knockin', label: 'KI*', icon: '→' },
   ]
 
   const handleSearch = async (query: string) => {
@@ -40,7 +40,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
 
     setLoading(true)
     try {
-      const results = await resolveGene(query)
+      const results = await searchEnsembl(query)
       setSuggestions(results.slice(0, 5)) // Limit to 5 suggestions
     } catch (error) {
       console.error('Search error:', error)
@@ -69,6 +69,42 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
       }
     }
   }, [searchTerm])
+
+  const handleQuickAddModule = (gene: string) => {
+    if (constructModules.length >= 5) {
+      toast.error("Maximum 5 modules allowed")
+      return
+    }
+
+    // For knockin modules, show synthetic gene selector
+    if (selectedType === 'knockin') {
+      const mockSuggestion = {
+        symbol: gene,
+        description: `Human gene ${gene}`,
+        sequence: ""
+      }
+      setSelectedSuggestion(mockSuggestion)
+      setShowSyntheticSelector(true)
+      return
+    }
+
+    // For non-knockin modules, add directly
+    try {
+      const newModule: Module = {
+        id: `${gene}-${Date.now()}`,
+        name: gene,
+        type: selectedType,
+        description: `Human gene ${gene}`,
+        sequence: ""
+      }
+      
+      onModuleAdd(newModule)
+      toast.success(`Added ${gene} (${selectedType.toUpperCase()})`)
+    } catch (error) {
+      console.error("Error adding module:", error)
+      toast.error("Failed to add module")
+    }
+  }
 
   const handleAddModule = async (suggestion: any) => {
     if (constructModules.length >= 5) {
@@ -180,6 +216,11 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
             </Button>
           ))}
         </div>
+        
+        {/* Legend */}
+        <div className="text-xs text-muted-foreground text-center">
+          * KI* indicates knock-ins of synthetic genes
+        </div>
 
         {/* Search */}
         <div className="relative">
@@ -237,14 +278,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
                   key={gene}
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    const mockSuggestion = {
-                      symbol: gene,
-                      description: `Human gene ${gene}`,
-                      sequence: ""
-                    }
-                    handleAddModule(mockSuggestion)
-                  }}
+                  onClick={() => handleQuickAddModule(gene)}
                   className="justify-start"
                 >
                   <Plus className="h-3 w-3 mr-2" />

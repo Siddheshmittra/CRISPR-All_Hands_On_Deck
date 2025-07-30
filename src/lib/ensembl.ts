@@ -94,6 +94,29 @@ async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   return r.json() as Promise<T>;
 }
 
+export async function searchEnsembl(query: string): Promise<Array<{ symbol: string; description: string; sequence: string }>> {
+  if (query.length < 2) return []
+  
+  try {
+    // Use HGNC API for gene search (same as module-selector.tsx)
+    const JSON_HDR = { headers: { "Accept": "application/json" } }
+    const searchURL = `https://rest.genenames.org/search/${encodeURIComponent(query)}`
+    const sRes = await fetch(searchURL, JSON_HDR).then(r => r.json())
+    const hits = (sRes.response?.docs || []).slice(0, 5) // Limit to 5 results
+    
+    const results = hits.map(({ symbol, name }: { symbol: string; name: string }) => ({
+      symbol,
+      description: name || `Human gene ${symbol}`,
+      sequence: ""
+    }))
+    
+    return results
+  } catch (error) {
+    console.error('Ensembl search error:', error)
+    return []
+  }
+}
+
 export async function resolveGene(
   symbol: string,
   species: Species = 'homo_sapiens',
