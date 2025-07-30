@@ -4,13 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Search, Sparkles } from "lucide-react"
-
-interface Module {
-  id: string
-  name: string
-  type: "overexpression" | "knockout" | "knockdown"
-  description?: string
-}
+import { Module } from "@/lib/types"
 
 interface NaturalLanguageModeProps {
   onSuggestedConstruct: (modules: Module[]) => void
@@ -60,6 +54,13 @@ export const NaturalLanguageMode = ({ onSuggestedConstruct }: NaturalLanguageMod
       return [
         { id: "KD-SOcs1", name: "KD-SOcs1", type: "knockdown" },
         { id: "KO-TET2", name: "KO-TET2", type: "knockout" }
+      ]
+    }
+    
+    if (lower.includes("reporter") || lower.includes("fluorescent")) {
+      return [
+        { id: "GFP", name: "GFP", type: "knockin", isSynthetic: true },
+        { id: "BATF", name: "BATF", type: "overexpression" }
       ]
     }
     

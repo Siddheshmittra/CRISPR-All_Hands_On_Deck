@@ -9,6 +9,7 @@ import { MultiCassetteSetup } from "@/components/design-lab/multi-cassette-dialo
 import { NaturalLanguageMode } from "@/components/design-lab/natural-language-mode"
 import { LibraryManager } from "@/components/design-lab/library-manager"
 import { CassetteBatch } from "@/components/design-lab/cassette-batch"
+import { SimpleModuleSelector } from "@/components/design-lab/simple-module-selector"
 import { Trash2 } from "lucide-react"
 import React from "react"
 import { useConstructManager } from "@/hooks/use-construct-manager"
@@ -269,16 +270,23 @@ const DesignLab = () => {
               <DragDropContext onDragEnd={handleDragEnd}>
                 <div className="flex flex-row gap-4 items-start">
                   <div className="flex-1">
-                    <ModuleSelector
-                      selectedModules={selectedModules}
-                      onModuleSelect={handleModuleSelect}
-                      onModuleDeselect={handleModuleDeselect}
-                      customModules={customModules}
-                      onCustomModulesChange={setCustomModules}
-                      folders={folders}
-                      setFolders={setFolders}
-                      handleModuleClick={handleModuleClick}
-                    />
+                    {cassetteMode === 'single' ? (
+                      <SimpleModuleSelector
+                        onModuleAdd={handleModuleSelect}
+                        constructModules={constructModules}
+                      />
+                    ) : (
+                      <ModuleSelector
+                        selectedModules={selectedModules}
+                        onModuleSelect={handleModuleSelect}
+                        onModuleDeselect={handleModuleDeselect}
+                        customModules={customModules}
+                        onCustomModulesChange={setCustomModules}
+                        folders={folders}
+                        setFolders={setFolders}
+                        handleModuleClick={handleModuleClick}
+                      />
+                    )}
                     {/* Show MultiCassetteSetup below Select Modules if in multi mode */}
                     {cassetteMode === 'multi' && (
                       <MultiCassetteSetup
