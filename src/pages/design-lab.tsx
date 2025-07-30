@@ -271,38 +271,37 @@ const DesignLab = () => {
                 <div className="flex flex-row gap-4 items-start">
                   <div className="flex-1">
                     {cassetteMode === 'single' ? (
-                      <SimpleModuleSelector
+                                            <SimpleModuleSelector
                         onModuleAdd={handleModuleSelect}
                         constructModules={constructModules}
                       />
                     ) : (
-                      <ModuleSelector
-                        selectedModules={selectedModules}
-                        onModuleSelect={handleModuleSelect}
-                        onModuleDeselect={handleModuleDeselect}
-                        customModules={customModules}
-                        onCustomModulesChange={setCustomModules}
-                        folders={folders}
-                        setFolders={setFolders}
-                        handleModuleClick={handleModuleClick}
-                      />
-                    )}
-                    {/* Show MultiCassetteSetup below Select Modules if in multi mode */}
-                    {cassetteMode === 'multi' && (
-                      <MultiCassetteSetup
-                        cassetteCount={cassetteCount}
-                        setCassetteCount={setCassetteCount}
-                        overexpressionCount={overexpressionCount}
-                        setOverexpressionCount={setOverexpressionCount}
-                        knockoutCount={knockoutCount}
-                        setKnockoutCount={setKnockoutCount}
-                        knockdownCount={knockdownCount}
-                        setKnockdownCount={setKnockdownCount}
-                        showGoButton={true}
-                        onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
-                        folders={folders}
-                        customModules={customModules}
-                      />
+                      <>
+                        <ModuleSelector
+                          selectedModules={selectedModules}
+                          onModuleSelect={handleModuleSelect}
+                          onModuleDeselect={handleModuleDeselect}
+                          customModules={customModules}
+                          onCustomModulesChange={setCustomModules}
+                          folders={folders}
+                          setFolders={setFolders}
+                          handleModuleClick={handleModuleClick}
+                        />
+                        <MultiCassetteSetup
+                          cassetteCount={cassetteCount}
+                          setCassetteCount={setCassetteCount}
+                          overexpressionCount={overexpressionCount}
+                          setOverexpressionCount={setOverexpressionCount}
+                          knockoutCount={knockoutCount}
+                          setKnockoutCount={setKnockoutCount}
+                          knockdownCount={knockdownCount}
+                          setKnockdownCount={setKnockdownCount}
+                          showGoButton={true}
+                          onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
+                          folders={folders}
+                          customModules={customModules}
+                        />
+                      </>
                     )}
                     <ConstructLayout
                       constructModules={constructWithLinkers}
