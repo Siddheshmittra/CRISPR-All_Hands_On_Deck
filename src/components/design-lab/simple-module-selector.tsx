@@ -219,7 +219,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
         
         {/* Legend */}
         <div className="text-xs text-muted-foreground text-center">
-          * KI* indicates knock-ins of synthetic genes
+          *indicates knock-ins of synthetic genes
         </div>
 
         {/* Search */}
