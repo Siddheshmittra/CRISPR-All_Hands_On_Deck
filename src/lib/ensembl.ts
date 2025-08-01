@@ -2,10 +2,8 @@ import { LRUCache } from 'lru-cache'
 import shRNADb from './shRNA.json';
 
 interface ShRNARecord {
-  'Gene ID': string;
-  'Gene Symbol': string;
-  'Transcript RefSeq ID': string;
-  'Final shRNA Seq for CRISPR-All Syntax': string;
+  'Symbol': string;
+  'Final shRNA Seq for\nCRISPR-All Syntax': string;
 }
 
 const shRNAData: ShRNARecord[] = shRNADb as ShRNARecord[];
@@ -273,9 +271,9 @@ export async function enrichModuleWithSequence(
     console.log(`Enriching module: ${module.name} (type: ${module.type})`);
 
     if (module.type === 'knockdown') {
-      const shRNARecord = shRNAData.find(record => record['Gene Symbol'] === module.name);
-      if (shRNARecord && shRNARecord['Final shRNA Seq for CRISPR-All Syntax']) {
-        const sequence = shRNARecord['Final shRNA Seq for CRISPR-All Syntax'];
+      const shRNARecord = shRNAData.find(record => record['Symbol'] === module.name);
+      if (shRNARecord && shRNARecord['Final shRNA Seq for\nCRISPR-All Syntax']) {
+        const sequence = shRNARecord['Final shRNA Seq for\nCRISPR-All Syntax'];
         console.log(`Found shRNA sequence for ${module.name}`);
         return {
           ...module,

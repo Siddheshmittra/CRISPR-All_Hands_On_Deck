@@ -235,7 +235,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
             </Card>
 
             {/* Sequence Display */}
-            <Card className="p-4 font-mono text-xs">
+            <Card className="p-4 font-mono text-xs overflow-x-auto">
               <div className="space-y-2">
                 {generateAnnotatedSequence().map((segment, index) => {
                   const bgColor = segment.type === 'module' ? 'bg-blue-100' 
@@ -269,7 +269,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
                   return (
                     <div
                       key={index}
-                      className={`inline-block px-2 py-1 rounded ${bgColor} mr-2 mb-2 cursor-help transition-colors duration-150 hover:${bgColor.replace('100', '200')}`}
+                      className={`inline-block px-2 py-1 rounded break-all whitespace-pre-wrap ${bgColor} mr-2 mb-2 cursor-help transition-colors duration-150 hover:${bgColor.replace('100', '200')}`}
                       onMouseEnter={handleMouseEnter}
                       onMouseLeave={handleMouseLeave}
                     >

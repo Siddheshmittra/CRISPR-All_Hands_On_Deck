@@ -14,6 +14,8 @@ import { Trash2 } from "lucide-react"
 import React from "react"
 import { useConstructManager } from "@/hooks/use-construct-manager"
 import { LinkerSelector } from "@/components/design-lab/linker-selector"
+import { enrichModuleWithSequence } from "@/lib/ensembl"
+import { toast } from "sonner"
 
 import { Module } from "@/lib/types"
 
@@ -48,15 +50,29 @@ const DesignLab = () => {
   }])
   const [cassetteBatch, setCassetteBatch] = useState<Cassette[]>([])
 
-  const handleModuleSelect = (module: Module) => {
+  const handleModuleSelect = async (module: Module) => {
     if (constructModules.length >= 5) {
       return // Max 5 modules
     }
-    // Create a unique ID for this instance
-    const uniqueId = `${module.id}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
-    const newModule = { ...module, id: uniqueId }
-    setSelectedModules(prev => [...prev, newModule])
-    setConstructModules(prev => [...prev, newModule])
+    
+    try {
+      // Create a unique ID for this instance
+      const uniqueId = `${module.id}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
+      const newModule = { ...module, id: uniqueId }
+      
+      // Only enrich if the module doesn't already have a sequence
+      if (!newModule.sequence) {
+        const enrichedModule = await enrichModuleWithSequence(newModule);
+        setSelectedModules(prev => [...prev, enrichedModule])
+        setConstructModules(prev => [...prev, enrichedModule])
+      } else {
+        setSelectedModules(prev => [...prev, newModule])
+        setConstructModules(prev => [...prev, newModule])
+      }
+    } catch (error) {
+      console.error('Failed to enrich module:', error);
+      toast.error(`Failed to add module: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   const handleModuleDeselect = (moduleId: string) => {
