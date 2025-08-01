@@ -23,6 +23,7 @@ interface AnnotatedSegment {
   name: string;
   sequence: string;
   type: 'module' | 'linker' | 'hardcoded';
+  action?: string;
 }
 
 export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
@@ -38,7 +39,13 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
     const segments: AnnotatedSegment[] = [];
     
     constructModules.forEach((item, index) => {
-      segments.push({ name: item.name, sequence: item.sequence || "", type: item.type === 'linker' ? 'linker' : 'module' });
+      const isLinker = item.type === 'linker';
+      segments.push({
+        name: item.name,
+        sequence: item.sequence || "",
+        type: isLinker ? 'linker' : 'module',
+        action: isLinker ? undefined : item.type
+      });
       
       const nextItem = constructModules[index + 1];
       if (item.type !== 'linker' && nextItem && nextItem.type !== 'linker') {
@@ -244,16 +251,26 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
 
                   const handleMouseEnter = () => {
                     const infoPanel = document.getElementById('sequence-info-panel');
-                    if (infoPanel) {
+                    if (!infoPanel) return;
+                    if (segment.type === 'module' && segment.action) {
+                      infoPanel.innerHTML = `
+                        <div class="text-center">
+                          <div class="font-bold mb-1">Module: ${segment.name} ${segment.action}</div>
+                          <div class="text-xs opacity-80">Length: ${segment.sequence.length} bp</div>
+                        </div>
+                      `;
+                    } else if (segment.type === 'linker') {
                       infoPanel.innerHTML = `
                         <div class="text-center">
                           <div class="font-bold mb-1">${segment.name}</div>
-                          <div class="text-xs opacity-80">
-                            ${segment.type === 'module' ? 'Gene Module' 
-                              : segment.type === 'linker' ? 'Linker Sequence'
-                              : 'Standard Element'}
-                            · Length: ${segment.sequence.length} bp
-                          </div>
+                          <div class="text-xs opacity-80">Linker Sequence · Length: ${segment.sequence.length} bp</div>
+                        </div>
+                      `;
+                    } else {
+                      infoPanel.innerHTML = `
+                        <div class="text-center">
+                          <div class="font-bold mb-1">${segment.name}</div>
+                          <div class="text-xs opacity-80">Standard Element · Length: ${segment.sequence.length} bp</div>
                         </div>
                       `;
                     }
