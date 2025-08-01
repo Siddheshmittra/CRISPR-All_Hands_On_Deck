@@ -7,9 +7,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Tippy from '@tippyjs/react';
 import { Download, Eye, EyeOff } from "lucide-react"
+import { generateGenbank } from "@/lib/genbank"
 import { toast } from "sonner"
 
-import { ConstructItem, Module } from "@/lib/types"
+import { ConstructItem, Module, AnnotatedSegment } from "@/lib/types"
 
 interface FinalConstructProps {
   constructModules: ConstructItem[]
@@ -23,7 +24,6 @@ interface AnnotatedSegment {
   name: string;
   sequence: string;
   type: 'module' | 'linker' | 'hardcoded';
-  action?: string;
 }
 
 export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
@@ -117,6 +117,28 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
     toast.success("Construct exported successfully!")
   }
 
+  const handleExportGenBank = () => {
+    if (modules.length === 0) {
+      toast.error("No modules to export")
+      return
+    }
+
+    const gb = generateGenbank(
+      constructName || 'CONSTRUCT',
+      generateAnnotatedSequence(),
+      { predictedFunction: generatePredictedFunction() }
+    )
+    const blob = new Blob([gb], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${constructName || 'construct'}.gb`
+    a.click()
+    URL.revokeObjectURL(url)
+
+    toast.success("GenBank file exported successfully!")
+  }
+
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
@@ -133,6 +155,10 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
           <Button size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             Export
+          </Button>
+          <Button size="sm" onClick={handleExportGenBank}>
+            <Download className="h-4 w-4 mr-2" />
+            Export GenBank
           </Button>
         </div>
       </div>
