@@ -253,9 +253,18 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
                     const infoPanel = document.getElementById('sequence-info-panel');
                     if (!infoPanel) return;
                     if (segment.type === 'module' && segment.action) {
+                      // Determine nucleotide type by action
+                      const nucleotideType = segment.action === 'knockout'
+                        ? 'gRNA'
+                        : segment.action === 'knockdown'
+                          ? 'shRNA'
+                          : segment.action === 'overexpression'
+                            ? 'cDNA'
+                            : 'Module';
+
                       infoPanel.innerHTML = `
                         <div class="text-center">
-                          <div class="font-bold mb-1">Module: ${segment.name} ${segment.action}</div>
+                          <div class="font-bold mb-1">${nucleotideType} Module: ${segment.name} ${segment.action}</div>
                           <div class="text-xs opacity-80">Length: ${segment.sequence.length} bp</div>
                         </div>
                       `;
