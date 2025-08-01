@@ -1,12 +1,22 @@
 import { LRUCache } from 'lru-cache'
 import shRNADb from './shRNA.json';
+import rawGrnaDb from './gRNA.json';
 
 interface ShRNARecord {
   'Symbol': string;
   'Final shRNA Seq for\nCRISPR-All Syntax': string;
 }
 
+interface GrnaRecord {
+  geneSymbol: string;
+  gRNASequence: string;
+}
+
 const shRNAData: ShRNARecord[] = shRNADb as ShRNARecord[];
+const gRNAData: GrnaRecord[] = (rawGrnaDb as any[]).map(r => ({
+  geneSymbol: (r['Official Gene \nName'] as string).trim(),
+  gRNASequence: (r['Final gRNA Seq for\nCRISPR-All Syntax'] as string).trim(),
+}));
 
 const ENSEMBL = 'https://rest.ensembl.org';
 const GRCH37 = 'https://grch37.rest.ensembl.org';
@@ -259,7 +269,7 @@ export interface EnsemblModule extends Module {
   ensemblGeneId?: string;
   canonicalTranscriptId?: string;
   sequence?: string;
-  sequenceSource?: 'ensembl_grch38' | 'ensembl_grch37' | 'shRNA.json';
+  sequenceSource?: 'ensembl_grch38' | 'gRNA.json' | 'shRNA.json';
   ensemblRelease?: string;
 }
 
@@ -286,6 +296,23 @@ export async function enrichModuleWithSequence(
       }
     }
     
+    if (module.type === 'knockout') {
+      const gRNARecord = gRNAData.find(record => record.geneSymbol === module.name);
+      if (gRNARecord && gRNARecord.gRNASequence) {
+        const sequence = gRNARecord.gRNASequence;
+        console.log(`Found gRNA sequence for ${module.name}`);
+        return {
+          ...module,
+          sequence,
+          sequenceSource: 'gRNA.json',
+        };
+      } else {
+        console.error(`gRNA sequence not found for knockout module: ${module.name}`);
+        throw new Error(`gRNA sequence not found for ${module.name}`);
+      }
+    }
+
+
     // Fallback to Ensembl for non-knockdown modules
     console.log(`Fetching sequence from Ensembl for ${module.name}.`);
     const gene = await resolveGene(module.name, 'homo_sapiens', opts);
@@ -310,4 +337,4 @@ export async function enrichModuleWithSequence(
     // Re-throw the error to be handled by the calling component
     throw error;
   }
-} 
+}
