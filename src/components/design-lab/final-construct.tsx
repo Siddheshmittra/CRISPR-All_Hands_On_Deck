@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import Tippy from '@tippyjs/react';
 import { Download, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 
@@ -18,6 +19,12 @@ const T2A_SEQUENCE = "GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGG
 const STOP_TAMPLEX_SEQUENCE = "TAATAA" 
 const POLYA_SEQUENCE = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
+interface AnnotatedSegment {
+  name: string;
+  sequence: string;
+  type: 'module' | 'linker' | 'hardcoded';
+}
+
 export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   const [constructName, setConstructName] = useState("")
   const [promoter, setPromoter] = useState("EF1a")
@@ -26,6 +33,27 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   const [barcode, setBarcode] = useState("e.g. Unique 10-20bp")
   const [polyASignal, setPolyASignal] = useState("bGH")
   const [showSequence, setShowSequence] = useState(true)
+
+  const generateAnnotatedSequence = (): AnnotatedSegment[] => {
+    const segments: AnnotatedSegment[] = [];
+    
+    constructModules.forEach((item, index) => {
+      segments.push({ name: item.name, sequence: item.sequence || "", type: item.type === 'linker' ? 'linker' : 'module' });
+      
+      const nextItem = constructModules[index + 1];
+      if (item.type !== 'linker' && nextItem && nextItem.type !== 'linker') {
+        segments.push({ name: 'T2A', sequence: T2A_SEQUENCE, type: 'hardcoded' });
+      }
+    });
+
+    // Add Stop/PolyA at the end
+    segments.push({ name: 'Stop/PolyA', sequence: STOP_TAMPLEX_SEQUENCE + POLYA_SEQUENCE, type: 'hardcoded' });
+
+    return segments;
+  };
+
+  const fullSequence = generateAnnotatedSequence().map(s => s.sequence).join('');
+
 
   const modules = constructModules.filter(item => item.type !== 'linker') as Module[]
 
@@ -52,13 +80,6 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
     return prediction + "."
   }
   
-  // Generate nucleotide sequence by concatenating module sequences
-  const generateSequence = () => {
-    return constructModules.map(item => item.sequence || "").join("")
-  }
-
-
-
   const handleExport = () => {
     if (modules.length === 0) {
       toast.error("No modules to export")
@@ -75,7 +96,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
         barcode,
         polyASignal
       },
-      sequence: generateSequence(),
+      sequence: fullSequence,
       predictedFunction: generatePredictedFunction()
     }
     
@@ -184,14 +205,80 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
         </div>
 
         {showSequence && (
-          <div>
-            <Label htmlFor="sequence">Nucleotide Sequence:</Label>
-            <Textarea
-              id="sequence"
-              value={generateSequence()}
-              readOnly
-              className="h-32 font-mono text-xs"
-            />
+          <div className="space-y-4">
+            <Label>Nucleotide Sequence:</Label>
+            
+            {/* Legend */}
+            <div className="flex gap-4 text-xs">
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded bg-blue-100 mr-2"></div>
+                <span>Modules</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded bg-green-100 mr-2"></div>
+                <span>Linkers</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded bg-gray-100 mr-2"></div>
+                <span>Standard Elements (T2A, Stop, PolyA)</span>
+              </div>
+            </div>
+
+            {/* Info Panel */}
+            <Card className="p-4 bg-muted">
+              <div 
+                className="h-16 flex items-center justify-center text-sm"
+                id="sequence-info-panel"
+              >
+                Hover over any sequence segment for details
+              </div>
+            </Card>
+
+            {/* Sequence Display */}
+            <Card className="p-4 font-mono text-xs">
+              <div className="space-y-2">
+                {generateAnnotatedSequence().map((segment, index) => {
+                  const bgColor = segment.type === 'module' ? 'bg-blue-100' 
+                    : segment.type === 'linker' ? 'bg-green-100'
+                    : 'bg-gray-100';
+
+                  const handleMouseEnter = () => {
+                    const infoPanel = document.getElementById('sequence-info-panel');
+                    if (infoPanel) {
+                      infoPanel.innerHTML = `
+                        <div class="text-center">
+                          <div class="font-bold mb-1">${segment.name}</div>
+                          <div class="text-xs opacity-80">
+                            ${segment.type === 'module' ? 'Gene Module' 
+                              : segment.type === 'linker' ? 'Linker Sequence'
+                              : 'Standard Element'}
+                            · Length: ${segment.sequence.length} bp
+                          </div>
+                        </div>
+                      `;
+                    }
+                  };
+
+                  const handleMouseLeave = () => {
+                    const infoPanel = document.getElementById('sequence-info-panel');
+                    if (infoPanel) {
+                      infoPanel.innerHTML = 'Hover over any sequence segment for details';
+                    }
+                  };
+
+                  return (
+                    <div
+                      key={index}
+                      className={`inline-block px-2 py-1 rounded ${bgColor} mr-2 mb-2 cursor-help transition-colors duration-150 hover:${bgColor.replace('100', '200')}`}
+                      onMouseEnter={handleMouseEnter}
+                      onMouseLeave={handleMouseLeave}
+                    >
+                      {segment.sequence}
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
           </div>
         )}
       </div>
