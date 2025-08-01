@@ -1,4 +1,14 @@
 import { LRUCache } from 'lru-cache'
+import shRNADb from './shRNA.json';
+
+interface ShRNARecord {
+  'Gene ID': string;
+  'Gene Symbol': string;
+  'Transcript RefSeq ID': string;
+  'Final shRNA Seq for CRISPR-All Syntax': string;
+}
+
+const shRNAData: ShRNARecord[] = shRNADb as ShRNARecord[];
 
 const ENSEMBL = 'https://rest.ensembl.org';
 const GRCH37 = 'https://grch37.rest.ensembl.org';
@@ -251,7 +261,7 @@ export interface EnsemblModule extends Module {
   ensemblGeneId?: string;
   canonicalTranscriptId?: string;
   sequence?: string;
-  sequenceSource?: 'ensembl_grch38' | 'ensembl_grch37';
+  sequenceSource?: 'ensembl_grch38' | 'ensembl_grch37' | 'shRNA.json';
   ensemblRelease?: string;
 }
 
@@ -260,7 +270,26 @@ export async function enrichModuleWithSequence(
   opts?: { base?: string; forceRefresh?: boolean }
 ): Promise<Module> {
   try {
-    console.log(`Enriching module: ${module.name}`);
+    console.log(`Enriching module: ${module.name} (type: ${module.type})`);
+
+    if (module.type === 'knockdown') {
+      const shRNARecord = shRNAData.find(record => record['Gene Symbol'] === module.name);
+      if (shRNARecord && shRNARecord['Final shRNA Seq for CRISPR-All Syntax']) {
+        const sequence = shRNARecord['Final shRNA Seq for CRISPR-All Syntax'];
+        console.log(`Found shRNA sequence for ${module.name}`);
+        return {
+          ...module,
+          sequence,
+          sequenceSource: 'shRNA.json',
+        };
+      } else {
+        console.error(`shRNA sequence not found for knockdown module: ${module.name}`);
+        throw new Error(`shRNA sequence not found for ${module.name}`);
+      }
+    }
+    
+    // Fallback to Ensembl for non-knockdown modules
+    console.log(`Fetching sequence from Ensembl for ${module.name}.`);
     const gene = await resolveGene(module.name, 'homo_sapiens', opts);
     console.log(`Resolved gene:`, gene);
     
@@ -280,7 +309,7 @@ export async function enrichModuleWithSequence(
     };
   } catch (error) {
     console.error(`Failed to enrich module ${module.name}:`, error);
-    // Return original module if enrichment fails
-    return module;
+    // Re-throw the error to be handled by the calling component
+    throw error;
   }
 } 

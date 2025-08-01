@@ -4,6 +4,7 @@ export interface Module {
   type: "overexpression" | "knockout" | "knockdown" | "knockin";
   description?: string;
   sequence?: string;
+  sequenceSource?: 'ensembl_grch38' | 'ensembl_grch37' | 'shRNA.json';
   isSynthetic?: boolean; // Flag for synthetic genes
   syntheticSequence?: string; // Custom synthetic sequence for knockins
 }
@@ -32,6 +33,5 @@ export interface EnsemblModule extends Module {
   hgncId?: string;
   ensemblGeneId?: string;
   canonicalTranscriptId?: string;
-  sequenceSource?: 'ensembl_grch38' | 'ensembl_grch37';
   ensemblRelease?: string;
 } 
