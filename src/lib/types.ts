@@ -28,6 +28,12 @@ export interface Linker {
 
 export type ConstructItem = Module | Linker
 
+export interface AnnotatedSegment {
+  name: string
+  sequence: string
+  type: 'module' | 'linker' | 'hardcoded'
+}
+
 export interface EnsemblModule extends Module {
   symbol: string;
   hgncId?: string;
@@ -35,3 +41,4 @@ export interface EnsemblModule extends Module {
   canonicalTranscriptId?: string;
   ensemblRelease?: string;
 } 
+
