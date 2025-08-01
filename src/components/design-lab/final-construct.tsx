@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Tippy from '@tippyjs/react';
 import { Download, Eye, EyeOff } from "lucide-react"
+import { generateGenBank } from "@/lib/genbank"
 import { toast } from "sonner"
 
 import { ConstructItem, Module } from "@/lib/types"
@@ -110,6 +111,31 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
     toast.success("Construct exported successfully!")
   }
 
+  const handleExportGenBank = () => {
+    if (modules.length === 0) {
+      toast.error("No modules to export")
+      return
+    }
+
+    const metadata = {
+      locus: constructName || 'CONSTRUCT',
+      definition: generatePredictedFunction(),
+      source: promoter,
+      organism: 'synthetic construct'
+    }
+
+    const gb = generateGenBank(generateAnnotatedSequence(), metadata)
+    const blob = new Blob([gb], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${constructName || 'construct'}.gb`
+    a.click()
+    URL.revokeObjectURL(url)
+
+    toast.success("GenBank file exported successfully!")
+  }
+
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
@@ -126,6 +152,10 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
           <Button size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             Export
+          </Button>
+          <Button size="sm" onClick={handleExportGenBank}>
+            <Download className="h-4 w-4 mr-2" />
+            Export GenBank
           </Button>
         </div>
       </div>
