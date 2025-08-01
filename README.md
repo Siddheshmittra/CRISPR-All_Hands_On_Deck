@@ -71,3 +71,18 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Exporting Constructs to GenBank
+
+From the Final Construct panel you can download a GenBank file describing your assembled sequence.
+Click **Export GenBank** to save a `.gb` file. An example output begins like:
+
+```text
+LOCUS       Example            120 bp    DNA
+DEFINITION  Synthetic construct example.
+FEATURES             Location/Qualifiers
+     misc_feature    1..60
+                     /label="Module1"
+ORIGIN
+        1 atgcatgcat gcatgcatgc atgcatgcat gcatgcatgc atgcatgcat gcatgcatgc
+```
