@@ -109,13 +109,24 @@ export const MultiCassetteSetup = ({
         sequence: '' // Will be enriched
       }
 
-      const enrichedModule = await enrichModuleWithSequence(module)
-      setSelectedModules(prev => [...prev, enrichedModule])
-      setSearchTerm('')
-      setSuggestions([])
-      toast.success(`Added ${module.name} as ${moduleType}`)
+      console.log('handleAddModule: Created new module:', module);
+
+      try {
+        const enrichedModule = await enrichModuleWithSequence(module);
+        console.log('handleAddModule: Enriched module:', enrichedModule);
+        if (!enrichedModule.sequence) {
+          throw new Error('Enrichment completed but sequence is missing.');
+        }
+        setSelectedModules(prev => [...prev, enrichedModule]);
+        setSearchTerm('')
+        setSuggestions([])
+        toast.success(`Added ${module.name} as ${moduleType}`)
+      } catch (error) {
+        console.error('handleAddModule: Failed to enrich module with sequence:', error);
+        toast.error(`Failed to add module: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
     } catch (error) {
-      console.error('Failed to add module:', error)
+      console.error('handleAddModule: Unexpected error:', error);
       toast.error(`Failed to add module: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
