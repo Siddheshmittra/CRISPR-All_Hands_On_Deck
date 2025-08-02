@@ -102,8 +102,8 @@ export const MultiCassetteSetup = ({
   const handleAddModule = async (geneData: any, moduleType: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => {
     try {
       const module: Module = {
-        id: `${geneData.gene_id || geneData.display_label}-${Date.now()}`,
-        name: geneData.display_label || geneData.gene_name,
+        id: `${geneData.symbol}-${Date.now()}`,
+        name: geneData.symbol,
         type: moduleType,
         description: geneData.description,
         sequence: '' // Will be enriched
@@ -310,7 +310,7 @@ export const MultiCassetteSetup = ({
                     <div key={index} className="p-3 border-b last:border-b-0">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex-1">
-                          <div className="font-medium">{gene.display_label || gene.gene_name}</div>
+                          <div className="font-medium">{gene.symbol}</div>
                           <div className="text-sm text-muted-foreground truncate">
                             {gene.description || 'No description available'}
                           </div>
