@@ -5,7 +5,7 @@ export interface Module {
   description?: string;
   sequence?: string;
   gene_id?: string;
-  sequenceSource?: 'ensembl_grch38' | 'ensembl_grch37' | 'shRNA.json';
+  sequenceSource?: 'ensembl_grch38' | 'ensembl_grch37' | 'shRNA.json' | 'gRNA.json';
   isSynthetic?: boolean; // Flag for synthetic genes
   syntheticSequence?: string; // Custom synthetic sequence for knockins
 }
