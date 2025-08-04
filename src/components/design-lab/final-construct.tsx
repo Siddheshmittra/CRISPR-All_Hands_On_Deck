@@ -26,6 +26,8 @@ const POLYA_SEQUENCE = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   const [constructName, setConstructName] = useState("")
   const [promoter, setPromoter] = useState("EF1a")
+  const [leftArm, setLeftArm] = useState("e.g. TRAC upstream")
+  const [rightArm, setRightArm] = useState("e.g. TRAC downstream")
   const [barcode, setBarcode] = useState("e.g. Unique 10-20bp")
   const [polyASignal, setPolyASignal] = useState("bGH")
   const [showSequence, setShowSequence] = useState(true)
@@ -93,6 +95,8 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
       modules: modules,
       details: {
         promoter,
+        leftArm,
+        rightArm,
         barcode,
         polyASignal
       },
@@ -196,7 +200,25 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
           </div>
         </div>
 
-
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="left-arm">Left Homology Arm:</Label>
+            <Input
+              id="left-arm"
+              value={leftArm}
+              onChange={(e) => setLeftArm(e.target.value)}
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="right-arm">Right Homology Arm:</Label>
+            <Input
+              id="right-arm"
+              value={rightArm}
+              onChange={(e) => setRightArm(e.target.value)}
+            />
+          </div>
+        </div>
 
         <div>
           <Label htmlFor="barcode">Barcode:</Label>

@@ -4,8 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, ArrowRight, X, Trash2, GripVertical } from "lucide-react"
-import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
+import { Search, Plus, ArrowRight, X, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { searchEnsembl, enrichModuleWithSequence } from "@/lib/ensembl"
 import { Module } from "@/lib/types"
@@ -26,12 +25,6 @@ interface MultiCassetteSetupProps {
   customModules: Module[]
 }
 
-interface LibrarySyntax {
-  id: string;
-  name: string;
-  type: 'overexpression' | 'knockout' | 'knockdown';
-}
-
 export const MultiCassetteSetup = ({
   cassetteCount,
   setCassetteCount,
@@ -48,7 +41,6 @@ export const MultiCassetteSetup = ({
 }: MultiCassetteSetupProps) => {
   const [mode, setMode] = useState<'manual' | 'search'>('manual')
   const [selectedLibrary, setSelectedLibrary] = useState<string>('total-library')
-  const [librarySyntax, setLibrarySyntax] = useState<LibrarySyntax[]>([])
   
   // Gene search functionality - simplified with unified component
   const [selectedModules, setSelectedModules] = useState<Module[]>([])
@@ -71,37 +63,6 @@ export const MultiCassetteSetup = ({
 
   const handleClearAllModules = () => {
     setSelectedModules([])
-  }
-
-  // Library syntax handlers
-  const handleAddLibrary = (libraryId: string) => {
-    const library = folders.find(f => f.id === libraryId)
-    if (!library || librarySyntax.find(l => l.id === libraryId)) return
-    
-    const newLibrary: LibrarySyntax = {
-      id: libraryId,
-      name: library.name,
-      type: 'overexpression' // default type
-    }
-    setLibrarySyntax(prev => [...prev, newLibrary])
-  }
-
-  const handleRemoveLibrary = (libraryId: string) => {
-    setLibrarySyntax(prev => prev.filter(l => l.id !== libraryId))
-  }
-
-  const handleLibraryTypeChange = (libraryId: string, type: 'overexpression' | 'knockout' | 'knockdown') => {
-    setLibrarySyntax(prev => prev.map(l => l.id === libraryId ? { ...l, type } : l))
-  }
-
-  const handleLibrarySyntaxDragEnd = (result: DropResult) => {
-    if (!result.destination) return
-    
-    const items = Array.from(librarySyntax)
-    const [reorderedItem] = items.splice(result.source.index, 1)
-    items.splice(result.destination.index, 0, reorderedItem)
-    
-    setLibrarySyntax(items)
   }
 
   // Helper for input: allow empty, clamp, no leading zeros
@@ -139,34 +100,31 @@ export const MultiCassetteSetup = ({
   function handleManualGenerate() {
     if (!onAddCassettes) return
 
-    if (librarySyntax.length === 0) {
-      toast.error('Please add libraries to the syntax section first')
+    const library = folders.find(f => f.id === selectedLibrary)
+    if (!library) {
+      toast.error('No library selected')
+      return
+    }
+
+    const libraryModules = customModules.filter(m => library.modules.includes(m.id))
+    if (libraryModules.length === 0) {
+      toast.error('Selected library is empty')
       return
     }
 
     const cassettes: Module[][] = []
     for (let i = 0; i < cassetteCount; i++) {
       const cassette: Module[] = []
-      
-      // Generate modules based on library syntax order and types
-      librarySyntax.forEach(libSyntax => {
-        const library = folders.find(f => f.id === libSyntax.id)
-        if (!library) return
-        
-        const libraryModules = customModules.filter(m => 
-          library.modules.includes(m.id) && m.type === libSyntax.type
-        )
-        
+      for (let j = 0; j < totalPerturbations; j++) {
         if (libraryModules.length > 0) {
           const randomModule = libraryModules[Math.floor(Math.random() * libraryModules.length)]
-          cassette.push({ ...randomModule, type: libSyntax.type })
+          cassette.push(randomModule)
         }
-      })
-      
+      }
       cassettes.push(cassette)
     }
     onAddCassettes(cassettes)
-    toast.success(`Generated ${cassetteCount} cassettes from library syntax`)
+    toast.success(`Generated ${cassetteCount} cassettes from library`)
   }
 
 
@@ -208,100 +166,59 @@ export const MultiCassetteSetup = ({
               />
             </div>
             <div>
-              <label className="block mb-1 text-sm font-medium">Add Library to Syntax</label>
-              <div className="flex gap-2">
-                <select
-                  value={selectedLibrary}
-                  onChange={e => setSelectedLibrary(e.target.value)}
-                  className="h-9 px-2 flex-1 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  {folders.map(folder => (
-                    <option key={folder.id} value={folder.id}>{folder.name}</option>
-                  ))}
-                </select>
-                <Button
-                  size="sm"
-                  onClick={() => handleAddLibrary(selectedLibrary)}
-                  disabled={librarySyntax.find(l => l.id === selectedLibrary) !== undefined}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+              <label className="block mb-1 text-sm font-medium">Library to use</label>
+              <select
+                value={selectedLibrary}
+                onChange={e => setSelectedLibrary(e.target.value)}
+                className="h-9 px-2 w-full rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {folders.map(folder => (
+                  <option key={folder.id} value={folder.id}>{folder.name}</option>
+                ))}
+              </select>
             </div>
           </div>
-
-          {/* Library Syntax Section */}
-          <div className="mb-4">
-            <label className="block mb-2 text-sm font-medium">Library Syntax (Drag to reorder)</label>
-            <div className="border-2 border-dashed border-border rounded-lg p-4 bg-background">
-              <DragDropContext onDragEnd={handleLibrarySyntaxDragEnd}>
-                <Droppable droppableId="library-syntax" direction="horizontal">
-                  {(provided, snapshot) => (
-                    <div
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      className={`flex items-center gap-2 flex-wrap min-h-[48px] p-2 rounded transition-all ${
-                        snapshot.isDraggingOver ? 'bg-primary/10 border-2 border-dashed border-primary' : ''
-                      }`}
-                    >
-                      {librarySyntax.length === 0 ? (
-                        <span className="text-sm text-muted-foreground">Add libraries above to build your cassette syntax</span>
-                      ) : (
-                        librarySyntax.map((library, index) => (
-                          <Draggable key={library.id} draggableId={library.id} index={index}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={`flex items-center gap-2 px-3 py-2 bg-card border rounded-md cursor-move transition-all ${
-                                  snapshot.isDragging ? 'shadow-lg rotate-2' : 'hover:shadow-md'
-                                }`}
-                              >
-                                <GripVertical className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-sm font-medium">{library.name}</span>
-                                <Select
-                                  value={library.type}
-                                  onValueChange={(value: 'overexpression' | 'knockout' | 'knockdown') => 
-                                    handleLibraryTypeChange(library.id, value)
-                                  }
-                                >
-                                  <SelectTrigger className="w-32 h-6 text-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="overexpression">Overexpression</SelectItem>
-                                    <SelectItem value="knockout">Knockout</SelectItem>
-                                    <SelectItem value="knockdown">Knockdown</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleRemoveLibrary(library.id)}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))
-                      )}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
+          <div className="mb-2 font-medium">Perturbations per Cassette</div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block mb-1 text-xs font-semibold">Overexpression</label>
+              <Input
+                type="number"
+                min={0}
+                max={maxPerturbations}
+                value={overexpressionCount === 0 ? "" : overexpressionCount}
+                onChange={e => handleCountChange(setOverexpressionCount, e.target.value)}
+                disabled={overLimit && overexpressionCount === 0}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-xs font-semibold">Knockout</label>
+              <Input
+                type="number"
+                min={0}
+                max={maxPerturbations}
+                value={knockoutCount === 0 ? "" : knockoutCount}
+                onChange={e => handleCountChange(setKnockoutCount, e.target.value)}
+                disabled={overLimit && knockoutCount === 0}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-xs font-semibold">Knockdown</label>
+              <Input
+                type="number"
+                min={0}
+                max={maxPerturbations}
+                value={knockdownCount === 0 ? "" : knockdownCount}
+                onChange={e => handleCountChange(setKnockdownCount, e.target.value)}
+                disabled={overLimit && knockdownCount === 0}
+              />
             </div>
           </div>
-          <Button 
-            className="mt-4 w-full" 
-            onClick={handleManualGenerate}
-            disabled={librarySyntax.length === 0}
-          >
-            Generate {cassetteCount} Cassettes from Library Syntax
-          </Button>
+          <div className={`mt-2 text-sm ${overLimit ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+            Total perturbations: {totalPerturbations} / {maxPerturbations}
+            {overLimit && <span> &mdash; Maximum is {maxPerturbations} per cassette</span>}
+          </div>
+          <Button className="mt-4 w-full" onClick={handleManualGenerate}>Generate from Library</Button>
         </>
       )}
 

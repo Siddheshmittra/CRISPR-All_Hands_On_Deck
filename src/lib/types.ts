@@ -8,7 +8,7 @@ export interface AnnotatedSegment {
 export interface Module {
   id: string;
   name: string;
-  type: "overexpression" | "knockout" | "knockdown" | "knockin" | "synthetic";
+  type: "overexpression" | "knockout" | "knockdown" | "knockin";
   description?: string;
   sequence?: string;
   gene_id?: string;
