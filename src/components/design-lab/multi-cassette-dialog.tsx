@@ -160,94 +160,142 @@ export const MultiCassetteSetup = ({
 
           {/* Library Syntax Section */}
           <div className="mb-4">
-            <label className="block mb-2 text-sm font-medium">Library Syntax (Drag to reorder)</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">3. Syntax</label>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm">
+                  <ArrowRight className="h-4 w-4 mr-1" />
+                  Randomize
+                </Button>
+                <Button variant="outline" size="sm">
+                  Reset
+                </Button>
+              </div>
+            </div>
             <div className="border-2 border-dashed border-border rounded-lg p-4 bg-background">
-              
-                <Droppable droppableId="library-syntax" direction="horizontal">
-                  {(provided, snapshot) => (
-                    <div
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      className={`flex items-center gap-2 flex-wrap min-h-[48px] p-2 rounded transition-all ${
-                        snapshot.isDraggingOver ? 'bg-primary/10 border-2 border-dashed border-primary' : ''
-                      }`}
-                    >
-                      {librarySyntax.length === 0 && HARDCODED_COMPONENTS.length === 0 ? (
-                        <span className="text-sm text-muted-foreground">Add libraries above or drag them from the module selector to build your cassette syntax</span>
-                      ) : (
-                        <>
-                          {/* Hardcoded components - always visible */}
-                          {HARDCODED_COMPONENTS.map((component, index) => (
-                            <Draggable key={component.id} draggableId={component.id} index={index}>
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className={`flex items-center gap-2 px-3 py-2 bg-secondary border rounded-md cursor-move transition-all ${
-                                    snapshot.isDragging ? 'shadow-lg rotate-2' : 'hover:shadow-md'
-                                  }`}
-                                >
-                                  <GripVertical className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-sm font-medium text-secondary-foreground">{component.name}</span>
-                                  <span className="text-xs px-2 py-1 bg-muted rounded text-muted-foreground">Hardcoded</span>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
+              <Droppable droppableId="library-syntax" direction="horizontal">
+                {(provided, snapshot) => (
+                  <div
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className={`flex items-center gap-2 flex-wrap min-h-[80px] p-4 rounded transition-all ${
+                      snapshot.isDraggingOver ? 'bg-primary/10 border-2 border-dashed border-primary' : ''
+                    }`}
+                  >
+                    {librarySyntax.length === 0 ? (
+                      <span className="text-sm text-muted-foreground">Add libraries above or drag them from the module selector to build your cassette syntax</span>
+                    ) : (
+                      <>
+                        {/* Generate the syntax flow with hardcoded components interspersed */}
+                        {librarySyntax.map((library, index) => {
+                          const components = [];
                           
-                          {/* Library components */}
-                          {librarySyntax.map((library, index) => (
-                            <Draggable key={library.id} draggableId={library.id} index={index + HARDCODED_COMPONENTS.length}>
+                          // Add Intron before OE libraries
+                          if (library.type === 'overexpression') {
+                            components.push(
+                              <div key={`intron-${index}`} className="flex items-center gap-2">
+                                <div className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium">
+                                  Intron
+                                </div>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            );
+                          }
+                          
+                          // Add STOP-Triplex-Adaptor before first KO/KD
+                          const isFirstKOKD = (library.type === 'knockout' || library.type === 'knockdown') && 
+                            !librarySyntax.slice(0, index).some(l => l.type === 'knockout' || l.type === 'knockdown');
+                          if (isFirstKOKD) {
+                            components.push(
+                              <div key={`stop-${index}`} className="flex items-center gap-2">
+                                <div className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium">
+                                  STOP-Triplex-Adaptor
+                                </div>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            );
+                          }
+                          
+                          // Add the library itself
+                          components.push(
+                            <Draggable key={library.id} draggableId={library.id} index={index}>
                               {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className={`flex items-center gap-2 px-3 py-2 rounded-md cursor-move transition-all ${
-                                    snapshot.isDragging ? 'shadow-lg rotate-2' : 'hover:shadow-md'
-                                  } ${
-                                    library.type === 'overexpression' ? 'bg-overexpression text-overexpression-foreground border-overexpression/30' :
-                                    library.type === 'knockout' ? 'bg-knockout text-knockout-foreground border-knockout/30' :
-                                    library.type === 'knockdown' ? 'bg-knockdown text-knockdown-foreground border-knockdown/30' :
-                                    'bg-card border'
-                                  }`}
-                                >
-                                  <GripVertical className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-sm font-medium">{library.name}</span>
-                                  <Select
-                                    value={library.type}
-                                    onValueChange={(value: 'overexpression' | 'knockout' | 'knockdown') => 
-                                      onLibraryTypeChange(library.id, value)
-                                    }
+                                <div key={`library-${index}`} className="flex items-center gap-2">
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    className={`px-3 py-2 rounded-md text-sm font-medium cursor-move transition-all ${
+                                      snapshot.isDragging ? 'shadow-lg rotate-2' : 'hover:shadow-md'
+                                    } ${
+                                      library.type === 'overexpression' ? 'bg-overexpression text-overexpression-foreground' :
+                                      library.type === 'knockout' ? 'bg-knockout text-knockout-foreground' :
+                                      library.type === 'knockdown' ? 'bg-knockdown text-knockdown-foreground' :
+                                      'bg-card text-card-foreground'
+                                    }`}
                                   >
-                                    <SelectTrigger className="w-32 h-6 text-xs">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="overexpression">Overexpression</SelectItem>
-                                      <SelectItem value="knockout">Knockout</SelectItem>
-                                      <SelectItem value="knockdown">Knockdown</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => onRemoveLibrary(library.id)}
-                                    className="h-6 w-6 p-0"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
+                                    {library.name}
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onRemoveLibrary(library.id);
+                                      }}
+                                      className="ml-2 h-4 w-4 p-0 opacity-60 hover:opacity-100"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                  {index < librarySyntax.length - 1 && (
+                                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                  )}
                                 </div>
                               )}
                             </Draggable>
-                          ))}
-                        </>
-                      )}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
+                          );
+                          
+                          // Add T2A after OE libraries (except if it's the last element)
+                          if (library.type === 'overexpression' && index < librarySyntax.length - 1) {
+                            components.push(
+                              <div key={`t2a-${index}`} className="flex items-center gap-2">
+                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                <div className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium">
+                                  T2A
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          return components;
+                        }).flat()}
+                        
+                        {/* Always add final components */}
+                        {librarySyntax.length > 0 && (
+                          <>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                            <div className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium">
+                              Internal Stuffer-Barcode Array
+                            </div>
+                            {/* Add polyA if last library is KO/KD */}
+                            {librarySyntax.length > 0 && 
+                             (librarySyntax[librarySyntax.length - 1].type === 'knockout' || 
+                              librarySyntax[librarySyntax.length - 1].type === 'knockdown') && (
+                              <>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                <div className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium">
+                                  polyA
+                                </div>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </>
+                    )}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
             </div>
           </div>
           <Button 
