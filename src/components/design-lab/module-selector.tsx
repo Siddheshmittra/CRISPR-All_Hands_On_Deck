@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ModuleButton } from "@/components/ui/module-button"
-import { Search, Plus, Trash2, ChevronDown, FolderPlus, X, Loader2 } from "lucide-react"
+import { Search, Upload, Plus, Trash2, Edit3, Check, X, RefreshCw, FolderPlus, ChevronDown } from "lucide-react"
 import { Draggable, Droppable } from "@hello-pangea/dnd"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
@@ -42,7 +42,9 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const [addingModule, setAddingModule] = useState(false)
   const [showSyntheticSelector, setShowSyntheticSelector] = useState(false)
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
-  const [editedFolderName, setEditedFolderName] = useState('')
+  const [editingFolderName, setEditingFolderName] = useState<string>('')
+  const [convertingFolderId, setConvertingFolderId] = useState<string | null>(null)
+  const [conversionType, setConversionType] = useState<'overexpression' | 'knockout' | 'knockdown' | 'knockin' | 'synthetic'>('overexpression')
   const geneFileInputRef = useRef<HTMLInputElement>(null)
   
   // Type selector state
@@ -53,8 +55,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     { value: 'knockdown', label: 'KD' },
     { value: 'knockin', label: 'KI*' },
   ]
-
-
 
   const [newFolderName, setNewFolderName] = useState("")
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
@@ -280,19 +280,82 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const handleStartEditingFolder = (folderId: string, currentName: string) => {
     if (folderId === 'total-library') return;
     setEditingFolderId(folderId);
-    setEditedFolderName(currentName);
+    setEditingFolderName(currentName);
   };
 
-  const handleSaveFolderName = (folderId: string) => {
-    if (!editedFolderName.trim()) {
-        toast.error("Library name cannot be empty.");
-        setEditingFolderId(null); // Cancel editing
-        return;
+  const handleSaveFolderName = () => {
+    if (!editingFolderId || !editingFolderName.trim()) return
+    
+    setFolders(folders.map(folder => 
+      folder.id === editingFolderId 
+        ? { ...folder, name: editingFolderName.trim() }
+        : folder
+    ))
+    
+    setEditingFolderId(null)
+    setEditingFolderName('')
+  }
+
+  const handleStartConversion = (folderId: string) => {
+    setConvertingFolderId(folderId)
+  }
+
+  const handleConfirmConversion = async () => {
+    if (!convertingFolderId) return
+    
+    const folder = folders.find(f => f.id === convertingFolderId)
+    if (!folder || folder.id === 'total-library') return
+    
+    // Get all modules in this folder
+    const folderModules = customModules.filter(m => folder.modules.includes(m.id))
+    
+    // Convert all modules to the new type
+    const convertedModules = folderModules.map(module => ({
+      ...module,
+      type: conversionType
+    }))
+    
+    // Update the customModules array
+    onCustomModulesChange(customModules.map(module => {
+      const convertedModule = convertedModules.find(cm => cm.id === module.id)
+      return convertedModule || module
+    }))
+    
+    // Update folder name to reflect conversion if it contains the old type
+    const oldTypeNames = {
+      overexpression: ['overexpression', 'overexp', 'oe'],
+      knockout: ['knockout', 'ko'],
+      knockdown: ['knockdown', 'kd'],
+      knockin: ['knockin', 'ki'],
+      synthetic: ['synthetic', 'synth']
     }
-    setFolders(folders.map(f => f.id === folderId ? { ...f, name: editedFolderName } : f));
-    setEditingFolderId(null);
-    toast.success("Library name updated.");
-  };
+    
+    let newFolderName = folder.name
+    Object.entries(oldTypeNames).forEach(([type, variations]) => {
+      if (type !== conversionType) {
+        variations.forEach(variation => {
+          const regex = new RegExp(`\\b${variation}\\b`, 'gi')
+          newFolderName = newFolderName.replace(regex, conversionType)
+        })
+      }
+    })
+    
+    // Update folder name if it changed
+    if (newFolderName !== folder.name) {
+      setFolders(folders.map(f => 
+        f.id === convertingFolderId 
+          ? { ...f, name: newFolderName }
+          : f
+      ))
+    }
+    
+    setConvertingFolderId(null)
+    toast.success(`Converted ${folderModules.length} modules to ${conversionType}`)
+  }
+
+  const handleCancelConversion = () => {
+    setConvertingFolderId(null)
+  }
 
   const handleGeneFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -630,16 +693,16 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
               onClick={() => handleToggleFolder(folder.id)}
             >
               <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${folder.open ? '' : '-rotate-90'}`} />
-                                          <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 {editingFolderId === folder.id ? (
                   <Input
                     type="text"
-                    value={editedFolderName}
-                    onChange={(e) => setEditedFolderName(e.target.value)}
-                    onBlur={() => handleSaveFolderName(folder.id)}
+                    value={editingFolderName}
+                    onChange={(e) => setEditingFolderName(e.target.value)}
+                    onBlur={handleSaveFolderName}
                     onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                            handleSaveFolderName(folder.id);
+                            handleSaveFolderName();
                         } else if (e.key === 'Escape') {
                             setEditingFolderId(null);
                         }
@@ -678,14 +741,14 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                               {...dragProvided.dragHandleProps}
                               className={`cursor-move transition-transform ${dragSnapshot.isDragging ? 'scale-105 rotate-2 z-50' : 'hover:scale-105'} relative flex items-center`}
                             >
-                                <Badge
-                                  variant="secondary"
-                                  className={`text-xs ${isSelected(module.id) ? 'bg-primary text-primary-foreground' : ''} ${dragSnapshot.isDragging ? 'shadow-lg' : ''}`}
-                                  onClick={() => handleModuleClick(module)}
-                                >
-                                  {getTypeArrow(module.type)} {module.name}
-                                  {module.sequence ? ` (${module.sequence.length}bp)` : ''}
-                                </Badge>
+                              <Badge
+                                variant="secondary"
+                                className={`text-xs ${isSelected(module.id) ? 'bg-primary text-primary-foreground' : ''} ${dragSnapshot.isDragging ? 'shadow-lg' : ''}`}
+                                onClick={() => handleModuleClick(module)}
+                              >
+                                {getTypeArrow(module.type)} {module.name}
+                                {module.sequence ? ` (${module.sequence.length}bp)` : ''}
+                              </Badge>
                               {/* Show delete button in all folders */}
                               <button
                                 className="ml-1 p-0.5 rounded hover:bg-destructive/20 text-destructive absolute -top-2 -right-2"
@@ -704,10 +767,79 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                 )}
               </Droppable>
             )}
+            {folder.id !== 'total-library' && (
+              <>
+                <button
+                  onClick={() => handleStartEditingFolder(folder.id, folder.name)}
+                  className="p-1 hover:bg-gray-200 rounded"
+                  title="Edit folder name"
+                >
+                  <Edit3 className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => handleStartConversion(folder.id)}
+                  className="p-1 hover:bg-blue-100 rounded text-blue-600"
+                  title="Convert library type"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => {
+                    setFolders(folders.filter(f => f.id !== folder.id))
+                    toast.success('Library deleted')
+                  }}
+                  className="p-1 hover:bg-red-100 rounded text-red-600"
+                  title="Delete folder"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </>
+            )}
           </div>
         ))}
       </div>
       </Card>
+
+      {/* Library Conversion Dialog */}
+      {convertingFolderId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Convert Library Type</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Convert all modules in "{folders.find(f => f.id === convertingFolderId)?.name}" to:
+            </p>
+            <div className="space-y-2 mb-6">
+              {(['overexpression', 'knockout', 'knockdown', 'knockin', 'synthetic'] as const).map(type => (
+                <label key={type} className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    name="conversionType"
+                    value={type}
+                    checked={conversionType === type}
+                    onChange={(e) => setConversionType(e.target.value as any)}
+                    className="text-blue-600"
+                  />
+                  <span className="capitalize">{type}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={handleCancelConversion}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmConversion}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Convert Library
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

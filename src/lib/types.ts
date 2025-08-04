@@ -1,7 +1,14 @@
+export interface AnnotatedSegment {
+  name: string;
+  sequence: string;
+  type: 'module' | 'linker' | 'hardcoded';
+  action?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin' | 'synthetic';
+}
+
 export interface Module {
   id: string;
   name: string;
-  type: "overexpression" | "knockout" | "knockdown" | "knockin";
+  type: "overexpression" | "knockout" | "knockdown" | "knockin" | "synthetic";
   description?: string;
   sequence?: string;
   gene_id?: string;

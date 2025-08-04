@@ -11,6 +11,7 @@ import { generateGenbank } from "@/lib/genbank"
 import { toast } from "sonner"
 
 import { ConstructItem, Module, AnnotatedSegment } from "@/lib/types"
+import { SequenceViewer } from "./sequence-viewer"
 
 interface FinalConstructProps {
   constructModules: ConstructItem[]
@@ -20,17 +21,11 @@ const T2A_SEQUENCE = "GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGG
 const STOP_TAMPLEX_SEQUENCE = "TAATAA" 
 const POLYA_SEQUENCE = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
-interface AnnotatedSegment {
-  name: string;
-  sequence: string;
-  type: 'module' | 'linker' | 'hardcoded';
-}
+
 
 export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   const [constructName, setConstructName] = useState("")
   const [promoter, setPromoter] = useState("EF1a")
-  const [leftArm, setLeftArm] = useState("e.g. TRAC upstream")
-  const [rightArm, setRightArm] = useState("e.g. TRAC downstream")
   const [barcode, setBarcode] = useState("e.g. Unique 10-20bp")
   const [polyASignal, setPolyASignal] = useState("bGH")
   const [showSequence, setShowSequence] = useState(true)
@@ -98,8 +93,6 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
       modules: modules,
       details: {
         promoter,
-        leftArm,
-        rightArm,
         barcode,
         polyASignal
       },
@@ -203,25 +196,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="left-arm">Left Homology Arm:</Label>
-            <Input
-              id="left-arm"
-              value={leftArm}
-              onChange={(e) => setLeftArm(e.target.value)}
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="right-arm">Right Homology Arm:</Label>
-            <Input
-              id="right-arm"
-              value={rightArm}
-              onChange={(e) => setRightArm(e.target.value)}
-            />
-          </div>
-        </div>
+
 
         <div>
           <Label htmlFor="barcode">Barcode:</Label>
@@ -241,96 +216,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
           <div className="space-y-4">
             <Label>Nucleotide Sequence:</Label>
             
-            {/* Legend */}
-            <div className="flex gap-4 text-xs">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded bg-blue-100 mr-2"></div>
-                <span>Modules</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded bg-green-100 mr-2"></div>
-                <span>Linkers</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded bg-gray-100 mr-2"></div>
-                <span>Standard Elements (T2A, Stop, PolyA)</span>
-              </div>
-            </div>
-
-            {/* Info Panel */}
-            <Card className="p-4 bg-muted">
-              <div 
-                className="h-16 flex items-center justify-center text-sm"
-                id="sequence-info-panel"
-              >
-                Hover over any sequence segment for details
-              </div>
-            </Card>
-
-            {/* Sequence Display */}
-            <Card className="p-4 font-mono text-xs overflow-x-auto">
-              <div className="space-y-2">
-                {generateAnnotatedSequence().map((segment, index) => {
-                  const bgColor = segment.type === 'module' ? 'bg-blue-100' 
-                    : segment.type === 'linker' ? 'bg-green-100'
-                    : 'bg-gray-100';
-
-                  const handleMouseEnter = () => {
-                    const infoPanel = document.getElementById('sequence-info-panel');
-                    if (!infoPanel) return;
-                    if (segment.type === 'module' && segment.action) {
-                      // Determine nucleotide type by action
-                      const nucleotideType = segment.action === 'knockout'
-                        ? 'gRNA'
-                        : segment.action === 'knockdown'
-                          ? 'shRNA'
-                          : segment.action === 'overexpression'
-                            ? 'cDNA'
-                            : 'Module';
-
-                      infoPanel.innerHTML = `
-                        <div class="text-center">
-                          <div class="font-bold mb-1">${nucleotideType} Module: ${segment.name} ${segment.action}</div>
-                          <div class="text-xs opacity-80">Length: ${segment.sequence.length} bp</div>
-                        </div>
-                      `;
-                    } else if (segment.type === 'linker') {
-                      infoPanel.innerHTML = `
-                        <div class="text-center">
-                          <div class="font-bold mb-1">${segment.name}</div>
-                          <div class="text-xs opacity-80">Linker Sequence · Length: ${segment.sequence.length} bp</div>
-                        </div>
-                      `;
-                    } else {
-                      infoPanel.innerHTML = `
-                        <div class="text-center">
-                          <div class="font-bold mb-1">${segment.name}</div>
-                          <div class="text-xs opacity-80">Standard Element · Length: ${segment.sequence.length} bp</div>
-                        </div>
-                      `;
-                    }
-                  };
-
-                  const handleMouseLeave = () => {
-                    const infoPanel = document.getElementById('sequence-info-panel');
-                    if (infoPanel) {
-                      infoPanel.innerHTML = 'Hover over any sequence segment for details';
-                    }
-                  };
-
-                  return (
-                    <div
-                      key={index}
-                      className={`inline-block px-2 py-1 rounded break-all whitespace-pre-wrap ${bgColor} mr-2 mb-2 cursor-help transition-colors duration-150 hover:${bgColor.replace('100', '200')}`}
-                      onMouseEnter={handleMouseEnter}
-                      onMouseLeave={handleMouseLeave}
-                    >
-                      {segment.sequence}
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
+            <SequenceViewer segments={generateAnnotatedSequence()} />
           </div>
         )}
       </div>

@@ -2,7 +2,8 @@ import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trash2, Download, Edit3, Check, X, GripVertical } from "lucide-react"
-import { Module } from "@/lib/types"
+import { Module, AnnotatedSegment } from "@/lib/types"
+import { SequenceViewer } from "./sequence-viewer"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 
 interface Cassette {
@@ -17,9 +18,14 @@ interface CassetteBatchProps {
   onUpdateCassette?: (cassetteId: string, modules: Module[]) => void
 }
 
+const T2A_SEQUENCE = "GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCT";
+const STOP_TAMPLEX_SEQUENCE = "TAATAA";
+const POLYA_SEQUENCE = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
 export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, onUpdateCassette }: CassetteBatchProps) => {
   const [editingCassetteId, setEditingCassetteId] = useState<string | null>(null)
   const [editingModules, setEditingModules] = useState<Module[]>([])
+  const [expandedCassetteId, setExpandedCassetteId] = useState<string | null>(null);
 
   if (cassetteBatch.length === 0) {
     return null
@@ -42,6 +48,24 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
     setEditingCassetteId(null)
     setEditingModules([])
   }
+
+    const generateAnnotatedSequence = (modules: Module[]): AnnotatedSegment[] => {
+    const segments: AnnotatedSegment[] = [];
+    modules.forEach((item, index) => {
+      segments.push({
+        name: item.name,
+        sequence: item.sequence || "",
+        type: 'module',
+        action: item.type as any
+      });
+
+      if (index < modules.length - 1) {
+        segments.push({ name: 'T2A', sequence: T2A_SEQUENCE, type: 'hardcoded' });
+      }
+    });
+    segments.push({ name: 'Stop/PolyA', sequence: STOP_TAMPLEX_SEQUENCE + POLYA_SEQUENCE, type: 'hardcoded' });
+    return segments;
+  };
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return
@@ -134,12 +158,16 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
               </div>
             ) : (
               <div>
-                <p className="text-sm font-mono break-all">
-                  {cassette.modules.map(m => m.name).join(' → ')}
-                </p>
-                <p className="text-xs text-muted-foreground font-mono break-all mt-1">
-                  Sequence: {cassette.modules.map(m => m.sequence || '').join('')}
-                </p>
+                              <div>
+                <Button variant="link" className="p-0 h-auto" onClick={() => setExpandedCassetteId(expandedCassetteId === cassette.id ? null : cassette.id)}>
+                  {expandedCassetteId === cassette.id ? 'Hide' : 'Show'} Sequence
+                </Button>
+                {expandedCassetteId === cassette.id && (
+                  <div className="mt-2">
+                    <SequenceViewer segments={generateAnnotatedSequence(cassette.modules)} />
+                  </div>
+                )}
+              </div>
               </div>
             )}
           </div>
