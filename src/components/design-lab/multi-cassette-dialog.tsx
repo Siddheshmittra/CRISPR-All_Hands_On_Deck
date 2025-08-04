@@ -8,6 +8,7 @@ import { Search, Plus, ArrowRight, X, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { searchEnsembl, enrichModuleWithSequence } from "@/lib/ensembl"
 import { Module } from "@/lib/types"
+import { UnifiedGeneSearch } from "./unified-gene-search"
 
 interface MultiCassetteSetupProps {
   cassetteCount: number
@@ -41,12 +42,8 @@ export const MultiCassetteSetup = ({
   const [mode, setMode] = useState<'manual' | 'search'>('manual')
   const [selectedLibrary, setSelectedLibrary] = useState<string>('total-library')
   
-  // Gene search functionality
-  const [searchTerm, setSearchTerm] = useState("")
-  const [suggestions, setSuggestions] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
+  // Gene search functionality - simplified with unified component
   const [selectedModules, setSelectedModules] = useState<Module[]>([])
-  const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
   const totalPerturbations =
     (Number(overexpressionCount) || 0) +
@@ -55,84 +52,17 @@ export const MultiCassetteSetup = ({
   const maxPerturbations = 5
   const overLimit = totalPerturbations > maxPerturbations
 
-  const typeOptions = [
-    { value: 'overexpression', label: 'OE', icon: '↑' },
-    { value: 'knockout', label: 'KO', icon: '✖' },
-    { value: 'knockdown', label: 'KD', icon: '↓' },
-    { value: 'knockin', label: 'KI*', icon: '→' },
-  ]
-
-  // Gene search functionality
-  const handleSearch = async (query: string) => {
-    if (!query.trim()) {
-      setSuggestions([])
-      return
-    }
-
-    setLoading(true)
-    try {
-      const results = await searchEnsembl(query)
-      setSuggestions(results.slice(0, 5))
-    } catch (error) {
-      console.error('Search error:', error)
-      setSuggestions([])
-      toast.error('Failed to search genes')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const debouncedSearch = (query: string) => {
-    if (searchTimeout.current) {
-      clearTimeout(searchTimeout.current)
-    }
-    searchTimeout.current = setTimeout(() => {
-      handleSearch(query)
-    }, 300)
-  }
-
-  useEffect(() => {
-    if (searchTerm) {
-      debouncedSearch(searchTerm)
-    } else {
-      setSuggestions([])
-    }
-  }, [searchTerm])
-
-  const handleAddModule = async (geneData: any, moduleType: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => {
-    try {
-      const module: Module = {
-        id: `${geneData.symbol}-${Date.now()}`,
-        name: geneData.symbol,
-        type: moduleType,
-        description: geneData.description,
-        sequence: '' // Will be enriched
-      }
-
-      console.log('handleAddModule: Created new module:', module);
-
-      try {
-        const enrichedModule = await enrichModuleWithSequence(module);
-        console.log('handleAddModule: Enriched module:', enrichedModule);
-        if (!enrichedModule.sequence) {
-          throw new Error('Enrichment completed but sequence is missing.');
-        }
-        setSelectedModules(prev => [...prev, enrichedModule]);
-        setSearchTerm('')
-        setSuggestions([])
-        toast.success(`Added ${module.name} as ${moduleType}`)
-      } catch (error) {
-        console.error('handleAddModule: Failed to enrich module with sequence:', error);
-        toast.error(`Failed to add module: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      }
-    } catch (error) {
-      console.error('handleAddModule: Unexpected error:', error);
-      toast.error(`Failed to add module: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
+  // Unified gene search handlers
+  const handleAddModule = (module: Module) => {
+    setSelectedModules(prev => [...prev, module])
   }
 
   const handleRemoveModule = (moduleId: string) => {
     setSelectedModules(prev => prev.filter(m => m.id !== moduleId))
+  }
+
+  const handleClearAllModules = () => {
+    setSelectedModules([])
   }
 
   // Helper for input: allow empty, clamp, no leading zeros
@@ -296,91 +226,15 @@ export const MultiCassetteSetup = ({
       {mode === 'search' && (
         <>
           <div className="space-y-4">
-            {/* Search Interface */}
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Search for genes (e.g., TP53, BRCA1, MYC)..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pr-10"
-              />
-              {loading && (
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                  <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-                </div>
-              )}
-            </div>
-
-            {/* Search Suggestions with Perturbation Buttons */}
-            {suggestions.length > 0 && (
-              <div className="border rounded-md bg-card">
-                <div className="p-2 text-sm font-medium border-b bg-muted/50">Search Results - Click perturbation type to add</div>
-                <div className="max-h-48 overflow-y-auto">
-                  {suggestions.map((gene, index) => (
-                    <div key={index} className="p-3 border-b last:border-b-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="font-medium">{gene.symbol}</div>
-                          <div className="text-sm text-muted-foreground truncate">
-                            {gene.description || 'No description available'}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        {typeOptions.map(option => (
-                          <Button
-                            key={option.value}
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleAddModule(gene, option.value as any)}
-                            className="text-xs px-2 py-1"
-                          >
-                            <span className="mr-1">{option.icon}</span>
-                            {option.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Selected Modules */}
-            {selectedModules.length > 0 && (
-              <div className="border rounded-md bg-card">
-                <div className="p-2 text-sm font-medium border-b bg-muted/50 flex items-center justify-between">
-                  <span>Selected Modules ({selectedModules.length})</span>
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    onClick={() => setSelectedModules([])}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="p-2 space-y-2 max-h-32 overflow-y-auto">
-                  {selectedModules.map((module) => (
-                    <div key={module.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {typeOptions.find(t => t.value === module.type)?.icon} {typeOptions.find(t => t.value === module.type)?.label}
-                        </Badge>
-                        <span className="font-medium text-sm">{module.name}</span>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleRemoveModule(module.id)}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Unified Gene Search Component */}
+            <UnifiedGeneSearch
+              onModuleAdd={handleAddModule}
+              selectedModules={selectedModules}
+              onModuleRemove={handleRemoveModule}
+              onClearAll={handleClearAllModules}
+              showTypeButtons={true}
+              showSelectedModules={true}
+            />
 
             {/* Cassette Configuration */}
             <div className="grid grid-cols-2 gap-4">

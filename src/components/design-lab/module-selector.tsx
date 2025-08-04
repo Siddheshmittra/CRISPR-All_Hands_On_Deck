@@ -12,6 +12,9 @@ import { Module, EnsemblModule } from "@/lib/types"
 import { BenchlingButton } from "@/components/ui/benchling-button"
 import { SyntheticGeneSelector } from "./synthetic-gene-selector"
 import { SyntheticGene } from "@/lib/types"
+import { UnifiedGeneSearch } from "./unified-gene-search"
+import * as XLSX from 'xlsx'
+import Papa from 'papaparse'
 
 interface ModuleSelectorProps {
   selectedModules: Module[]
@@ -22,9 +25,10 @@ interface ModuleSelectorProps {
   folders: any[]
   setFolders: (folders: any[]) => void
   handleModuleClick: (module: Module) => void
+  hideTypeSelector?: boolean
 }
 
-export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDeselect, customModules, onCustomModulesChange, folders, setFolders, handleModuleClick }: ModuleSelectorProps) => {
+export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDeselect, customModules, onCustomModulesChange, folders, setFolders, handleModuleClick, hideTypeSelector = false }: ModuleSelectorProps) => {
   const [searchTerm, setSearchTerm] = useState("")
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -37,6 +41,9 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const [selectedSuggestion, setSelectedSuggestion] = useState<any | null>(null)
   const [addingModule, setAddingModule] = useState(false)
   const [showSyntheticSelector, setShowSyntheticSelector] = useState(false)
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
+  const [editedFolderName, setEditedFolderName] = useState('')
+  const geneFileInputRef = useRef<HTMLInputElement>(null)
   
   // Type selector state
   const [selectedType, setSelectedType] = useState<'overexpression' | 'knockout' | 'knockdown' | 'knockin'>('overexpression')
@@ -46,6 +53,8 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     { value: 'knockdown', label: 'KD' },
     { value: 'knockin', label: 'KI*' },
   ]
+
+
 
   const [newFolderName, setNewFolderName] = useState("")
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
@@ -154,6 +163,25 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     setSelectedSuggestion(suggestion)
   }
 
+  // Handler for unified gene search component
+  const handleUnifiedModuleAdd = async (module: Module) => {
+    try {
+      // For knockin modules, show synthetic gene selector
+      if (module.type === 'knockin') {
+        setSelectedType('knockin')
+        setShowSyntheticSelector(true)
+        return
+      }
+      
+      // Add module to the library
+      onCustomModulesChange([...customModules, module])
+      toast.success(`Added ${module.name} to library`)
+    } catch (error) {
+      console.error("Error adding module:", error)
+      toast.error("Failed to add module")
+    }
+  }
+
   const handleAddModule = async () => {
     if (!selectedSuggestion || addingModule) return
     
@@ -248,6 +276,129 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       toast.success('Module removed from library')
     }
   }
+
+  const handleStartEditingFolder = (folderId: string, currentName: string) => {
+    if (folderId === 'total-library') return;
+    setEditingFolderId(folderId);
+    setEditedFolderName(currentName);
+  };
+
+  const handleSaveFolderName = (folderId: string) => {
+    if (!editedFolderName.trim()) {
+        toast.error("Library name cannot be empty.");
+        setEditingFolderId(null); // Cancel editing
+        return;
+    }
+    setFolders(folders.map(f => f.id === folderId ? { ...f, name: editedFolderName } : f));
+    setEditingFolderId(null);
+    toast.success("Library name updated.");
+  };
+
+  const handleGeneFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const fileName = file.name.replace(/\.(csv|xlsx)$/, '');
+    if (!file) return;
+
+    setLoading(true);
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+        const data = e.target?.result;
+        if (typeof data !== 'string' && !(data instanceof ArrayBuffer)) {
+            toast.error("Failed to read file.");
+            setLoading(false);
+            return;
+        }
+
+        try {
+                        let rows: any[] = [];
+                        if (file.name.endsWith('.csv')) {
+                Papa.parse(data as string, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        rows = results.data;
+                        processGeneNames(rows, fileName);
+                    }
+                });
+            } else if (file.name.endsWith('.xlsx')) {
+                                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                rows = XLSX.utils.sheet_to_json(worksheet);
+                processGeneNames(rows, fileName);
+            } else {
+                toast.error("Unsupported file type. Please use .csv or .xlsx");
+            }
+        } catch (error) {
+            console.error("Error parsing file:", error);
+            toast.error("Error parsing file.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (file.name.endsWith('.csv')) {
+        reader.readAsText(file);
+    } else {
+        reader.readAsArrayBuffer(file);
+    }
+  };
+
+    const processGeneNames = async (rows: any[], folderName: string) => {
+        if (rows.length === 0) {
+        toast.info("No data found in the file.");
+        return;
+    }
+
+    toast.info(`Found ${rows.length} entries. Fetching details...`);
+
+    const newModules: Module[] = [];
+        for (const row of rows) {
+        const geneName = row['Gene Name'] || row['gene_name'] || row['gene'] || Object.values(row)[0];
+        const perturbationType = row['Perturbation'] || row['perturbation'] || row['Type'] || row['type'];
+
+        if (!geneName) continue;
+
+        const moduleType = (['overexpression', 'knockout', 'knockdown', 'knockin'].includes(perturbationType?.toLowerCase()) 
+                            ? perturbationType.toLowerCase() 
+                            : selectedType) as 'overexpression' | 'knockout' | 'knockdown' | 'knockin';
+        try {
+                                    const partialModule: Module = { id: geneName, name: geneName, type: moduleType, description: '', sequence: '' };
+            const enrichedModule = await enrichModuleWithSequence(partialModule);
+            if (enrichedModule && enrichedModule.sequence) {
+                newModules.push({
+                                        id: `${enrichedModule.name}-${moduleType}-${Date.now()}`,
+                    name: enrichedModule.name,
+                    type: moduleType,
+                    description: enrichedModule.description || `Human gene ${enrichedModule.name}`,
+                    sequence: enrichedModule.sequence,
+                });
+            } else {
+                toast.warning(`Could not find sequence for gene: ${geneName}`);
+            }
+                } catch (error) {
+            toast.error(`Error processing gene: ${geneName}`);
+        }
+    }
+
+        if (newModules.length > 0) {
+        onCustomModulesChange([...customModules, ...newModules]);
+
+        const newFolder = {
+            id: `folder-${Date.now()}`,
+            name: folderName,
+            modules: newModules.map(m => m.id),
+            open: true
+        };
+
+        setFolders([...folders, newFolder]);
+        toast.success(`Successfully added ${newModules.length} modules and created '${folderName}' library.`);
+    }
+  };
+
 
   // Always show at least one folder
   React.useEffect(() => {
@@ -352,9 +503,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-semibold mb-4">2. Select Modules</h2>
-      
+    <>
       {showSyntheticSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <SyntheticGeneSelector
@@ -364,91 +513,66 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           />
         </div>
       )}
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-4">2. Select Modules</h2>
       
-      {/* Type selector + search + add button row */}
-      <div className="flex gap-2 mb-4 items-center">
-        <select
-          value={selectedType}
-          onChange={e => {
-            const newType = e.target.value as any
-            setSelectedType(newType)
-            // If knockin is selected, immediately show synthetic gene selector
-            if (newType === 'knockin') {
-              setShowSyntheticSelector(true)
-            }
-          }}
-          className="h-9 px-2 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
-          style={{ minWidth: 70 }}
-        >
-          {typeOptions.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            id="gene-search-input"
-            ref={inputRef}
-            placeholder="Search or enter gene symbol..."
-            value={searchTerm}
-            onChange={e => {
-              setSearchTerm(e.target.value)
-              setSelectedSuggestion(null)
-            }}
-            onKeyDown={handleKeyDown}
-            className="pl-10"
-            autoComplete="off"
-          />
-          {showDropdown && suggestions.length > 0 && (
-            <div
-              ref={dropdownRef}
-              className="absolute z-50 left-0 right-0 mt-1 bg-card border border-border rounded shadow-elevated max-h-60 overflow-auto"
-            >
-              {suggestions.map((s, idx) => (
-                <div
-                  key={s.symbol}
-                  className={`px-3 py-2 cursor-pointer hover:bg-muted ${idx === selectedIndex ? 'bg-muted font-semibold' : ''}`}
-                  onMouseDown={() => selectSuggestion(s)}
-                  onMouseEnter={() => setSelectedIndex(idx)}
-                >
-                  <span className="font-bold">{s.symbol}</span>
-                  <span className="ml-2 text-xs text-muted-foreground">{s.name}</span>
-                  <span className="ml-2 text-xs text-muted-foreground">{s.hgnc_id}</span>
-                </div>
-              ))}
+      {/* Unified Gene Search */}
+      <div className="mb-4">
+        <div className="flex gap-2 mb-2 items-center">
+          <span className="text-sm font-medium">Add to folder:</span>
+          <select
+            value={selectedFolderId || (folders[0] && folders[0].id) || ''}
+            onChange={e => setSelectedFolderId(e.target.value)}
+            className="h-9 px-2 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+            style={{ minWidth: 120 }}
+          >
+            {folders.map(folder => (
+              <option key={folder.id} value={folder.id}>{folder.name}</option>
+            ))}
+          </select>
+        </div>
+        <UnifiedGeneSearch
+          onModuleAdd={handleUnifiedModuleAdd}
+          placeholder="Search or enter gene symbol..."
+          showSelectedModules={false}
+          showTypeButtons={false}
+          defaultType={selectedType}
+          className=""
+        />
+        <div className="flex gap-2 mt-2 items-center">
+          {!hideTypeSelector && (
+            <div className="relative">
+              <select
+                value={selectedType}
+                onChange={e => {
+                  const newType = e.target.value as any
+                  setSelectedType(newType)
+                  // If knockin is selected, immediately show synthetic gene selector
+                  if (newType === 'knockin') {
+                    setShowSyntheticSelector(true)
+                  }
+                }}
+                className="h-9 px-2 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+                style={{ minWidth: 70 }}
+              >
+                {typeOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
           )}
         </div>
-        <select
-          value={selectedFolderId || (folders[0] && folders[0].id) || ''}
-          onChange={e => setSelectedFolderId(e.target.value)}
-          className="h-9 px-2 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
-          style={{ minWidth: 120 }}
-        >
-          {folders.map(folder => (
-            <option key={folder.id} value={folder.id}>{folder.name}</option>
-          ))}
-        </select>
-        <Button 
-          variant="secondary" 
-          size="icon" 
-          onClick={handleAddModule} 
-          disabled={!selectedSuggestion || addingModule}
-        >
-          {addingModule ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
-        </Button>
+        <p className="text-sm text-muted-foreground mb-4">
+          Powered by Ensembl REST API
+        </p>
       </div>
-      <p className="text-sm text-muted-foreground mb-4">
-        Powered by Ensembl REST API
-      </p>
       {/* Divider */}
       <div className="border-t border-border my-4" />
       {/* Import/Export and Folder/Library creation below search */}
       <div className="flex gap-2 mb-2">
+        <Button variant="outline" size="sm" onClick={() => geneFileInputRef.current?.click()}>
+          Scan Genes
+        </Button>
         <Button variant="outline" size="sm" onClick={handleImportLibrary}>
           Import
         </Button>
@@ -477,6 +601,13 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />
+        <input
+          type="file"
+          accept=".csv,.xlsx"
+          ref={geneFileInputRef}
+          style={{ display: 'none' }}
+          onChange={handleGeneFileChange}
+        />
       </div>
       <div className="flex gap-2 mb-4 items-center">
         <input
@@ -499,7 +630,32 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
               onClick={() => handleToggleFolder(folder.id)}
             >
               <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${folder.open ? '' : '-rotate-90'}`} />
-              <span className="font-semibold text-sm">{folder.name}</span>
+                                          <div className="flex items-center gap-2">
+                {editingFolderId === folder.id ? (
+                  <Input
+                    type="text"
+                    value={editedFolderName}
+                    onChange={(e) => setEditedFolderName(e.target.value)}
+                    onBlur={() => handleSaveFolderName(folder.id)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            handleSaveFolderName(folder.id);
+                        } else if (e.key === 'Escape') {
+                            setEditingFolderId(null);
+                        }
+                    }}
+                    className="h-7"
+                    autoFocus
+                  />
+                ) : (
+                  <span 
+                    className="font-semibold text-sm cursor-pointer"
+                    onDoubleClick={() => handleStartEditingFolder(folder.id, folder.name)}
+                  >
+                    {folder.name} ({folder.id === 'total-library' ? customModules.length : folder.modules.length})
+                  </span>
+                )}
+              </div>
             </div>
             {folder.open && (
               <Droppable droppableId={folder.id} direction="horizontal">
@@ -551,6 +707,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           </div>
         ))}
       </div>
-    </Card>
+      </Card>
+    </>
   )
 }

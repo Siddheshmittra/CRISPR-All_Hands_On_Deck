@@ -105,6 +105,14 @@ const DesignLab = () => {
     setCassetteBatch(prev => prev.filter(c => c.id !== cassetteId))
   }
 
+  const handleUpdateCassette = (cassetteId: string, modules: Module[]) => {
+    setCassetteBatch(prev => prev.map(cassette => 
+      cassette.id === cassetteId 
+        ? { ...cassette, modules }
+        : cassette
+    ))
+  }
+
   const handleExportBatch = () => {
     const dataStr = JSON.stringify(cassetteBatch, null, 2)
     const dataBlob = new Blob([dataStr], { type: 'application/json' })
@@ -302,6 +310,7 @@ const DesignLab = () => {
                           folders={folders}
                           setFolders={setFolders}
                           handleModuleClick={handleModuleClick}
+                          hideTypeSelector={cassetteMode === 'multi'}
                         />
                         <MultiCassetteSetup
                           cassetteCount={cassetteCount}
@@ -319,14 +328,16 @@ const DesignLab = () => {
                         />
                       </>
                     )}
-                    <ConstructLayout
-                      constructModules={constructWithLinkers}
-                      onModuleRemove={handleModuleRemove}
-                      onRandomize={handleRandomize}
-                      onReset={handleReset}
-                      isMultiCassetteMode={cassetteMode === 'multi'}
-                      onAddCassette={handleAddCassette}
-                    />
+                    {cassetteMode !== 'multi' && (
+                      <ConstructLayout
+                        constructModules={constructWithLinkers}
+                        onModuleRemove={handleModuleRemove}
+                        onRandomize={handleRandomize}
+                        onReset={handleReset}
+                        isMultiCassetteMode={false}
+                        onAddCassette={handleAddCassette}
+                      />
+                    )}
                     <LinkerSelector
                         selectedLinker={selectedLinkerId}
                         onLinkerChange={setSelectedLinkerId}
@@ -337,6 +348,7 @@ const DesignLab = () => {
                       cassetteBatch={cassetteBatch}
                       onDeleteCassette={handleDeleteCassette}
                       onExportBatch={handleExportBatch}
+                      onUpdateCassette={handleUpdateCassette}
                     />
                   </div>
                 </div>
