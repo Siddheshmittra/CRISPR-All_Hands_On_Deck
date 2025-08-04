@@ -64,6 +64,22 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				overexpression: {
+					DEFAULT: 'hsl(var(--overexpression))',
+					foreground: 'hsl(var(--overexpression-foreground))'
+				},
+				knockout: {
+					DEFAULT: 'hsl(var(--knockout))',
+					foreground: 'hsl(var(--knockout-foreground))'
+				},
+				knockdown: {
+					DEFAULT: 'hsl(var(--knockdown))',
+					foreground: 'hsl(var(--knockdown-foreground))'
+				},
+				knockin: {
+					DEFAULT: 'hsl(var(--knockin))',
+					foreground: 'hsl(var(--knockin-foreground))'
 				}
 			},
 			borderRadius: {

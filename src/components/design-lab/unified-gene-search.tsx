@@ -169,18 +169,28 @@ export const UnifiedGeneSearch = ({
                 </div>
                 {showTypeButtons ? (
                   <div className="flex gap-1">
-                    {typeOptions.map(option => (
-                      <Button
-                        key={option.value}
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleAddModule(gene, option.value as any)}
-                        className="text-xs px-2 py-1"
-                      >
-                        <span className="mr-1">{option.icon}</span>
-                        {option.label}
-                      </Button>
-                    ))}
+                    {typeOptions.map(option => {
+                      const getButtonClass = () => {
+                        switch(option.value) {
+                          case 'overexpression': return 'bg-overexpression text-overexpression-foreground border-overexpression/30 hover:bg-overexpression/80';
+                          case 'knockout': return 'bg-knockout text-knockout-foreground border-knockout/30 hover:bg-knockout/80';
+                          case 'knockdown': return 'bg-knockdown text-knockdown-foreground border-knockdown/30 hover:bg-knockdown/80';
+                          case 'knockin': return 'bg-knockin text-knockin-foreground border-knockin/30 hover:bg-knockin/80';
+                          default: return 'bg-card text-card-foreground border-border hover:bg-muted';
+                        }
+                      };
+                      return (
+                        <Button
+                          key={option.value}
+                          size="sm"
+                          onClick={() => handleAddModule(gene, option.value as any)}
+                          className={`text-xs px-2 py-1 ${getButtonClass()}`}
+                        >
+                          <span className="mr-1">{option.icon}</span>
+                          {option.label}
+                        </Button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <Button

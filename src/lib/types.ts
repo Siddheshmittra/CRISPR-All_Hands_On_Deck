@@ -8,7 +8,7 @@ export interface AnnotatedSegment {
 export interface Module {
   id: string;
   name: string;
-  type: "overexpression" | "knockout" | "knockdown" | "knockin";
+  type: "overexpression" | "knockout" | "knockdown" | "knockin" | "synthetic";
   description?: string;
   sequence?: string;
   gene_id?: string;
@@ -36,10 +36,10 @@ export interface Linker {
 
 export type ConstructItem = Module | Linker
 
-export interface AnnotatedSegment {
-  name: string
-  sequence: string
-  type: 'module' | 'linker' | 'hardcoded'
+export interface LibrarySyntax {
+  id: string;
+  name: string;
+  type: 'overexpression' | 'knockout' | 'knockdown';
 }
 
 export interface EnsemblModule extends Module {

@@ -1,6 +1,8 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Module } from "@/lib/types"
+import { Trash2 } from "lucide-react"
 
 const moduleButtonVariants = cva(
   "inline-flex items-center justify-center rounded-md text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none",
@@ -9,9 +11,11 @@ const moduleButtonVariants = cva(
       variant: {
         default: "bg-card text-card-foreground border border-border hover:bg-muted shadow-module",
         selected: "bg-accent text-accent-foreground shadow-elevated scale-105",
-        overexpression: "bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800",
-        knockout: "bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800",
-        knockdown: "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800"
+        overexpression: "bg-overexpression text-overexpression-foreground border-overexpression/30 hover:bg-overexpression/80 shadow-sm",
+        knockout: "bg-knockout text-knockout-foreground border-knockout/30 hover:bg-knockout/80 shadow-sm",
+        knockdown: "bg-knockdown text-knockdown-foreground border-knockdown/30 hover:bg-knockdown/80 shadow-sm",
+        knockin: "bg-knockin text-knockin-foreground border-knockin/30 hover:bg-knockin/80 shadow-sm",
+        synthetic: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800"
       },
       size: {
         default: "h-9 px-4 py-2",
@@ -27,28 +31,45 @@ const moduleButtonVariants = cva(
 )
 
 export interface ModuleButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof moduleButtonVariants> {
+  module?: Module
   isSelected?: boolean
-  moduleType?: "overexpression" | "knockout" | "knockdown"
+  moduleType?: "overexpression" | "knockout" | "knockdown" | "knockin" | "synthetic"
+  onRemove?: () => void
+  showRemoveButton?: boolean
 }
 
 const ModuleButton = React.forwardRef<HTMLDivElement, ModuleButtonProps>(
-  ({ className, variant, size, isSelected, moduleType, ...props }, ref) => {
+  ({ className, variant, size, isSelected, moduleType, module, onRemove, showRemoveButton, ...props }, ref) => {
+    const effectiveModuleType = moduleType || module?.type
     const buttonVariant = isSelected 
       ? "selected" 
-      : moduleType 
-        ? moduleType 
+      : effectiveModuleType 
+        ? effectiveModuleType 
         : variant
 
     return (
       <div
-        className={cn(moduleButtonVariants({ variant: buttonVariant, size, className }))}
+        className={cn(moduleButtonVariants({ variant: buttonVariant, size, className }), "relative group")}
         ref={ref}
         tabIndex={0}
         role="button"
         {...props}
-      />
+      >
+        <span className="truncate">{module?.name || 'Unnamed Module'}</span>
+        {showRemoveButton && onRemove && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onRemove()
+            }}
+            className="absolute -top-1 -right-1 h-4 w-4 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs hover:bg-destructive/80"
+          >
+            <Trash2 className="h-2 w-2" />
+          </button>
+        )}
+      </div>
     )
   }
 )

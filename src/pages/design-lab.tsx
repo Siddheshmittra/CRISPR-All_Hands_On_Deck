@@ -17,7 +17,7 @@ import { LinkerSelector } from "@/components/design-lab/linker-selector"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { toast } from "sonner"
 
-import { Module } from "@/lib/types"
+import { Module, LibrarySyntax } from "@/lib/types"
 
 interface Cassette {
   id: string
@@ -49,6 +49,27 @@ const DesignLab = () => {
     open: true
   }])
   const [cassetteBatch, setCassetteBatch] = useState<Cassette[]>([])
+  const [librarySyntax, setLibrarySyntax] = useState<LibrarySyntax[]>([])
+
+  const handleAddLibrary = (libraryId: string) => {
+    const library = folders.find(f => f.id === libraryId)
+    if (!library || librarySyntax.find(l => l.id === libraryId)) return
+
+    const newLibrary: LibrarySyntax = {
+      id: libraryId,
+      name: library.name,
+      type: 'overexpression' // default type
+    }
+    setLibrarySyntax(prev => [...prev, newLibrary])
+  }
+
+  const handleRemoveLibrary = (libraryId: string) => {
+    setLibrarySyntax(prev => prev.filter(l => l.id !== libraryId))
+  }
+
+  const handleLibraryTypeChange = (libraryId: string, type: 'overexpression' | 'knockout' | 'knockdown') => {
+    setLibrarySyntax(prev => prev.map(l => l.id === libraryId ? { ...l, type } : l))
+  }
 
   const handleModuleSelect = async (module: Module) => {
     if (constructModules.length >= 5) {
@@ -227,6 +248,61 @@ const DesignLab = () => {
     }
 
     // Remove from construct if dropped in trash
+    // Drag folder (library) from module selector to library syntax
+    if (
+      result.source.droppableId === 'module-selector-folders' &&
+      result.destination.droppableId === 'library-syntax'
+    ) {
+      const folderId = result.draggableId
+      const folder = folders.find(f => f.id === folderId)
+      if (!folder) return
+      
+      // Don't add if already exists
+      if (librarySyntax.find(l => l.id === folderId)) return
+      
+      const newLibraryItem: LibrarySyntax = {
+        id: folder.id,
+        name: folder.name,
+        type: 'overexpression' // default type
+      }
+      
+      const newSyntax = Array.from(librarySyntax)
+      newSyntax.splice(result.destination.index, 0, newLibraryItem)
+      setLibrarySyntax(newSyntax)
+      return
+    }
+
+    // Reorder within library syntax
+    if (
+      result.source.droppableId === 'library-syntax' &&
+      result.destination.droppableId === 'library-syntax'
+    ) {
+      // Hardcoded components (T2A, STOP, PolyA) are always at indices 0, 1, 2
+      // Only allow reordering of library components (index >= 3)
+      const HARDCODED_COUNT = 3
+      
+      if (result.source.index < HARDCODED_COUNT && result.destination.index < HARDCODED_COUNT) {
+        // Reordering hardcoded components - this is allowed
+        return
+      }
+      
+      if (result.source.index < HARDCODED_COUNT || result.destination.index < HARDCODED_COUNT) {
+        // Don't allow mixing hardcoded and library components
+        return
+      }
+      
+      // Reorder library components (adjust indices to account for hardcoded components)
+      const sourceLibraryIndex = result.source.index - HARDCODED_COUNT
+      const destLibraryIndex = result.destination.index - HARDCODED_COUNT
+      
+      const items = Array.from(librarySyntax)
+      const [reorderedItem] = items.splice(sourceLibraryIndex, 1)
+      items.splice(destLibraryIndex, 0, reorderedItem)
+      setLibrarySyntax(items)
+      return
+    }
+
+    // Remove from construct if dropped in trash
     if (
       result.source.droppableId === "construct" &&
       result.destination.droppableId === "trash"
@@ -315,15 +391,13 @@ const DesignLab = () => {
                         <MultiCassetteSetup
                           cassetteCount={cassetteCount}
                           setCassetteCount={setCassetteCount}
-                          overexpressionCount={overexpressionCount}
-                          setOverexpressionCount={setOverexpressionCount}
-                          knockoutCount={knockoutCount}
-                          setKnockoutCount={setKnockoutCount}
-                          knockdownCount={knockdownCount}
-                          setKnockdownCount={setKnockdownCount}
                           onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
                           folders={folders}
                           customModules={customModules}
+                          librarySyntax={librarySyntax}
+                          onAddLibrary={handleAddLibrary}
+                          onRemoveLibrary={handleRemoveLibrary}
+                          onLibraryTypeChange={handleLibraryTypeChange}
                         />
                       </>
                     )}

@@ -2,7 +2,7 @@ import { FlaskConical, Dna } from "lucide-react"
 
 export const Header = () => {
   return (
-    <div className="bg-gradient-primary text-primary-foreground p-6 rounded-t-lg">
+    <div className="bg-accent text-accent-foreground p-6 rounded-t-lg">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <FlaskConical className="h-8 w-8" />

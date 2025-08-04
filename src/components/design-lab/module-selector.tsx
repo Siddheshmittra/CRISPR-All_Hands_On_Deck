@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ModuleButton } from "@/components/ui/module-button"
-import { Search, Plus, Trash2, ChevronDown, FolderPlus, X, Loader2 } from "lucide-react"
+import { Search, Upload, Plus, Trash2, Edit3, Check, X, RefreshCw, FolderPlus, ChevronDown } from "lucide-react"
 import { Draggable, Droppable } from "@hello-pangea/dnd"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
@@ -42,8 +42,15 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const [addingModule, setAddingModule] = useState(false)
   const [showSyntheticSelector, setShowSyntheticSelector] = useState(false)
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
-  const [editedFolderName, setEditedFolderName] = useState('')
+  const [editingFolderName, setEditingFolderName] = useState<string>('')
+  const [convertingFolderId, setConvertingFolderId] = useState<string | null>(null)
+  const [conversionType, setConversionType] = useState<'overexpression' | 'knockout' | 'knockdown' | 'knockin' | 'synthetic'>('overexpression')
   const geneFileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Scan genes dialog state
+  const [showScanGenesDialog, setShowScanGenesDialog] = useState(false)
+  const [geneTextInput, setGeneTextInput] = useState('')
+  const [scanGenesLibraryName, setScanGenesLibraryName] = useState('')
   
   // Type selector state
   const [selectedType, setSelectedType] = useState<'overexpression' | 'knockout' | 'knockdown' | 'knockin'>('overexpression')
@@ -53,8 +60,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     { value: 'knockdown', label: 'KD' },
     { value: 'knockin', label: 'KI*' },
   ]
-
-
 
   const [newFolderName, setNewFolderName] = useState("")
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
@@ -280,19 +285,82 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const handleStartEditingFolder = (folderId: string, currentName: string) => {
     if (folderId === 'total-library') return;
     setEditingFolderId(folderId);
-    setEditedFolderName(currentName);
+    setEditingFolderName(currentName);
   };
 
-  const handleSaveFolderName = (folderId: string) => {
-    if (!editedFolderName.trim()) {
-        toast.error("Library name cannot be empty.");
-        setEditingFolderId(null); // Cancel editing
-        return;
+  const handleSaveFolderName = () => {
+    if (!editingFolderId || !editingFolderName.trim()) return
+    
+    setFolders(folders.map(folder => 
+      folder.id === editingFolderId 
+        ? { ...folder, name: editingFolderName.trim() }
+        : folder
+    ))
+    
+    setEditingFolderId(null)
+    setEditingFolderName('')
+  }
+
+  const handleStartConversion = (folderId: string) => {
+    setConvertingFolderId(folderId)
+  }
+
+  const handleConfirmConversion = async () => {
+    if (!convertingFolderId) return
+    
+    const folder = folders.find(f => f.id === convertingFolderId)
+    if (!folder || folder.id === 'total-library') return
+    
+    // Get all modules in this folder
+    const folderModules = customModules.filter(m => folder.modules.includes(m.id))
+    
+    // Convert all modules to the new type
+    const convertedModules = folderModules.map(module => ({
+      ...module,
+      type: conversionType
+    }))
+    
+    // Update the customModules array
+    onCustomModulesChange(customModules.map(module => {
+      const convertedModule = convertedModules.find(cm => cm.id === module.id)
+      return convertedModule || module
+    }))
+    
+    // Update folder name to reflect conversion if it contains the old type
+    const oldTypeNames = {
+      overexpression: ['overexpression', 'overexp', 'oe'],
+      knockout: ['knockout', 'ko'],
+      knockdown: ['knockdown', 'kd'],
+      knockin: ['knockin', 'ki'],
+      synthetic: ['synthetic', 'synth']
     }
-    setFolders(folders.map(f => f.id === folderId ? { ...f, name: editedFolderName } : f));
-    setEditingFolderId(null);
-    toast.success("Library name updated.");
-  };
+    
+    let newFolderName = folder.name
+    Object.entries(oldTypeNames).forEach(([type, variations]) => {
+      if (type !== conversionType) {
+        variations.forEach(variation => {
+          const regex = new RegExp(`\\b${variation}\\b`, 'gi')
+          newFolderName = newFolderName.replace(regex, conversionType)
+        })
+      }
+    })
+    
+    // Update folder name if it changed
+    if (newFolderName !== folder.name) {
+      setFolders(folders.map(f => 
+        f.id === convertingFolderId 
+          ? { ...f, name: newFolderName }
+          : f
+      ))
+    }
+    
+    setConvertingFolderId(null)
+    toast.success(`Converted ${folderModules.length} modules to ${conversionType}`)
+  }
+
+  const handleCancelConversion = () => {
+    setConvertingFolderId(null)
+  }
 
   const handleGeneFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -356,35 +424,71 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     toast.info(`Found ${rows.length} entries. Fetching details...`);
 
     const newModules: Module[] = [];
-        for (const row of rows) {
-        const geneName = row['Gene Name'] || row['gene_name'] || row['gene'] || Object.values(row)[0];
+    const failedGenes: string[] = [];
+    const processedGenes = new Set<string>(); // Prevent duplicates
+    
+    for (const row of rows) {
+        // More flexible gene name extraction
+        let geneName = row['Gene Name'] || row['gene_name'] || row['gene'] || row['symbol'] || row['Symbol'] || Object.values(row)[0];
         const perturbationType = row['Perturbation'] || row['perturbation'] || row['Type'] || row['type'];
 
         if (!geneName) continue;
+        
+        // Clean up gene name (remove whitespace, convert to uppercase for consistency)
+        geneName = String(geneName).trim().toUpperCase();
+        
+        // Skip if already processed
+        if (processedGenes.has(geneName)) continue;
+        processedGenes.add(geneName);
 
         const moduleType = (['overexpression', 'knockout', 'knockdown', 'knockin'].includes(perturbationType?.toLowerCase()) 
                             ? perturbationType.toLowerCase() 
                             : selectedType) as 'overexpression' | 'knockout' | 'knockdown' | 'knockin';
+        
+        let moduleAdded = false;
+        
         try {
-                                    const partialModule: Module = { id: geneName, name: geneName, type: moduleType, description: '', sequence: '' };
+            const partialModule: Module = { 
+                id: geneName, 
+                name: geneName, 
+                type: moduleType, 
+                description: `Human gene ${geneName}`, 
+                sequence: '' 
+            };
+            
             const enrichedModule = await enrichModuleWithSequence(partialModule);
-            if (enrichedModule && enrichedModule.sequence) {
+            
+            // Add module even if sequence enrichment partially failed
+            if (enrichedModule) {
                 newModules.push({
-                                        id: `${enrichedModule.name}-${moduleType}-${Date.now()}`,
-                    name: enrichedModule.name,
+                    id: `${enrichedModule.name || geneName}-${moduleType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    name: enrichedModule.name || geneName,
                     type: moduleType,
-                    description: enrichedModule.description || `Human gene ${enrichedModule.name}`,
-                    sequence: enrichedModule.sequence,
+                    description: enrichedModule.description || `Human gene ${enrichedModule.name || geneName}`,
+                    sequence: enrichedModule.sequence || '', // Allow empty sequences
+                    sequenceSource: enrichedModule.sequenceSource,
                 });
-            } else {
-                toast.warning(`Could not find sequence for gene: ${geneName}`);
+                moduleAdded = true;
             }
-                } catch (error) {
-            toast.error(`Error processing gene: ${geneName}`);
+        } catch (error) {
+            console.error(`Error enriching gene ${geneName}:`, error);
+        }
+        
+        // Fallback: Add gene even if enrichment completely failed
+        if (!moduleAdded) {
+            newModules.push({
+                id: `${geneName}-${moduleType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                name: geneName,
+                type: moduleType,
+                description: `Human gene ${geneName} (sequence not found)`,
+                sequence: '', // Empty sequence but gene is still added
+            });
+            failedGenes.push(geneName);
         }
     }
 
-        if (newModules.length > 0) {
+    // Always create the folder and add modules, even if some failed
+    if (newModules.length > 0) {
         onCustomModulesChange([...customModules, ...newModules]);
 
         const newFolder = {
@@ -395,9 +499,58 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         };
 
         setFolders([...folders, newFolder]);
-        toast.success(`Successfully added ${newModules.length} modules and created '${folderName}' library.`);
+        
+        // Provide detailed feedback
+        const successfulGenes = newModules.length - failedGenes.length;
+        if (failedGenes.length === 0) {
+            toast.success(`Successfully added all ${newModules.length} genes to '${folderName}' library with sequences!`);
+        } else if (successfulGenes > 0) {
+            toast.success(`Added ${newModules.length} genes to '${folderName}' library. ${successfulGenes} with sequences, ${failedGenes.length} without sequences but still added.`);
+            if (failedGenes.length <= 5) {
+                toast.info(`Genes without sequences: ${failedGenes.join(', ')}`);
+            } else {
+                toast.info(`${failedGenes.length} genes added without sequences (sequences may be found later during cassette generation)`);
+            }
+        } else {
+            toast.warning(`Added ${newModules.length} genes to '${folderName}' library, but no sequences were found. Genes can still be used for cassette generation.`);
+        }
+    } else {
+        toast.error('No valid genes could be processed. Please check your gene names and try again.');
     }
   };
+
+  // Process genes from text input
+  const handleProcessTextGenes = async () => {
+    if (!geneTextInput.trim()) {
+      toast.error('Please enter some gene names')
+      return
+    }
+    
+    if (!scanGenesLibraryName.trim()) {
+      toast.error('Please enter a library name')
+      return
+    }
+    
+    // Parse gene names from text (split by newlines, commas, spaces, or tabs)
+    const geneNames = geneTextInput
+      .split(/[\n,\t\s]+/)
+      .map(name => name.trim())
+      .filter(name => name.length > 0)
+    
+    if (geneNames.length === 0) {
+      toast.error('No valid gene names found')
+      return
+    }
+    
+    // Convert to rows format expected by processGeneNames
+    const rows = geneNames.map(geneName => ({ 'Gene Name': geneName }))
+    
+    setShowScanGenesDialog(false)
+    setGeneTextInput('')
+    setScanGenesLibraryName('')
+    
+    await processGeneNames(rows, scanGenesLibraryName)
+  }
 
 
   // Always show at least one folder
@@ -526,7 +679,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             className="h-9 px-2 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
             style={{ minWidth: 120 }}
           >
-            {folders.map(folder => (
+            {folders.map((folder, index) => (
               <option key={folder.id} value={folder.id}>{folder.name}</option>
             ))}
           </select>
@@ -570,7 +723,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       <div className="border-t border-border my-4" />
       {/* Import/Export and Folder/Library creation below search */}
       <div className="flex gap-2 mb-2">
-        <Button variant="outline" size="sm" onClick={() => geneFileInputRef.current?.click()}>
+        <Button variant="outline" size="sm" onClick={() => setShowScanGenesDialog(true)}>
           Scan Genes
         </Button>
         <Button variant="outline" size="sm" onClick={handleImportLibrary}>
@@ -617,97 +770,241 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           onChange={e => setNewFolderName(e.target.value)}
           className="border border-border rounded px-2 py-1 text-sm"
         />
-        <Button variant="outline" size="sm" onClick={handleCreateFolder}>
-          <FolderPlus className="h-4 w-4 mr-1" />Create Library
-        </Button>
       </div>
       {/* Folder/Library display */}
       <div className="mb-4">
-        {folders.map(folder => (
-          <div key={folder.id} className="mb-2 border rounded bg-muted">
-            <div
-              className="flex items-center cursor-pointer px-2 py-1 select-none"
-              onClick={() => handleToggleFolder(folder.id)}
-            >
-              <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${folder.open ? '' : '-rotate-90'}`} />
-                                          <div className="flex items-center gap-2">
-                {editingFolderId === folder.id ? (
-                  <Input
-                    type="text"
-                    value={editedFolderName}
-                    onChange={(e) => setEditedFolderName(e.target.value)}
-                    onBlur={() => handleSaveFolderName(folder.id)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                            handleSaveFolderName(folder.id);
-                        } else if (e.key === 'Escape') {
-                            setEditingFolderId(null);
-                        }
-                    }}
-                    className="h-7"
-                    autoFocus
-                  />
-                ) : (
-                  <span 
-                    className="font-semibold text-sm cursor-pointer"
-                    onDoubleClick={() => handleStartEditingFolder(folder.id, folder.name)}
-                  >
-                    {folder.name} ({folder.id === 'total-library' ? customModules.length : folder.modules.length})
-                  </span>
-                )}
-              </div>
-            </div>
-            {folder.open && (
-              <Droppable droppableId={folder.id} direction="horizontal">
-                {(provided, snapshot) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className="pl-6 pb-2 pt-1 flex flex-wrap gap-2 min-h-[32px]"
-                  >
-                    {folder.modules.length === 0 && <span className="text-xs text-muted-foreground">No modules</span>}
-                    {folder.modules.map((mid, idx) => {
-                      const module = customModules.find(m => m.id === mid)
-                      if (!module) return null
-                      return (
-                        <Draggable key={module.id} draggableId={module.id} index={idx}>
-                          {(dragProvided, dragSnapshot) => (
-                            <div
-                              ref={dragProvided.innerRef}
-                              {...dragProvided.draggableProps}
-                              {...dragProvided.dragHandleProps}
-                              className={`cursor-move transition-transform ${dragSnapshot.isDragging ? 'scale-105 rotate-2 z-50' : 'hover:scale-105'} relative flex items-center`}
+        <Droppable droppableId="module-selector-folders" type="library">
+          {(provided) => (
+            <div ref={provided.innerRef} {...provided.droppableProps}>
+              {folders.map((folder, index) => (
+                <Draggable key={folder.id} draggableId={folder.id} index={index}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      className={`mb-2 border rounded bg-muted transition-all ${snapshot.isDragging ? 'shadow-lg' : ''}`}
+                    >
+                      <div
+                        {...provided.dragHandleProps}
+                        className="flex items-center cursor-pointer px-2 py-1 select-none"
+                        onClick={() => handleToggleFolder(folder.id)}
+                      >
+                        <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${folder.open ? '' : '-rotate-90'}`} />
+                        <div className="flex items-center gap-2">
+                          {editingFolderId === folder.id ? (
+                            <Input
+                              type="text"
+                              value={editingFolderName}
+                              onChange={(e) => setEditingFolderName(e.target.value)}
+                              onBlur={handleSaveFolderName}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveFolderName();
+                                if (e.key === 'Escape') setEditingFolderId(null);
+                              }}
+                              autoFocus
+                              className="h-7"
+                            />
+                          ) : (
+                            <span className="font-semibold">{folder.name}</span>
+                          )}
+                          <Badge variant="secondary">{folder.modules.length}</Badge>
+                        </div>
+                        <div className="flex-grow" />
+                        {folder.id !== 'total-library' && (
+                          <div className="flex items-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); handleStartEditingFolder(folder.id, folder.name); }}
+                              className="h-6 w-6 p-0"
                             >
-                                <Badge
-                                  variant="secondary"
-                                  className={`text-xs ${isSelected(module.id) ? 'bg-primary text-primary-foreground' : ''} ${dragSnapshot.isDragging ? 'shadow-lg' : ''}`}
-                                  onClick={() => handleModuleClick(module)}
-                                >
-                                  {getTypeArrow(module.type)} {module.name}
-                                  {module.sequence ? ` (${module.sequence.length}bp)` : ''}
-                                </Badge>
-                              {/* Show delete button in all folders */}
-                              <button
-                                className="ml-1 p-0.5 rounded hover:bg-destructive/20 text-destructive absolute -top-2 -right-2"
-                                title={folder.id === 'total-library' ? "Remove from Total Library" : "Remove from this Library"}
-                                onClick={e => { e.stopPropagation(); handleDeleteModule(module.id, folder.id); }}
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
+                              <Edit3 className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); handleStartConversion(folder.id); }}
+                              className="h-6 w-6 p-0"
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); setFolders(folders.filter(f => f.id !== folder.id)); }}
+                              className="h-6 w-6 p-0 text-destructive"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      {folder.open && !snapshot.isDragging && (
+                        <Droppable droppableId={folder.id} type="module">
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.droppableProps}
+                              className={`flex flex-wrap gap-2 p-2 bg-background/50 min-h-[50px] transition-all ${snapshot.isDraggingOver ? 'bg-primary/10' : ''}`}
+                            >
+                              {customModules
+                                .filter(m => folder.modules.includes(m.id))
+                                .map((module, index) => (
+                                  <Draggable key={module.id} draggableId={module.id} index={index}>
+                                    {(provided, snapshot) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        className={`transition-all ${snapshot.isDragging ? 'shadow-lg' : ''}`}
+                                      >
+                                        <ModuleButton
+                                          module={module}
+                                          isSelected={selectedModules.some(m => m.id === module.id)}
+                                          onClick={() => handleModuleClick(module)}
+                                          onRemove={() => handleDeleteModule(module.id, folder.id)}
+                                          showRemoveButton={true}
+                                        />
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                ))}
+                              {provided.placeholder}
                             </div>
                           )}
-                        </Draggable>
-                      )
-                    })}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            )}
-          </div>
-        ))}
+                        </Droppable>
+                      )}
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
       </div>
       </Card>
+
+      {/* Library Conversion Dialog */}
+      {convertingFolderId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Convert Library Type</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Convert all modules in "{folders.find(f => f.id === convertingFolderId)?.name}" to:
+            </p>
+            <div className="space-y-2 mb-6">
+              {(['overexpression', 'knockout', 'knockdown', 'knockin', 'synthetic'] as const).map(type => (
+                <label key={type} className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    name="conversionType"
+                    value={type}
+                    checked={conversionType === type}
+                    onChange={(e) => setConversionType(e.target.value as any)}
+                    className="text-blue-600"
+                  />
+                  <span className="capitalize">{type}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={handleCancelConversion}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmConversion}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Convert Library
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Scan Genes Dialog */}
+      {showScanGenesDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">Scan Genes</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Choose how you'd like to add genes to your library:
+            </p>
+            
+            <div className="space-y-6">
+              {/* File Upload Option */}
+              <div className="border rounded-lg p-4">
+                <h4 className="font-medium mb-2">Upload File</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  Upload a CSV or Excel file with gene names
+                </p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowScanGenesDialog(false)
+                    geneFileInputRef.current?.click()
+                  }}
+                  className="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Choose File (CSV/Excel)
+                </Button>
+              </div>
+              
+              {/* Text Input Option */}
+              <div className="border rounded-lg p-4">
+                <h4 className="font-medium mb-2">Paste Gene Names</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  Enter gene names separated by commas, spaces, or new lines
+                </p>
+                
+                <div className="space-y-3">
+                  <Input
+                    placeholder="Library name (e.g., 'My Gene List')"
+                    value={scanGenesLibraryName}
+                    onChange={(e) => setScanGenesLibraryName(e.target.value)}
+                  />
+                  
+                  <textarea
+                    placeholder="Enter gene names here...\ne.g.: TP53, BRCA1, EGFR\nor one per line:
+TP53
+BRCA1
+EGFR"
+                    value={geneTextInput}
+                    onChange={(e) => setGeneTextInput(e.target.value)}
+                    className="w-full h-32 p-3 border border-border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
+                  />
+                  
+                  <Button 
+                    onClick={handleProcessTextGenes}
+                    disabled={!geneTextInput.trim() || !scanGenesLibraryName.trim()}
+                    className="w-full"
+                  >
+                    Process Genes
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowScanGenesDialog(false)
+                  setGeneTextInput('')
+                  setScanGenesLibraryName('')
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
