@@ -101,11 +101,16 @@ export const ConstructLayout = ({
                                   {...provided.dragHandleProps}
                                   className={`relative group ${snapshot.isDragging ? 'z-10' : ''}`}
                                 >
+                                  {(() => {
+                                    console.log('Module in syntax area:', item);
+                                    return null;
+                                  })()}
                                   <ModuleButton
-                                    moduleType={item.type}
+                                    module={item}
+                                    moduleType={item.type as any}
                                     className="cursor-move"
                                   >
-                                    {getTypeArrow(item.type)} {item.name}
+                                    {getTypeArrow(item.type)} {item.name || item.gene_id || item.id || item.type || 'Unnamed'}
                                   </ModuleButton>
                                   <button
                                     onClick={() => onModuleRemove(item.id)}

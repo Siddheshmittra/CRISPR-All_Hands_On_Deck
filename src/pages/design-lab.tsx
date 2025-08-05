@@ -22,6 +22,7 @@ import { Module, LibrarySyntax } from "@/lib/types"
 interface Cassette {
   id: string
   modules: Module[]
+  barcode?: string
 }
 
 const DesignLab = () => {
@@ -114,10 +115,11 @@ const DesignLab = () => {
     }
   }
 
-  const handleAddCassette = (modules: Module[]) => {
+  const handleAddCassette = (modules: Module[], barcode?: string) => {
     const newCassette: Cassette = {
       id: `cassette-${Date.now()}`,
-      modules: modules
+      modules: modules,
+      barcode: barcode?.trim() || undefined
     }
     setCassetteBatch(prev => [...prev, newCassette])
   }
@@ -126,23 +128,65 @@ const DesignLab = () => {
     setCassetteBatch(prev => prev.filter(c => c.id !== cassetteId))
   }
 
-  const handleUpdateCassette = (cassetteId: string, modules: Module[]) => {
+  const handleUpdateCassette = (cassetteId: string, modules: Module[], barcode?: string) => {
     setCassetteBatch(prev => prev.map(cassette => 
       cassette.id === cassetteId 
-        ? { ...cassette, modules }
+        ? { 
+            ...cassette, 
+            modules,
+            barcode: barcode?.trim() || cassette.barcode 
+          }
         : cassette
     ))
   }
 
   const handleExportBatch = () => {
-    const dataStr = JSON.stringify(cassetteBatch, null, 2)
+    // Create a more structured export object
+    const exportData = {
+      metadata: {
+        exportedAt: new Date().toISOString(),
+        totalCassettes: cassetteBatch.length,
+        cassetteBarcodes: cassetteBatch
+          .filter(c => c.barcode)
+          .map(c => ({
+            cassetteId: c.id,
+            barcode: c.barcode,
+            moduleCount: c.modules.length,
+            moduleTypes: [...new Set(c.modules.map(m => m.type))]
+          })),
+      },
+      cassettes: cassetteBatch.map(cassette => ({
+        id: cassette.id,
+        barcode: cassette.barcode || null,
+        modules: cassette.modules.map(module => ({
+          id: module.id,
+          name: module.name,
+          type: module.type,
+          description: module.description || '',
+          sequenceLength: module.sequence?.length || 0,
+          isSynthetic: module.isSynthetic || false
+        }))
+      }))
+    };
+    
+    // Create a filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const filename = `cassette-batch_${timestamp}.json`
+    
+    // Create and trigger download
+    const dataStr = JSON.stringify(exportData, null, 2)
     const dataBlob = new Blob([dataStr], { type: 'application/json' })
     const url = URL.createObjectURL(dataBlob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'cassette-batch.json'
+    link.download = filename
+    document.body.appendChild(link)
     link.click()
+    document.body.removeChild(link)
     URL.revokeObjectURL(url)
+    
+    // Show success message
+    toast.success(`Exported ${cassetteBatch.length} cassettes`)
   }
 
   const handleDragEnd = (result: DropResult) => {

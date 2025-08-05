@@ -41,13 +41,28 @@ export interface ModuleButtonProps
 }
 
 const ModuleButton = React.forwardRef<HTMLDivElement, ModuleButtonProps>(
-  ({ className, variant, size, isSelected, moduleType, module, onRemove, showRemoveButton, ...props }, ref) => {
-    const effectiveModuleType = moduleType || module?.type
+  ({ className, variant, size, isSelected, moduleType, module, onRemove, showRemoveButton, children, ...props }, ref) => {
+    // Debug log to see what we're working with
+    if (module) {
+      console.log('ModuleButton module:', JSON.stringify(module, null, 2));
+    }
+    
+    const effectiveModuleType = moduleType || module?.type;
     const buttonVariant = isSelected 
       ? "selected" 
       : effectiveModuleType 
         ? effectiveModuleType 
-        : variant
+        : variant;
+
+    // Calculate display name with fallbacks
+    const displayName = React.useMemo(() => {
+      if (children) return children;
+      if (module?.name) return module.name;
+      if (module?.gene_id) return module.gene_id;
+      if (module?.id) return module.id;
+      if (module?.type) return module.type.charAt(0).toUpperCase() + module.type.slice(1);
+      return 'Module';
+    }, [module, children]);
 
     return (
       <div
@@ -55,9 +70,12 @@ const ModuleButton = React.forwardRef<HTMLDivElement, ModuleButtonProps>(
         ref={ref}
         tabIndex={0}
         role="button"
+        title={JSON.stringify(module, null, 2)}
         {...props}
       >
-        <span className="truncate">{module?.name || 'Unnamed Module'}</span>
+        <span className="truncate">
+          {displayName}
+        </span>
         {showRemoveButton && onRemove && (
           <button
             onClick={(e) => {

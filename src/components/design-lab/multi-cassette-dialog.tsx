@@ -10,12 +10,49 @@ import { toast } from "sonner"
 import { Module, LibrarySyntax } from "@/lib/types"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 
-// Hardcoded syntax components
-const HARDCODED_COMPONENTS = [
-  { id: 't2a', name: 'T2A', type: 'hardcoded' as const },
-  { id: 'stop', name: 'STOP', type: 'hardcoded' as const },
-  { id: 'polya', name: 'PolyA', type: 'hardcoded' as const }
-]
+// Hardcoded syntax components with their sequences and types
+const HARDCODED_COMPONENTS = {
+  t2a: {
+    id: 't2a',
+    name: 'T2A',
+    type: 'hardcoded' as const,
+    sequence: 'GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCT',
+    color: 'bg-muted',
+    description: 'T2A self-cleaving peptide'
+  },
+  stop: {
+    id: 'stop',
+    name: 'STOP-Triplex-Adaptor',
+    type: 'hardcoded' as const,
+    sequence: 'TAATAAgaattcgattcgtcagtagggttgtaaaggtttttcttttcctgagaaaacaaccttttgttttctcaggttttgctttttggcctttccctagctttaaaaaaaaaaaagcaaaactcaccgaggcagttccataggatggcaagatcctggtattggtctgcgaGTAA',
+    color: 'bg-muted',
+    description: 'STOP codon with Triplex-Adaptor sequence'
+  },
+  intron: {
+    id: 'intron',
+    name: 'Intron',
+    type: 'hardcoded' as const,
+    sequence: 'GTAAGTCTTATTTAGTGGAAAGAATAGATCTTCTGTTCTTTCAAAAGCAGAAATGGCAATAACATTTTGTGCCATGAttttttttttCTGCAG',
+    color: 'bg-muted',
+    description: 'Intron sequence for mRNA processing'
+  },
+  isbc: {
+    id: 'isbc',
+    name: 'Internal Stuffer-Barcode Array',
+    type: 'hardcoded' as const,
+    sequence: 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCGNNNNNNNNNNNNNAGCG',
+    color: 'bg-muted',
+    description: 'Internal Stuffer-Barcode Array'
+  },
+  polya: {
+    id: 'polya',
+    name: 'polyA',
+    type: 'hardcoded' as const,
+    sequence: 'A'.repeat(300), // Truncated for display
+    color: 'bg-muted',
+    description: 'Poly-A tail for mRNA stability'
+  }
+} as const;
 
 interface MultiCassetteSetupProps {
   cassetteCount: number;
@@ -50,6 +87,62 @@ export const MultiCassetteSetup = ({
 
 
 
+
+  const applyCassetteSyntax = (modules: Module[]): Module[] => {
+    // 1. Re-order so all OE/KI come before KO/KD
+    const early = modules.filter(m => m.type === 'overexpression' || m.type === 'knockin');
+    const late = modules.filter(m => m.type === 'knockout' || m.type === 'knockdown');
+    const ordered = [...early, ...late];
+    
+    const result: Module[] = [];
+    const firstKOIdx = ordered.findIndex(m => m.type === 'knockout' || m.type === 'knockdown');
+
+    ordered.forEach((module, idx) => {
+      // Add intron before OE modules
+      if (module.type === 'overexpression') {
+        result.push({
+          ...HARDCODED_COMPONENTS.intron,
+          id: `intron-${Date.now()}-${idx}`
+        });
+      }
+
+      // Add STOP-Triplex-Adaptor before first KO/KD
+      if (idx === firstKOIdx && firstKOIdx !== -1) {
+        result.push({
+          ...HARDCODED_COMPONENTS.stop,
+          id: `stop-${Date.now()}-${idx}`
+        });
+      }
+
+      // Add the module itself
+      result.push(module);
+
+      // Add T2A after OE modules (except last)
+      if (module.type === 'overexpression' && idx !== ordered.length - 1) {
+        result.push({
+          ...HARDCODED_COMPONENTS.t2a,
+          id: `t2a-${Date.now()}-${idx}`
+        });
+      }
+    });
+
+    // Add Internal Stuffer-Barcode Array at the end
+    result.push({
+      ...HARDCODED_COMPONENTS.isbc,
+      id: `isbc-${Date.now()}`
+    });
+
+    // Add polyA if last module is KO/KD
+    const lastModule = ordered[ordered.length - 1];
+    if (lastModule && (lastModule.type === 'knockout' || lastModule.type === 'knockdown')) {
+      result.push({
+        ...HARDCODED_COMPONENTS.polya,
+        id: `polya-${Date.now()}`
+      });
+    }
+
+    return result;
+  };
 
   const handleManualGenerate = async () => {
     if (!onAddCassettes || isGenerating) return
@@ -86,23 +179,35 @@ export const MultiCassetteSetup = ({
             }
 
             const randomModule = libraryModules[Math.floor(Math.random() * libraryModules.length)];
+            // Create a new module with the correct type
             const moduleWithNewType = {
               ...randomModule,
+              id: `${randomModule.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               type: libSyntax.type,
               sequence: randomModule.type === libSyntax.type ? randomModule.sequence : '',
               sequenceSource: randomModule.type === libSyntax.type ? randomModule.sequenceSource : undefined,
             };
-
-            if (randomModule.type !== libSyntax.type) {
-              return enrichModuleWithSequence(moduleWithNewType).catch(err => {
-                console.error(`Failed to enrich ${randomModule.name}`, err);
-                toast.warning(`Could not enrich ${randomModule.name}, using basic module.`);
-                return moduleWithNewType;
-              });
+            
+            // Apply cassette syntax to the module
+            try {
+              const finalModule = randomModule.type !== libSyntax.type
+                ? await enrichModuleWithSequence(moduleWithNewType).catch(err => {
+                    console.error(`Failed to enrich ${randomModule.name}`, err);
+                    toast.warning(`Could not enrich ${randomModule.name}, using basic module.`);
+                    return moduleWithNewType;
+                  })
+                : moduleWithNewType;
+              
+              return applyCassetteSyntax([finalModule]);
+            } catch (error) {
+              console.error('Error processing module:', error);
+              return [];
             }
-            return moduleWithNewType;
           });
-          return Promise.all(cassettePromises);
+          
+          const cassetteModules = await Promise.all(cassettePromises);
+          // Flatten the array of module arrays into a single array of modules
+          return cassetteModules.flat();
         });
 
         const newCassettes = await Promise.all(batchPromises);

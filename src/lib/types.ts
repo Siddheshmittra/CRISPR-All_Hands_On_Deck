@@ -5,16 +5,24 @@ export interface AnnotatedSegment {
   action?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin' | 'synthetic';
 }
 
+export interface ModuleMetadata {
+  has2ASequence?: boolean;
+  twoAType?: string;
+}
+
 export interface Module {
   id: string;
   name: string;
-  type: "overexpression" | "knockout" | "knockdown" | "knockin" | "synthetic";
+  type: "overexpression" | "knockout" | "knockdown" | "knockin" | "synthetic" | "hardcoded";
   description?: string;
   sequence?: string;
   gene_id?: string;
+  ensemblGeneId?: string; // Store the Ensembl gene ID
   sequenceSource?: 'ensembl_grch38' | 'ensembl_grch37' | 'shRNA.json' | 'gRNA.json';
   isSynthetic?: boolean; // Flag for synthetic genes
   syntheticSequence?: string; // Custom synthetic sequence for knockins
+  color?: string; // Optional color for UI
+  metadata?: ModuleMetadata; // Additional metadata for the module
 }
 
 export interface SyntheticGene {

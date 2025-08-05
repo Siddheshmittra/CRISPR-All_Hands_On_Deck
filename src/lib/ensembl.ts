@@ -365,9 +365,15 @@ export async function enrichModuleWithSequence(
     const sequence = await fetchCdna(transcriptId, opts);
     console.log(`[enrichModule] Fetched sequence length: ${sequence.length}`);
     
+    // Ensure we preserve the original module name and other properties
     return {
       ...module,
+      name: module.name || gene.display_name || 'Unnamed',
       sequence,
+      sequenceSource: 'ensembl_grch38',
+      ensemblGeneId: gene.id,
+      gene_id: gene.id,
+      description: module.description || `Gene: ${gene.display_name || module.name}`
     };
   } catch (error) {
     console.error(`[enrichModule] Failed to enrich module ${module.name}:`, error);

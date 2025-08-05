@@ -72,37 +72,41 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
 
   const handleQuickAddModule = (gene: string) => {
     if (constructModules.length >= 5) {
-      toast.error("Maximum 5 modules allowed")
-      return
+      toast.error("Maximum 5 modules allowed");
+      return;
     }
 
     // For knockin modules, show synthetic gene selector
     if (selectedType === 'knockin') {
       const mockSuggestion = {
         symbol: gene,
+        name: gene,
         description: `Human gene ${gene}`,
-        sequence: ""
-      }
-      setSelectedSuggestion(mockSuggestion)
-      setShowSyntheticSelector(true)
-      return
+        sequence: "",
+        isSynthetic: false
+      };
+      setSelectedSuggestion(mockSuggestion);
+      setShowSyntheticSelector(true);
+      return;
     }
 
     // For non-knockin modules, add directly
     try {
+      const moduleName = gene || 'Custom Module';
       const newModule: Module = {
-        id: `${gene}-${Date.now()}`,
-        name: gene,
+        id: `${moduleName}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        name: moduleName,
         type: selectedType,
-        description: `Human gene ${gene}`,
-        sequence: ""
-      }
+        description: `Human gene ${moduleName}`,
+        sequence: "",
+        isSynthetic: false
+      };
       
-      onModuleAdd(newModule)
-      toast.success(`Added ${gene} (${selectedType.toUpperCase()})`)
+      onModuleAdd(newModule);
+      toast.success(`Added ${moduleName} (${selectedType.toUpperCase()})`);
     } catch (error) {
-      console.error("Error adding module:", error)
-      toast.error("Failed to add module")
+      console.error("Error adding module:", error);
+      toast.error("Failed to add module");
     }
   }
 
@@ -120,28 +124,56 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
     }
 
     try {
-      const newModule: Module = {
-        id: `${suggestion.symbol}-${Date.now()}`,
-        name: suggestion.symbol,
-        type: selectedType,
-        description: suggestion.description || `Human gene ${suggestion.symbol}`,
-        sequence: suggestion.sequence || ""
-      }
+      // Create a properly named module with all required fields
+      const moduleName = suggestion.symbol || suggestion.name || suggestion.id || 'Unnamed';
+      const moduleDescription = suggestion.description || 
+                              (suggestion.symbol ? `Human gene ${suggestion.symbol}` : 'Custom module');
       
-      onModuleAdd(newModule)
-      setSearchTerm("")
-      setSuggestions([])
-      toast.success(`Added ${suggestion.symbol} (${selectedType.toUpperCase()})`)
+      const newModule: Module = {
+        id: `${moduleName}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        name: moduleName,
+        type: selectedType,
+        description: moduleDescription,
+        sequence: suggestion.sequence || "",
+        isSynthetic: !!suggestion.isSynthetic
+      };
+      
+      onModuleAdd(newModule);
+      setSearchTerm("");
+      setSuggestions([]);
+      toast.success(`Added ${moduleName} (${selectedType.toUpperCase()})`);
     } catch (error) {
-      console.error("Error adding module:", error)
-      toast.error("Failed to add module")
+      console.error("Error adding module:", error);
+      toast.error("Failed to add module");
     }
   }
 
-  const handleSyntheticGeneSelect = (gene: SyntheticGene) => {
+  // 2A self-cleaving peptide sequences
+  const TWO_A_SEQUENCES = {
+    P2A: 'ATNFSLLKQAGDVEENPGP',
+    T2A: 'EGRGSLLTCGDVEENPGP',
+    E2A: 'QCTNYALLKLAGDVESNPGP',
+    F2A: 'VKQTLNFDLLKLAGDVESNPGP'
+  }
+
+  const dnaToAminoAcid = (dna: string): string => {
+    // Simple DNA to AA translation (simplified - in a real app, use a proper translation function)
+    // This is just a placeholder
+    return dna
+  }
+
+  const handleSyntheticGeneSelect = (gene: SyntheticGene, options?: { add2ASequence?: boolean, twoAType?: string }) => {
     if (constructModules.length >= 5) {
       toast.error("Maximum 5 modules allowed")
       return
+    }
+
+    let sequence = gene.sequence
+    
+    // Add 2A sequence if specified
+    if (options?.add2ASequence && options?.twoAType) {
+      const twoASequence = TWO_A_SEQUENCES[options.twoAType as keyof typeof TWO_A_SEQUENCES] || ''
+      sequence = sequence + twoASequence
     }
 
     const newModule: Module = {
@@ -149,9 +181,15 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
       name: gene.name,
       type: 'knockin',
       description: gene.description,
-      sequence: gene.sequence,
+      sequence: sequence,
       isSynthetic: true,
-      syntheticSequence: gene.sequence
+      syntheticSequence: gene.sequence, // Store original sequence
+      metadata: {
+        ...(options?.add2ASequence && { 
+          has2ASequence: true,
+          twoAType: options.twoAType 
+        })
+      }
     }
     
     onModuleAdd(newModule)
@@ -159,23 +197,41 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
     setSelectedSuggestion(null)
     setSearchTerm("")
     setSuggestions([])
-    toast.success(`Added ${gene.name} (KI)`)
+    toast.success(`Added ${gene.name} (KI)${options?.add2ASequence ? ` with ${options.twoAType}` : ''}`)
   }
 
-  const handleCustomSequence = (sequence: string) => {
+  const handleCustomSequence = (sequence: string, options: { endsCodingFrame: boolean, add2ASequence?: boolean, twoAType?: string }) => {
     if (constructModules.length >= 5) {
       toast.error("Maximum 5 modules allowed")
       return
+    }
+
+    let finalSequence = sequence
+    
+    // Add stop codon if it's a complete coding frame and doesn't end with one
+    if (options.endsCodingFrame && !/T(AA|AG|GA)$/i.test(sequence)) {
+      finalSequence = sequence + 'TAA' // Default stop codon
+    }
+    // Add 2A sequence if specified and not a complete coding sequence
+    else if (options.add2ASequence && options.twoAType) {
+      const twoASequence = TWO_A_SEQUENCES[options.twoAType as keyof typeof TWO_A_SEQUENCES] || ''
+      finalSequence = sequence + twoASequence
     }
 
     const newModule: Module = {
       id: `custom-synthetic-${Date.now()}`,
       name: "Custom Synthetic Gene",
       type: 'knockin',
-      description: "Custom synthetic gene sequence",
-      sequence: sequence,
+      description: "Custom synthetic gene sequence" + (options.add2ASequence ? ` (with ${options.twoAType})` : ''),
+      sequence: finalSequence,
       isSynthetic: true,
-      syntheticSequence: sequence
+      syntheticSequence: sequence, // Store original sequence
+      metadata: {
+        ...(options.add2ASequence && { 
+          has2ASequence: true,
+          twoAType: options.twoAType 
+        })
+      }
     }
     
     onModuleAdd(newModule)
@@ -183,7 +239,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
     setSelectedSuggestion(null)
     setSearchTerm("")
     setSuggestions([])
-    toast.success("Added custom synthetic gene (KI)")
+    toast.success(`Added custom synthetic gene (KI)${options.add2ASequence ? ` with ${options.twoAType}` : ''}`)
   }
 
   return (

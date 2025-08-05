@@ -1,22 +1,24 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trash2, Download, Edit3, Check, X, GripVertical } from "lucide-react"
+import { Trash2, Download, Edit3, Check, X, GripVertical, ScanBarcode } from "lucide-react"
 import { Module, AnnotatedSegment } from "@/lib/types"
 import { SequenceViewer } from "./sequence-viewer"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
+import { validateBarcode, generateBarcode } from "@/lib/barcode-utils"
 
 interface Cassette {
   id: string
   modules: Module[]
+  barcode?: string
 }
 
 interface CassetteBatchProps {
   cassetteBatch: Cassette[]
   onDeleteCassette: (cassetteId: string) => void
   onExportBatch: () => void
-  onUpdateCassette?: (cassetteId: string, modules: Module[]) => void
+  onUpdateCassette?: (cassetteId: string, modules: Module[], barcode?: string) => void
 }
 
 const T2A_SEQUENCE = "GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCT";
@@ -26,6 +28,8 @@ const POLYA_SEQUENCE = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, onUpdateCassette }: CassetteBatchProps) => {
   const [editingCassetteId, setEditingCassetteId] = useState<string | null>(null)
   const [editingModules, setEditingModules] = useState<Module[]>([])
+  const [editingBarcode, setEditingBarcode] = useState<string>('')
+  const [barcodeError, setBarcodeError] = useState<string>('')
   const [expandedCassetteId, setExpandedCassetteId] = useState<string | null>(null);
   const [cassetteSegments, setCassetteSegments] = useState<Record<string, AnnotatedSegment[]>>({});
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,19 +42,44 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
   const handleStartEdit = (cassette: Cassette) => {
     setEditingCassetteId(cassette.id)
     setEditingModules([...cassette.modules])
+    setEditingBarcode(cassette.barcode || '')
+    setBarcodeError('')
   }
 
   const handleSaveEdit = () => {
+    if (editingBarcode) {
+      const validation = validateBarcode(editingBarcode)
+      if (!validation.isValid) {
+        setBarcodeError(validation.message)
+        return
+      }
+    }
+    
     if (editingCassetteId && onUpdateCassette) {
-      onUpdateCassette(editingCassetteId, editingModules)
+      onUpdateCassette(editingCassetteId, editingModules, editingBarcode)
     }
     setEditingCassetteId(null)
     setEditingModules([])
+    setEditingBarcode('')
+    setBarcodeError('')
   }
 
   const handleCancelEdit = () => {
     setEditingCassetteId(null)
     setEditingModules([])
+    setEditingBarcode('')
+    setBarcodeError('')
+  }
+  
+  const handleGenerateBarcode = () => {
+    const existingBarcodes = cassetteBatch
+      .map(c => c.barcode)
+      .filter((b): b is string => !!b)
+    
+    // Generate a DNA barcode with default length of 12bp
+    const newBarcode = generateBarcode(12, existingBarcodes)
+    setEditingBarcode(newBarcode)
+    setBarcodeError('')
   }
 
   const generateAnnotatedSequence = async (rawModules: Module[]): Promise<AnnotatedSegment[]> => {
@@ -224,34 +253,85 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
       <div className="space-y-4">
         {currentCassettes.map((cassette, index) => (
           <div key={cassette.id} className="p-4 bg-muted rounded-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-semibold">Cassette {index + 1}</div>
-              <div className="flex gap-2">
-                {editingCassetteId === cassette.id ? (
-                  <>
-                    <Button variant="outline" size="sm" onClick={handleSaveEdit}>
+            <div className="flex flex-col gap-2 mb-3">
+              <div className="flex items-center justify-between">
+                <div className="font-semibold">
+                  {cassette.modules.length > 0 
+                    ? cassette.modules.map(m => m.name || 'Unnamed').join(' + ')
+                    : `Cassette ${index + 1}`
+                  }
+                </div>
+                <div className="flex gap-2">
+                  {onUpdateCassette && (
+                    <Button variant="outline" size="sm" onClick={() => handleStartEdit(cassette)}>
+                      <Edit3 className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={() => onDeleteCassette(cassette.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+              
+              {editingCassetteId === cassette.id ? (
+                <div className="space-y-1 mt-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        value={editingBarcode}
+                        onChange={(e) => {
+                          setEditingBarcode(e.target.value)
+                          if (barcodeError) setBarcodeError('')
+                        }}
+                        placeholder="Enter DNA barcode (e.g., ATCGATCGATCG)"
+                        className={`w-full px-3 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 ${
+                          barcodeError ? 'border-red-500 focus:ring-red-200' : 'focus:ring-primary border-input'
+                        }`}
+                      />
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={handleGenerateBarcode}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                        title="Generate barcode"
+                      >
+                        <ScanBarcode className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleSaveEdit}
+                      disabled={!!barcodeError}
+                    >
                       <Check className="h-4 w-4 mr-1" />
                       Save
                     </Button>
-                    <Button variant="outline" size="sm" onClick={handleCancelEdit}>
-                      <X className="h-4 w-4 mr-1" />
-                      Cancel
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleCancelEdit}
+                    >
+                      <X className="h-4 w-4" />
                     </Button>
-                  </>
-                ) : (
-                  <>
-                    {onUpdateCassette && (
-                      <Button variant="outline" size="sm" onClick={() => handleStartEdit(cassette)}>
-                        <Edit3 className="h-4 w-4 mr-1" />
-                        Edit Syntax
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="sm" onClick={() => onDeleteCassette(cassette.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </>
-                )}
-              </div>
+                  </div>
+                  {barcodeError && (
+                    <p className="text-xs text-red-500 mt-1">{barcodeError}</p>
+                  )}
+                </div>
+              ) : (
+                cassette.barcode && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm text-muted-foreground">Barcode:</span>
+                    <span className="px-2 py-1 text-sm font-mono bg-muted-foreground/10 rounded">
+                      {cassette.barcode}
+                    </span>
+                  </div>
+                )
+              )}
             </div>
             
             {editingCassetteId === cassette.id ? (
