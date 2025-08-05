@@ -194,7 +194,7 @@ export const MultiCassetteSetup = ({
                           if (library.type === 'overexpression') {
                             components.push(
                               <div key={`intron-${index}`} className="flex items-center gap-2">
-                                <div className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium">
+                                <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
                                   Intron
                                 </div>
                                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -208,7 +208,7 @@ export const MultiCassetteSetup = ({
                           if (isFirstKOKD) {
                             components.push(
                               <div key={`stop-${index}`} className="flex items-center gap-2">
-                                <div className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium">
+                                <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
                                   STOP-Triplex-Adaptor
                                 </div>
                                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -260,7 +260,7 @@ export const MultiCassetteSetup = ({
                             components.push(
                               <div key={`t2a-${index}`} className="flex items-center gap-2">
                                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                <div className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium">
+                                <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
                                   T2A
                                 </div>
                               </div>
@@ -274,7 +274,7 @@ export const MultiCassetteSetup = ({
                         {librarySyntax.length > 0 && (
                           <>
                             <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                            <div className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium">
+                            <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
                               Internal Stuffer-Barcode Array
                             </div>
                             {/* Add polyA if last library is KO/KD */}
@@ -283,7 +283,7 @@ export const MultiCassetteSetup = ({
                               librarySyntax[librarySyntax.length - 1].type === 'knockdown') && (
                               <>
                                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                <div className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium">
+                                <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
                                   polyA
                                 </div>
                               </>
