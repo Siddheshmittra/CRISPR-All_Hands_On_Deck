@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ModuleButton } from "@/components/ui/module-button"
-import { Search, Upload, Plus, Trash2, Edit3, Check, X, RefreshCw, FolderPlus, ChevronDown } from "lucide-react"
+import { Search, Upload, Plus, Trash2, Edit3, Check, X, RefreshCw, FolderPlus, ChevronDown, Loader2 } from "lucide-react"
 import { Draggable, Droppable } from "@hello-pangea/dnd"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
@@ -32,6 +32,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const [searchTerm, setSearchTerm] = useState("")
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [addingGenes, setAddingGenes] = useState<{[key: string]: boolean}>({})
   const [showDropdown, setShowDropdown] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -51,6 +52,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const [showScanGenesDialog, setShowScanGenesDialog] = useState(false)
   const [geneTextInput, setGeneTextInput] = useState('')
   const [scanGenesLibraryName, setScanGenesLibraryName] = useState('')
+  const [scanGenesPerturbationType, setScanGenesPerturbationType] = useState<'overexpression' | 'knockout' | 'knockdown' | 'knockin'>('overexpression')
   
   // Type selector state
   const [selectedType, setSelectedType] = useState<'overexpression' | 'knockout' | 'knockdown' | 'knockin'>('overexpression')
@@ -63,6 +65,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
 
   const [newFolderName, setNewFolderName] = useState("")
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
+  const [isLibraryLoading, setIsLibraryLoading] = useState(false)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [isBenchlingLinked, setIsBenchlingLinked] = useState(false)
   const [isBenchlingLinking, setIsBenchlingLinking] = useState(false)
@@ -190,7 +193,10 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const handleAddModule = async () => {
     if (!selectedSuggestion || addingModule) return
     
+    const geneId = selectedSuggestion.symbol
     setAddingModule(true)
+    setIsLibraryLoading(true)
+    setAddingGenes(prev => ({ ...prev, [geneId]: true }))
     
     try {
       let moduleToAdd = selectedSuggestion
@@ -199,32 +205,43 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       if (selectedType === 'knockin') {
         setShowSyntheticSelector(true)
         setAddingModule(false)
+        setAddingGenes(prev => ({ ...prev, [geneId]: false }))
         return
       }
       
       // For other module types, proceed as normal
-      if (moduleToAdd.sequence) {
-        const newModule: Module = {
-          id: `${moduleToAdd.symbol}-${Date.now()}`,
-          name: moduleToAdd.symbol,
-          type: selectedType,
-          description: moduleToAdd.description || `Human gene ${moduleToAdd.symbol}`,
-          sequence: moduleToAdd.sequence
-        }
-        
-        onCustomModulesChange([...customModules, newModule])
-        setSelectedSuggestion(null)
-        setSearchTerm("")
-        setSuggestions([])
+      const newModule: Module = {
+        id: `${moduleToAdd.symbol}-${Date.now()}`,
+        name: moduleToAdd.symbol,
+        type: selectedType,
+        description: moduleToAdd.description || `Human gene ${moduleToAdd.symbol}`,
+        sequence: moduleToAdd.sequence || '',
+        isEnriching: true // Mark as enriching to show loading state
+      }
+      
+      // Add the module immediately with loading state
+      onCustomModulesChange([...customModules, newModule])
+      
+      // Enrich the module in the background
+      try {
+        const enrichedModule = await enrichModuleWithSequence(newModule)
+        onCustomModulesChange(customModules.map(m => 
+          m.id === newModule.id ? { ...enrichedModule, isEnriching: false } : m
+        ))
         toast.success(`Added ${moduleToAdd.symbol} to library`)
-      } else {
-        toast.error("No sequence available for this gene")
+      } catch (error) {
+        console.error(`Failed to enrich ${moduleToAdd.symbol}:`, error)
+        toast.warning(`Added ${moduleToAdd.symbol} but sequence enrichment failed`)
       }
     } catch (error) {
       console.error("Error adding module:", error)
-      toast.error("Failed to add module")
+      toast.error(`Failed to add ${selectedSuggestion?.symbol || 'module'}`)
     } finally {
       setAddingModule(false)
+      setIsLibraryLoading(false)
+      if (selectedSuggestion?.symbol) {
+        setAddingGenes(prev => ({ ...prev, [selectedSuggestion.symbol]: false }))
+      }
     }
   }
 
@@ -387,8 +404,12 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                     header: true,
                     skipEmptyLines: true,
                     complete: (results) => {
-                        rows = results.data;
-                        processGeneNames(rows, fileName);
+                        // Always use the selected perturbation type from the dialog
+                        const processedRows = results.data.map((row: any) => ({
+                            'Gene Name': row['Gene Name'] || row['gene_name'] || row['gene'] || row['symbol'] || row['Symbol'] || Object.values(row)[0],
+                            'Perturbation': scanGenesPerturbationType
+                        }));
+                        processGeneNames(processedRows, fileName);
                     }
                 });
             } else if (file.name.endsWith('.xlsx')) {
@@ -396,7 +417,12 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
                 rows = XLSX.utils.sheet_to_json(worksheet);
-                processGeneNames(rows, fileName);
+                // Always use the selected perturbation type from the dialog
+                const processedRows = rows.map((row: any) => ({
+                    'Gene Name': row['Gene Name'] || row['gene_name'] || row['gene'] || row['symbol'] || row['Symbol'] || Object.values(row)[0],
+                    'Perturbation': scanGenesPerturbationType
+                }));
+                processGeneNames(processedRows, fileName);
             } else {
                 toast.error("Unsupported file type. Please use .csv or .xlsx");
             }
@@ -416,10 +442,20 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   };
 
     const processGeneNames = async (rows: any[], folderName: string) => {
-        if (rows.length === 0) {
-        toast.info("No data found in the file.");
-        return;
-    }
+      if (rows.length === 0) {
+        toast.info("No data found in the file.")
+        return
+      }
+
+      // Set loading state
+      setIsLibraryLoading(true)
+      
+      // Show loading state
+      const toastId = toast.loading(`Processing ${rows.length} genes...`, {
+        description: 'This may take a moment.'
+      });
+
+      try {
 
     toast.info(`Found ${rows.length} entries. Fetching details...`);
 
@@ -489,33 +525,47 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
 
     // Always create the folder and add modules, even if some failed
     if (newModules.length > 0) {
-        onCustomModulesChange([...customModules, ...newModules]);
+      // Add all modules at once for better performance
+      onCustomModulesChange([...customModules, ...newModules]);
 
-        const newFolder = {
-            id: `folder-${Date.now()}`,
-            name: folderName,
-            modules: newModules.map(m => m.id),
-            open: true
-        };
+      const newFolder = {
+        id: `folder-${Date.now()}`,
+        name: folderName,
+        modules: newModules.map(m => m.id),
+        open: true
+      };
 
-        setFolders([...folders, newFolder]);
-        
-        // Provide detailed feedback
-        const successfulGenes = newModules.length - failedGenes.length;
-        if (failedGenes.length === 0) {
-            toast.success(`Successfully added all ${newModules.length} genes to '${folderName}' library with sequences!`);
-        } else if (successfulGenes > 0) {
-            toast.success(`Added ${newModules.length} genes to '${folderName}' library. ${successfulGenes} with sequences, ${failedGenes.length} without sequences but still added.`);
-            if (failedGenes.length <= 5) {
-                toast.info(`Genes without sequences: ${failedGenes.join(', ')}`);
-            } else {
-                toast.info(`${failedGenes.length} genes added without sequences (sequences may be found later during cassette generation)`);
-            }
-        } else {
-            toast.warning(`Added ${newModules.length} genes to '${folderName}' library, but no sequences were found. Genes can still be used for cassette generation.`);
-        }
-    } else {
+      setFolders([...folders, newFolder]);
+      
+      // Update the loading toast with results
+      const successfulGenes = newModules.length - failedGenes.length;
+      if (failedGenes.length === 0) {
+        toast.success(`Successfully added all ${newModules.length} genes to '${folderName}' library with sequences!`, { id: toastId });
+      } else if (successfulGenes > 0) {
+        toast.success(
+          `Added ${newModules.length} genes to '${folderName}' library. ${successfulGenes} with sequences, ${failedGenes.length} without.`,
+          { 
+            id: toastId,
+            action: failedGenes.length <= 5 ? {
+              label: 'View failed',
+              onClick: () => alert(`Genes without sequences:\n${failedGenes.join('\n')}`)
+            } : undefined
+          }
+        );
+      } else {
+        toast.warning(
+          `Added ${newModules.length} genes to '${folderName}' library, but no sequences were found.`, 
+          { id: toastId }
+        );
+      }
+      } else {
         toast.error('No valid genes could be processed. Please check your gene names and try again.');
+      }
+    } catch (error) {
+      console.error('Error processing gene names:', error);
+      toast.error('An error occurred while processing genes');
+    } finally {
+      setIsLibraryLoading(false);
     }
   };
 
@@ -543,11 +593,15 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     }
     
     // Convert to rows format expected by processGeneNames
-    const rows = geneNames.map(geneName => ({ 'Gene Name': geneName }))
+    const rows = geneNames.map(geneName => ({
+      'Gene Name': geneName,
+      'Perturbation': scanGenesPerturbationType
+    }))
     
     setShowScanGenesDialog(false)
     setGeneTextInput('')
     setScanGenesLibraryName('')
+    setScanGenesPerturbationType('overexpression') // Reset to default
     
     await processGeneNames(rows, scanGenesLibraryName)
   }
@@ -684,14 +738,22 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             ))}
           </select>
         </div>
-        <UnifiedGeneSearch
-          onModuleAdd={handleUnifiedModuleAdd}
-          placeholder="Search or enter gene symbol..."
-          showSelectedModules={false}
-          showTypeButtons={false}
-          defaultType={selectedType}
-          className=""
-        />
+        <div className="relative">
+          <UnifiedGeneSearch
+            onModuleAdd={handleUnifiedModuleAdd}
+            placeholder="Search or enter gene symbol..."
+            showSelectedModules={false}
+            showTypeButtons={false}
+            defaultType={selectedType}
+            className=""
+            disabled={addingModule}
+          />
+          {addingModule && (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+              <div className="h-4 w-4 border-2 border-t-primary border-r-primary border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+        </div>
         <div className="flex gap-2 mt-2 items-center">
           {!hideTypeSelector && (
             <div className="relative">
@@ -772,8 +834,13 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         />
       </div>
       {/* Folder/Library display */}
-      <div className="mb-4">
-        <Droppable droppableId="module-selector-folders" type="library">
+      <div className="mb-4 relative">
+        {isLibraryLoading && (
+          <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        <Droppable droppableId="module-selector-folders" type="library" isDropDisabled={isLibraryLoading}>
           {(provided) => (
             <div ref={provided.innerRef} {...provided.droppableProps}>
               {folders.map((folder, index) => (
@@ -967,7 +1034,28 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                     placeholder="Library name (e.g., 'My Gene List')"
                     value={scanGenesLibraryName}
                     onChange={(e) => setScanGenesLibraryName(e.target.value)}
+                    className="mb-3"
                   />
+                  
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-foreground mb-1">
+                      Perturbation Type
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      {typeOptions.map((option) => (
+                        <Button
+                          key={option.value}
+                          type="button"
+                          variant={scanGenesPerturbationType === option.value ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 min-w-[100px]"
+                          onClick={() => setScanGenesPerturbationType(option.value as any)}
+                        >
+                          {option.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                   
                   <textarea
                     placeholder="Enter gene names here...\ne.g.: TP53, BRCA1, EGFR\nor one per line:
@@ -997,6 +1085,7 @@ EGFR"
                   setShowScanGenesDialog(false)
                   setGeneTextInput('')
                   setScanGenesLibraryName('')
+                  setScanGenesPerturbationType('overexpression') // Reset to default
                 }}
               >
                 Cancel

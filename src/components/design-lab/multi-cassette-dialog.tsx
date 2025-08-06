@@ -145,83 +145,160 @@ export const MultiCassetteSetup = ({
   };
 
   const handleManualGenerate = async () => {
-    if (!onAddCassettes || isGenerating) return
+    if (!onAddCassettes || isGenerating) return;
 
     if (librarySyntax.length === 0) {
       toast.error('Please add libraries to the syntax section first');
       return;
     }
 
-    if (cassetteCount > 50) {
+    // Show a confirmation dialog for large numbers of cassettes
+    if (cassetteCount > 10) {
       const proceed = confirm(`You're generating ${cassetteCount} cassettes. This may take a while. Continue?`);
       if (!proceed) return;
     }
 
+    // Initialize loading state
     setIsGenerating(true);
-    const BATCH_SIZE = 10; // Process 10 cassettes at a time
+    const loadingToast = toast.loading(`Preparing to generate ${cassetteCount} cassettes...`);
+    
+    // Optimize batch size based on cassette count
+    const BATCH_SIZE = Math.min(5, Math.max(1, Math.floor(50 / librarySyntax.length)));
     const totalBatches = Math.ceil(cassetteCount / BATCH_SIZE);
+    let processedCount = 0;
+    let successfulCassettes: Module[][] = [];
 
     try {
       for (let batchNum = 0; batchNum < totalBatches; batchNum++) {
         const batchStart = batchNum * BATCH_SIZE;
         const batchEnd = Math.min(batchStart + BATCH_SIZE, cassetteCount);
-        toast.info(`Processing batch ${batchNum + 1} of ${totalBatches} (cassettes ${batchStart + 1}-${batchEnd})...`);
+        const currentBatchSize = batchEnd - batchStart;
+        
+        // Update loading message
+        toast.loading(
+          `Generating cassettes ${batchStart + 1}-${batchEnd} of ${cassetteCount}...`, 
+          { id: loadingToast }
+        );
 
-        const batchPromises = Array.from({ length: batchEnd - batchStart }, async (_, i) => {
-          const cassettePromises = librarySyntax.map(async (libSyntax) => {
-            const library = folders.find(f => f.id === libSyntax.id);
-            if (!library || !library.modules || library.modules.length === 0) {
-              throw new Error(`Library '${library?.name || libSyntax.id}' is empty or not found.`);
-            }
-            const libraryModules = customModules.filter(m => library.modules.includes(m.id));
-            if (libraryModules.length === 0) {
-              throw new Error(`No modules found for library '${library.name}'.`);
-            }
+        // Process each cassette in the batch
+        const batchPromises = Array.from({ length: currentBatchSize }, async (_, i) => {
+        const cassettePromises = librarySyntax.map(async (libSyntax) => {
+          const library = folders.find(f => f.id === libSyntax.id);
+          if (!library || !library.modules || library.modules.length === 0) {
+            throw new Error(`Library '${library?.name || libSyntax.id}' is empty or not found.`);
+          }
+          const libraryModules = customModules.filter(m => library.modules.includes(m.id));
+          if (libraryModules.length === 0) {
+            throw new Error(`No modules found for library '${library.name}'.`);
+          }
 
-            const randomModule = libraryModules[Math.floor(Math.random() * libraryModules.length)];
-            // Create a new module with the correct type
-            const moduleWithNewType = {
-              ...randomModule,
-              id: `${randomModule.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              type: libSyntax.type,
-              sequence: randomModule.type === libSyntax.type ? randomModule.sequence : '',
-              sequenceSource: randomModule.type === libSyntax.type ? randomModule.sequenceSource : undefined,
-            };
-            
-            // Apply cassette syntax to the module
+          const randomModule = libraryModules[Math.floor(Math.random() * libraryModules.length)];
             try {
-              const finalModule = randomModule.type !== libSyntax.type
-                ? await enrichModuleWithSequence(moduleWithNewType).catch(err => {
-                    console.error(`Failed to enrich ${randomModule.name}`, err);
-                    toast.warning(`Could not enrich ${randomModule.name}, using basic module.`);
-                    return moduleWithNewType;
-                  })
-                : moduleWithNewType;
+              // Create a new module with the correct type
+              const moduleWithNewType = {
+                ...randomModule,
+                id: `${randomModule.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                type: libSyntax.type,
+                // Only clear sequence if type changed and we need to re-enrich
+                sequence: randomModule.type === libSyntax.type ? randomModule.sequence : '',
+                sequenceSource: randomModule.type === libSyntax.type ? randomModule.sequenceSource : undefined,
+                // Store original sequence as fallback
+                originalSequence: randomModule.sequence
+              };
               
-              return applyCassetteSyntax([finalModule]);
+              // Only enrich if necessary
+              if (randomModule.type !== libSyntax.type) {
+                // Update loading message for this specific module
+                toast.loading(
+                  `Processing ${libSyntax.name} (${libSyntax.type})...`, 
+                  { id: loadingToast }
+                );
+                
+                const enriched = await enrichModuleWithSequence(moduleWithNewType)
+                  .catch(err => {
+                    console.error(`Failed to enrich ${randomModule.name}`, err);
+                    toast.warning(`Using basic module for ${randomModule.name}`, {
+                      id: `warning-${randomModule.id}`,
+                      duration: 3000
+                    });
+                    return moduleWithNewType; // Return unenriched module as fallback
+                  });
+                
+                // Apply cassette syntax to the enriched module
+                return applyCassetteSyntax([enriched]);
+              }
+              
+              // If no enrichment needed, just apply cassette syntax
+              return applyCassetteSyntax([moduleWithNewType]);
+              
             } catch (error) {
               console.error('Error processing module:', error);
+              toast.error(`Error processing ${randomModule.name}`, {
+                id: `error-${randomModule.id}`,
+                duration: 3000
+              });
               return [];
             }
-          });
-          
-          const cassetteModules = await Promise.all(cassettePromises);
-          // Flatten the array of module arrays into a single array of modules
-          return cassetteModules.flat();
         });
+        
+        const cassetteModules = await Promise.all(cassettePromises);
+        // Flatten the array of module arrays into a single array of modules
+        return cassetteModules.flat();
+      });
 
-        const newCassettes = await Promise.all(batchPromises);
-        onAddCassettes(newCassettes);
-      }
-
-      toast.success(`Successfully generated ${cassetteCount} cassettes.`);
-    } catch (error) {
-      console.error('Error generating cassettes:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-      toast.error(`Failed to generate cassettes: ${errorMessage}`);
-    } finally {
-      setIsGenerating(false);
+      // Process batch with timeout to prevent UI freeze
+      const batchTimeout = new Promise<Module[][]>((resolve) => {
+        setTimeout(() => resolve([]), 30000); // 30s timeout per batch
+      });
+      
+      const newCassettes = await Promise.race([
+        Promise.all(batchPromises),
+        batchTimeout
+      ]);
+      
+      // Filter out any empty cassettes from failed module processing
+      const validCassettes = newCassettes.filter(cassette => cassette.length > 0);
+      successfulCassettes = [...successfulCassettes, ...validCassettes];
+      processedCount += validCassettes.length;
+      
+      // Update progress
+      const progress = Math.min(100, Math.round((processedCount / cassetteCount) * 100));
+      toast.loading(
+        `Generated ${processedCount} of ${cassetteCount} cassettes (${progress}%)...`, 
+        { id: loadingToast }
+      );
+      
+      // Small delay to allow UI to update
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
+    
+    // Only keep the requested number of cassettes
+    const finalCassettes = successfulCassettes.slice(0, cassetteCount);
+    
+    if (finalCassettes.length > 0) {
+      onAddCassettes(finalCassettes);
+      toast.success(`Successfully generated ${finalCassettes.length} cassettes.`, {
+        id: loadingToast,
+        duration: 5000
+      });
+    } else {
+      toast.error('Failed to generate any valid cassettes. Please check your libraries and try again.', {
+        id: loadingToast,
+        duration: 10000
+      });
+    }
+  } catch (error) {
+    console.error('Error generating cassettes:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    toast.error(`Failed to generate cassettes: ${errorMessage}`, {
+      id: loadingToast,
+      duration: 10000
+    });
+  } finally {
+    setIsGenerating(false);
+    // Ensure any remaining loading toasts are dismissed
+    toast.dismiss(loadingToast);
+  }
   };
 
 

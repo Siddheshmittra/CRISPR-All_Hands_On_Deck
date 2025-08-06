@@ -17,6 +17,7 @@ interface UnifiedGeneSearchProps {
   showTypeButtons?: boolean
   defaultType?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin'
   className?: string
+  disabled?: boolean
 }
 
 const typeOptions = [
@@ -35,7 +36,8 @@ export const UnifiedGeneSearch = ({
   showSelectedModules = true,
   showTypeButtons = true,
   defaultType = 'overexpression',
-  className = ""
+  className = "",
+  disabled = false
 }: UnifiedGeneSearchProps) => {
   const [searchTerm, setSearchTerm] = useState("")
   const [suggestions, setSuggestions] = useState<any[]>([])
@@ -49,6 +51,8 @@ export const UnifiedGeneSearch = ({
       setSuggestions([])
       return
     }
+
+    if (disabled) return;
 
     setLoading(true)
     try {
@@ -105,7 +109,7 @@ export const UnifiedGeneSearch = ({
   }
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-2 ${className} ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       {/* Search Interface */}
       <div className="flex gap-2">
         {!showTypeButtons && (

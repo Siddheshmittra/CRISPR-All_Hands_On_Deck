@@ -23,6 +23,8 @@ export interface Module {
   syntheticSequence?: string; // Custom synthetic sequence for knockins
   color?: string; // Optional color for UI
   metadata?: ModuleMetadata; // Additional metadata for the module
+  isEnriching?: boolean; // Flag to show loading state during sequence enrichment
+  originalSequence?: string; // Store the original sequence before any enrichment or modification
 }
 
 export interface SyntheticGene {

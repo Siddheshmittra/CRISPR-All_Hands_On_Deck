@@ -320,9 +320,11 @@ export async function enrichModuleWithSequence(
   try {
     if (module.type === 'knockdown') {
       console.log(`[enrichModule] Knockdown detected. Searching shRNA data for symbol: ${module.name}`);
-      const shRNARecord = shRNAData.find(record => record['Symbol']?.trim().toUpperCase() === module.name?.trim().toUpperCase());
+      const shRNARecord = shRNAData.find(record => 
+        record['Symbol']?.trim().toUpperCase() === module.name?.trim().toUpperCase()
+      );
       if (shRNARecord && shRNARecord['Final shRNA Seq for\nCRISPR-All Syntax']) {
-        const sequence = shRNARecord['Final shRNA Seq for\nCRISPR-All Syntax'];
+        const sequence = shRNARecord['Final shRNA Seq for\nCRISPR-All Syntax'].trim();
         console.log(`[enrichModule] Found shRNA sequence for ${module.name}`);
         return {
           ...module,
@@ -337,9 +339,9 @@ export async function enrichModuleWithSequence(
 
     if (module.type === 'knockout') {
       console.log(`[enrichModule] Knockout detected. Searching gRNA data for symbol: ${module.name}`);
-      const gRNARecord = gRNAData.find(record => record['gene_symbol']?.trim().toUpperCase() === module.name?.trim().toUpperCase());
-      if (gRNARecord && gRNARecord['sgRNA_sequence']) {
-        const sequence = gRNARecord['sgRNA_sequence'];
+      const gRNARecord = gRNAData.find(record => record.geneSymbol?.trim().toUpperCase() === module.name?.trim().toUpperCase());
+      if (gRNARecord && gRNARecord.gRNASequence) {
+        const sequence = gRNARecord.gRNASequence;
         console.log(`[enrichModule] Found gRNA sequence for ${module.name}`);
         return {
           ...module,

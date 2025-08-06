@@ -69,7 +69,21 @@ const DesignLab = () => {
   }
 
   const handleLibraryTypeChange = (libraryId: string, type: 'overexpression' | 'knockout' | 'knockdown') => {
+    // Update the library type in librarySyntax
     setLibrarySyntax(prev => prev.map(l => l.id === libraryId ? { ...l, type } : l))
+    
+    // Find the library to get its modules
+    const library = folders.find(f => f.id === libraryId)
+    if (!library) return
+    
+    // Update all modules in this library to the new type
+    setCustomModules(prevModules => 
+      prevModules.map(module => 
+        library.modules.includes(module.id) 
+          ? { ...module, type } 
+          : module
+      )
+    )
   }
 
   const handleModuleSelect = async (module: Module) => {

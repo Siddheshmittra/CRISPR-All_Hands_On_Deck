@@ -2,7 +2,7 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Module } from "@/lib/types"
-import { Trash2 } from "lucide-react"
+import { Trash2, Loader2 } from "lucide-react"
 
 const moduleButtonVariants = cva(
   "inline-flex items-center justify-center rounded-md text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none",
@@ -15,7 +15,8 @@ const moduleButtonVariants = cva(
         knockout: "bg-knockout text-knockout-foreground border-knockout/30 hover:bg-knockout/80 shadow-sm",
         knockdown: "bg-knockdown text-knockdown-foreground border-knockdown/30 hover:bg-knockdown/80 shadow-sm",
         knockin: "bg-knockin text-knockin-foreground border-knockin/30 hover:bg-knockin/80 shadow-sm",
-        synthetic: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800"
+        synthetic: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800",
+        hardcoded: "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
       },
       size: {
         default: "h-9 px-4 py-2",
@@ -35,13 +36,14 @@ export interface ModuleButtonProps
     VariantProps<typeof moduleButtonVariants> {
   module?: Module
   isSelected?: boolean
-  moduleType?: "overexpression" | "knockout" | "knockdown" | "knockin" | "synthetic"
+  moduleType?: Module['type']
   onRemove?: () => void
   showRemoveButton?: boolean
 }
 
 const ModuleButton = React.forwardRef<HTMLDivElement, ModuleButtonProps>(
   ({ className, variant, size, isSelected, moduleType, module, onRemove, showRemoveButton, children, ...props }, ref) => {
+    const isLoading = module?.isEnriching;
     // Debug log to see what we're working with
     if (module) {
       console.log('ModuleButton module:', JSON.stringify(module, null, 2));
@@ -66,17 +68,27 @@ const ModuleButton = React.forwardRef<HTMLDivElement, ModuleButtonProps>(
 
     return (
       <div
-        className={cn(moduleButtonVariants({ variant: buttonVariant, size, className }), "relative group")}
+        className={cn(
+          moduleButtonVariants({ variant: buttonVariant, size, className }), 
+          "relative group",
+          isLoading ? "opacity-75" : ""
+        )}
         ref={ref}
-        tabIndex={0}
+        tabIndex={isLoading ? -1 : 0}
         role="button"
-        title={JSON.stringify(module, null, 2)}
+        aria-busy={isLoading}
+        title={isLoading ? "Loading sequence..." : JSON.stringify(module, null, 2)}
         {...props}
       >
-        <span className="truncate">
-          {displayName}
-        </span>
-        {showRemoveButton && onRemove && (
+        <div className="flex items-center gap-2">
+          {isLoading && (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          )}
+          <span className="truncate">
+            {displayName}
+          </span>
+        </div>
+        {!isLoading && showRemoveButton && onRemove && (
           <button
             onClick={(e) => {
               e.stopPropagation()

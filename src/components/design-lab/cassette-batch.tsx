@@ -86,7 +86,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
     // Apply library‐specific cassette syntax rules.
     // 1. Re-order so all OE/KI come before KO/KD
     const early = rawModules.filter(m => m.type === 'overexpression' || m.type === 'knockin');
-    const late  = rawModules.filter(m => m.type === 'knockout' || m.type === 'knockdown');
+    const late = rawModules.filter(m => m.type === 'knockout' || m.type === 'knockdown');
     const ordered = [...early, ...late];
 
     const segments: AnnotatedSegment[] = [];
@@ -94,24 +94,45 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
     // Determine index of first KO/KD for STOP-Triplex-Adaptor insertion
     const firstKOIdx = ordered.findIndex(m => m.type === 'knockout' || m.type === 'knockdown');
 
-    for (let idx = 0; idx < ordered.length; idx++) {
-      const item = ordered[idx];
-
-      // Re-enrich sequence when the stored sequence doesn't match the new type
-      let correctSequence = item.sequence || "";
-      const needsReEnrichment = (
-        (item.type === 'knockout'   && item.sequenceSource !== 'gRNA.json') ||
-        (item.type === 'knockdown'  && item.sequenceSource !== 'shRNA.json') ||
+    // Process all modules in parallel for better performance
+    const processedModules = await Promise.all(ordered.map(async (item, idx) => {
+      // Only re-enrich if we don't have a sequence or if the sequence source doesn't match the type
+      const needsReEnrichment = !item.sequence || (
+        (item.type === 'knockout' && item.sequenceSource !== 'gRNA.json') ||
+        (item.type === 'knockdown' && item.sequenceSource !== 'shRNA.json') ||
         (item.type === 'overexpression' && item.sequenceSource !== 'ensembl_grch38' && item.sequenceSource !== 'ensembl_grch37')
       );
+
+      let correctSequence = item.sequence || '';
+      
       if (needsReEnrichment) {
         try {
-          const enriched = await enrichModuleWithSequence({ ...item, sequence: '', sequenceSource: undefined });
-          correctSequence = enriched.sequence || "";
+          // Clear sequence and source to force re-enrichment
+          const moduleToEnrich = { ...item, sequence: '', sequenceSource: undefined };
+          const enriched = await enrichModuleWithSequence(moduleToEnrich);
+          correctSequence = enriched.sequence || '';
+          
+          // Update the module with the new sequence and source
+          Object.assign(item, {
+            sequence: correctSequence,
+            sequenceSource: enriched.sequenceSource
+          });
         } catch (err) {
           console.error(`Error re-enriching ${item.name}:`, err);
+          // If enrichment fails, use existing sequence if available
+          if (!correctSequence && item.originalSequence) {
+            correctSequence = item.originalSequence;
+          }
         }
       }
+
+      return { ...item, sequence: correctSequence };
+    }));
+
+    // Now process the ordered modules with their correct sequences
+    for (let idx = 0; idx < processedModules.length; idx++) {
+      const item = processedModules[idx];
+      const correctSequence = item.sequence;
 
       // Rule 1: intron before every OE gene
       if (item.type === 'overexpression') {

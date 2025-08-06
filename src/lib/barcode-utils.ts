@@ -37,36 +37,43 @@ export const validateBarcode = (barcode: string): { isValid: boolean; message: s
  * @param existingBarcodes Array of existing barcodes to ensure uniqueness
  * @returns A unique DNA barcode string in uppercase
  */
+/**
+ * Generates a random DNA barcode
+ * @param length Length of the DNA barcode (default: 12bp)
+ * @param existingBarcodes Array of existing barcodes to ensure uniqueness
+ * @returns A unique DNA barcode string in uppercase
+ */
 export const generateBarcode = (
   length: number = 12,
   existingBarcodes: string[] = []
 ): string => {
   const nucleotides = ['A', 'C', 'G', 'T'];
-  let newBarcode = '';
-  let attempts = 0;
-  const maxAttempts = 1000;
-  
-  // Ensure length is within bounds
+  const existingSet = new Set(existingBarcodes);
   const safeLength = Math.max(8, Math.min(24, length));
+  const maxAttempts = 100;
   
-  do {
+  // Try to generate a unique barcode
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     // Generate random DNA sequence
-    newBarcode = Array(safeLength)
-      .fill(0)
-      .map(() => nucleotides[Math.floor(Math.random() * nucleotides.length)])
-      .join('');
-    
-    attempts++;
-    
-    // If we can't find a unique barcode after many attempts, append a number
-    if (attempts > maxAttempts) {
-      newBarcode = newBarcode.slice(0, -3) + attempts.toString().padStart(3, '0');
-      break;
+    let barcode = '';
+    for (let i = 0; i < safeLength; i++) {
+      barcode += nucleotides[Math.floor(Math.random() * 4)];
     }
     
-  } while (existingBarcodes.includes(newBarcode) && attempts < maxAttempts * 2);
+    // If barcode is unique, return it
+    if (!existingSet.has(barcode)) {
+      return barcode;
+    }
+  }
   
-  return newBarcode;
+  // If we can't find a unique barcode after max attempts, append a timestamp
+  // This ensures we always return a unique barcode
+  const timestamp = Date.now().toString(36).slice(-4).toUpperCase();
+  let fallbackBarcode = '';
+  for (let i = 0; i < safeLength - 4; i++) {
+    fallbackBarcode += nucleotides[Math.floor(Math.random() * 4)];
+  }
+  return fallbackBarcode + timestamp;
 };
 
 /**
