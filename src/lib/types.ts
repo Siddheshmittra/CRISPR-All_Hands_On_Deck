@@ -49,7 +49,7 @@ export type ConstructItem = Module | Linker
 export interface LibrarySyntax {
   id: string;
   name: string;
-  type: 'overexpression' | 'knockout' | 'knockdown';
+  type: 'overexpression' | 'knockout' | 'knockdown' | 'knockin';
 }
 
 export interface EnsemblModule extends Module {

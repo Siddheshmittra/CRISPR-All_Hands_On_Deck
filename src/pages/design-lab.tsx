@@ -53,14 +53,26 @@ const DesignLab = () => {
   const [cassetteBatch, setCassetteBatch] = useState<Cassette[]>([])
   const [librarySyntax, setLibrarySyntax] = useState<LibrarySyntax[]>([])
 
-  const handleAddLibrary = (libraryId: string) => {
+  const handleAddLibrary = (libraryId: string, perturbationType?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => {
     const library = folders.find(f => f.id === libraryId)
     if (!library || librarySyntax.find(l => l.id === libraryId)) return
+
+    // If perturbationType is provided, use it; otherwise, determine from first module
+    let moduleType: 'overexpression' | 'knockout' | 'knockdown' | 'knockin' = 'overexpression';
+    
+    if (perturbationType) {
+      moduleType = perturbationType;
+    } else {
+      // Fallback to checking the first module's type if no perturbationType provided
+      const firstModuleId = library.modules[0];
+      const firstModule = customModules.find(m => m.id === firstModuleId);
+      moduleType = firstModule?.type || 'overexpression';
+    }
 
     const newLibrary: LibrarySyntax = {
       id: libraryId,
       name: library.name,
-      type: 'overexpression' // default type
+      type: moduleType
     }
     setLibrarySyntax(prev => [...prev, newLibrary])
   }
@@ -69,7 +81,7 @@ const DesignLab = () => {
     setLibrarySyntax(prev => prev.filter(l => l.id !== libraryId))
   }
 
-  const handleLibraryTypeChange = (libraryId: string, type: 'overexpression' | 'knockout' | 'knockdown') => {
+  const handleLibraryTypeChange = (libraryId: string, type: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => {
     // Update the library type in librarySyntax
     setLibrarySyntax(prev => prev.map(l => l.id === libraryId ? { ...l, type } : l))
     
@@ -85,6 +97,10 @@ const DesignLab = () => {
           : module
       )
     )
+  }
+
+  const handleReorderLibraries = (newOrder: LibrarySyntax[]) => {
+    setLibrarySyntax(newOrder);
   }
 
   const handleModuleSelect = async (module: Module) => {
@@ -322,10 +338,14 @@ const DesignLab = () => {
       // Don't add if already exists
       if (librarySyntax.find(l => l.id === folderId)) return
       
+      // Get the first module in the folder to determine its type
+      const folderModule = customModules.find(m => m.id === folder.modules[0]);
+      const moduleType = folderModule?.type || 'overexpression';
+      
       const newLibraryItem: LibrarySyntax = {
         id: folder.id,
         name: folder.name,
-        type: 'overexpression' // default type
+        type: moduleType as 'overexpression' | 'knockout' | 'knockdown' | 'knockin'
       }
       
       const newSyntax = Array.from(librarySyntax)
@@ -456,6 +476,7 @@ const DesignLab = () => {
                             onAddLibrary={handleAddLibrary}
                             onRemoveLibrary={handleRemoveLibrary}
                             onLibraryTypeChange={handleLibraryTypeChange}
+                            onReorderLibraries={handleReorderLibraries}
                           />
                         </>
                       )}

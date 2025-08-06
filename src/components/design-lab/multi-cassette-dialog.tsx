@@ -66,7 +66,8 @@ interface MultiCassetteSetupProps {
   librarySyntax: LibrarySyntax[];
   onAddLibrary: (libraryId: string) => void;
   onRemoveLibrary: (libraryId: string) => void;
-  onLibraryTypeChange: (libraryId: string, type: 'overexpression' | 'knockout' | 'knockdown') => void;
+  onLibraryTypeChange: (libraryId: string, type: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => void;
+  onReorderLibraries: (newOrder: LibrarySyntax[]) => void;
 }
 
 
@@ -82,6 +83,7 @@ export const MultiCassetteSetup = ({
   onAddLibrary,
   onRemoveLibrary,
   onLibraryTypeChange,
+  onReorderLibraries,
 }: MultiCassetteSetupProps) => {
   const [selectedLibrary, setSelectedLibrary] = useState<string>('total-library')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -98,44 +100,101 @@ export const MultiCassetteSetup = ({
     
     const result: Module[] = [];
     const firstKOIdx = ordered.findIndex(m => m.type === 'knockout' || m.type === 'knockdown');
+    const lastIdx = ordered.length - 1;
 
     ordered.forEach((module, idx) => {
-      // Add intron before OE modules
-      if (module.type === 'overexpression') {
+      const isFirst = idx === 0;
+      const isLast = idx === lastIdx;
+      const isFirstKO = idx === firstKOIdx && firstKOIdx !== -1;
+      const isLastKO = idx === lastIdx && (module.type === 'knockout' || module.type === 'knockdown');
+      const isInternal = !isFirst && !isLast;
+      const isKO = module.type === 'knockout';
+      const isKD = module.type === 'knockdown';
+      const isOE = module.type === 'overexpression';
+
+      // Handle OE modules
+      if (isOE) {
+        // Add Intron before OE module (first position)
+        if (isFirst) {
+          result.push({
+            ...HARDCODED_COMPONENTS.intron,
+            id: `intron-${randomUUID()}`,
+          });
+        }
+
+        // Add the OE module
         result.push({
-          ...HARDCODED_COMPONENTS.intron,
-          id: `intron-${randomUUID()}`,
+          ...module,
+          id: `${module.id}-${randomUUID()}`,
         });
+
+        // Add T2A after OE module (unless it's the last element)
+        if (!isLast) {
+          result.push({
+            ...HARDCODED_COMPONENTS.t2a,
+            id: `t2a-${randomUUID()}`,
+          });
+        }
       }
+      
+      // Handle KO modules
+      else if (isKO) {
+        // Add STOP-Triplex-Adaptor before first KO module
+        if (isFirstKO) {
+          result.push({
+            ...HARDCODED_COMPONENTS.stop,
+            id: `stop-${randomUUID()}`,
+          });
+        }
 
-      // Add STOP-Triplex-Adaptor before first KO/KD
-      if (idx === firstKOIdx && firstKOIdx !== -1) {
+        // Add the KO module
         result.push({
-          ...HARDCODED_COMPONENTS.stop,
-          id: `stop-${randomUUID()}`,
+          ...module,
+          id: `${module.id}-${randomUUID()}`,
         });
+
+        // Add Adaptor after KO module (unless it's the last element)
+        if (isInternal) {
+          result.push({
+            ...HARDCODED_COMPONENTS.t2a, // Using T2A as a generic adaptor for now
+            id: `adaptor-${randomUUID()}`,
+          });
+        }
       }
+      
+      // Handle KD modules
+      else if (isKD) {
+        // Add STOP-Triplex-Adaptor before first KD module
+        if (isFirstKO) {
+          result.push({
+            ...HARDCODED_COMPONENTS.stop,
+            id: `stop-${randomUUID()}`,
+          });
+        }
 
-      // Add the module itself with a new ID to ensure uniqueness
-      result.push({
-        ...module,
-        id: `${module.id}-${randomUUID()}`,
-      });
-
-      // Add T2A after OE modules (except last)
-      if (module.type === 'overexpression' && idx !== ordered.length - 1) {
+        // Add the KD module
         result.push({
-          ...HARDCODED_COMPONENTS.t2a,
-          id: `t2a-${randomUUID()}`,
+          ...module,
+          id: `${module.id}-${randomUUID()}`,
         });
+
+        // Add Adaptor after KD module (unless it's the last element)
+        if (isInternal) {
+          result.push({
+            ...HARDCODED_COMPONENTS.t2a, // Using T2A as a generic adaptor for now
+            id: `adaptor-${randomUUID()}`,
+          });
+        }
       }
     });
 
     // Add Internal Stuffer-Barcode Array at the end
-    result.push({
-      ...HARDCODED_COMPONENTS.isbc,
-      id: `isbc-${randomUUID()}`,
-    });
+    if (ordered.length > 0) {
+      result.push({
+        ...HARDCODED_COMPONENTS.isbc,
+        id: `isbc-${randomUUID()}`,
+      });
+    }
 
     // Add polyA if last module is KO/KD
     const lastModule = ordered[ordered.length - 1];
@@ -199,17 +258,26 @@ export const MultiCassetteSetup = ({
 
           const randomModule = libraryModules[Math.floor(Math.random() * libraryModules.length)];
             try {
-              // Create a new module with the correct type
+              // Create a new module with the correct type from library syntax
               const moduleWithNewType = {
                 ...randomModule,
                 id: `${randomModule.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                type: libSyntax.type,
+                type: libSyntax.type, // Ensure we use the type from library syntax
                 // Only clear sequence if type changed and we need to re-enrich
                 sequence: randomModule.type === libSyntax.type ? randomModule.sequence : '',
-                sequenceSource: randomModule.type === libSyntax.type ? randomModule.sequenceSource : undefined,
+                sequenceSource: randomModule.sequenceSource,
+                // Preserve the original type in case we need to revert
+                originalType: randomModule.type,
                 // Store original sequence as fallback
                 originalSequence: randomModule.sequence
               };
+              
+              // If the type has changed, we need to update the module's properties accordingly
+              if (randomModule.type !== libSyntax.type) {
+                // Clear any type-specific properties that might conflict
+                delete moduleWithNewType.sequence;
+                delete moduleWithNewType.sequenceSource;
+              }
               
               // Only enrich if necessary
               if (randomModule.type !== libSyntax.type) {
@@ -308,53 +376,83 @@ export const MultiCassetteSetup = ({
 
 
 
+  const handleDragEnd = (result: DropResult) => {
+    const { destination, source } = result;
+    
+    // Dropped outside the list
+    if (!destination) return;
+    
+    // No change in position
+    if (destination.droppableId === source.droppableId && 
+        destination.index === source.index) {
+      return;
+    }
+
+    // Reorder the libraries
+    const newLibrarySyntax = Array.from(librarySyntax);
+    const [removed] = newLibrarySyntax.splice(source.index, 1);
+    newLibrarySyntax.splice(destination.index, 0, removed);
+    
+    // Update the parent component with the new order
+    onReorderLibraries(newLibrarySyntax);
+  };
+
   return (
-    <Card className="p-6 mb-4">
-      <h3 className="text-lg font-semibold mb-4">Multi-Cassette Setup</h3>
-      
-      <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block mb-1 text-sm font-medium">Number of Cassettes</label>
-              <Input
-                type="number"
-                min={1}
-                value={cassetteCount}
-                onChange={e => setCassetteCount(Math.max(1, parseInt(e.target.value) || 1))}
-              />
-            </div>
-            <div>
-              <label className="block mb-1 text-sm font-medium">Add Library to Syntax</label>
-              <div className="flex gap-2">
-                <select
-                  value={selectedLibrary}
-                  onChange={e => setSelectedLibrary(e.target.value)}
-                  className="h-9 px-2 flex-1 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  {folders.map(folder => (
-                    <option key={folder.id} value={folder.id}>{folder.name}</option>
-                  ))}
-                </select>
-                <Button
-                  size="sm"
-                  onClick={() => onAddLibrary(selectedLibrary)}
-                  disabled={librarySyntax.find(l => l.id === selectedLibrary) !== undefined}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <Card className="p-6 mb-4">
+        <h3 className="text-lg font-semibold mb-4">Multi-Cassette Setup</h3>
+        
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block mb-1 text-sm font-medium">Number of Cassettes</label>
+            <Input
+              type="number"
+              min={1}
+              value={cassetteCount}
+              onChange={e => setCassetteCount(Math.max(1, parseInt(e.target.value) || 1))}
+            />
+          </div>
+          <div>
+            <label className="block mb-1 text-sm font-medium">Add Library to Syntax</label>
+            <div className="flex gap-2">
+              <select
+                value={selectedLibrary}
+                onChange={e => setSelectedLibrary(e.target.value)}
+                className="h-9 px-2 flex-1 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {folders.map(folder => (
+                  <option key={folder.id} value={folder.id}>{folder.name}</option>
+                ))}
+              </select>
+              <Button
+                size="sm"
+                onClick={() => onAddLibrary(selectedLibrary)}
+                disabled={librarySyntax.find(l => l.id === selectedLibrary) !== undefined}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
           </div>
+        </div>
 
           {/* Library Syntax Section */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium">3. Syntax</label>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" disabled={librarySyntax.length === 0}>
                   <ArrowRight className="h-4 w-4 mr-1" />
                   Randomize
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    // TODO: Implement reset functionality
+                    console.log('Reset syntax');
+                  }}
+                  disabled={librarySyntax.length === 0}
+                >
                   Reset
                 </Button>
               </div>
@@ -370,103 +468,78 @@ export const MultiCassetteSetup = ({
                     }`}
                   >
                     {librarySyntax.length === 0 ? (
-                      <span className="text-sm text-muted-foreground">Add libraries above or drag them from the module selector to build your cassette syntax</span>
+                      <span className="text-sm text-muted-foreground">
+                        Add libraries above or drag them from the module selector to build your cassette syntax
+                      </span>
                     ) : (
                       <>
-                        {/* Generate the syntax flow with hardcoded components interspersed */}
-                        {librarySyntax.map((library, index) => {
-                          const components = [];
-                          
-                          // Add Intron before OE libraries
-                          if (library.type === 'overexpression') {
-                            components.push(
-                              <div key={`intron-${index}`} className="flex items-center gap-2">
-                                <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
-                                  Intron
-                                </div>
-                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                            );
-                          }
-                          
-                          // Add STOP-Triplex-Adaptor before first KO/KD
-                          const isFirstKOKD = (library.type === 'knockout' || library.type === 'knockdown') && 
-                            !librarySyntax.slice(0, index).some(l => l.type === 'knockout' || l.type === 'knockdown');
-                          if (isFirstKOKD) {
-                            components.push(
-                              <div key={`stop-${index}`} className="flex items-center gap-2">
-                                <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
-                                  STOP-Triplex-Adaptor
-                                </div>
-                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                            );
-                          }
-                          
-                          // Add the library itself
-                          components.push(
-                            <Draggable key={library.id} draggableId={library.id} index={index}>
-                              {(provided, snapshot) => (
-                                <div key={`library-${index}`} className="flex items-center gap-2">
-                                  <div
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    className={`px-3 py-2 rounded-md text-sm font-medium cursor-move transition-all ${
-                                      snapshot.isDragging ? 'shadow-lg rotate-2' : 'hover:shadow-md'
-                                    } ${
-                                      library.type === 'overexpression' ? 'bg-overexpression text-overexpression-foreground' :
-                                      library.type === 'knockout' ? 'bg-knockout text-knockout-foreground' :
-                                      library.type === 'knockdown' ? 'bg-knockdown text-knockdown-foreground' :
-                                      'bg-card text-card-foreground'
-                                    }`}
+                        {/* Initial hardcoded components */}
+                        {librarySyntax.some(lib => lib.type === 'overexpression') && (
+                          <div className="flex items-center gap-2">
+                            <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
+                              Intron
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+
+                        {/* Draggable libraries */}
+                        {librarySyntax.map((library, index) => (
+                          <Draggable key={library.id} draggableId={library.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div className="flex items-center gap-2" ref={provided.innerRef} {...provided.draggableProps}>
+                                <div
+                                  {...provided.dragHandleProps}
+                                  className={`px-3 py-2 rounded-md text-sm font-medium cursor-move transition-all ${
+                                    snapshot.isDragging ? 'shadow-lg rotate-2' : 'hover:shadow-md'
+                                  } ${
+                                    library.type === 'overexpression' ? 'bg-overexpression text-overexpression-foreground' :
+                                    library.type === 'knockout' ? 'bg-knockout text-knockout-foreground' :
+                                    library.type === 'knockdown' ? 'bg-knockdown text-knockdown-foreground' :
+                                    'bg-card text-card-foreground'
+                                  }`}
+                                >
+                                  {library.name}
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onRemoveLibrary(library.id);
+                                    }}
+                                    className="ml-2 h-4 w-4 p-0 opacity-60 hover:opacity-100"
                                   >
-                                    {library.name}
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onRemoveLibrary(library.id);
-                                      }}
-                                      className="ml-2 h-4 w-4 p-0 opacity-60 hover:opacity-100"
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                  {index < librarySyntax.length - 1 && (
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                                
+                                {/* Add T2A after OE libraries (except if it's the last element) */}
+                                {library.type === 'overexpression' && index < librarySyntax.length - 1 && (
+                                  <div className="flex items-center gap-2">
                                     <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                  )}
-                                </div>
-                              )}
-                            </Draggable>
-                          );
-                          
-                          // Add T2A after OE libraries (except if it's the last element)
-                          if (library.type === 'overexpression' && index < librarySyntax.length - 1) {
-                            components.push(
-                              <div key={`t2a-${index}`} className="flex items-center gap-2">
-                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
-                                  T2A
-                                </div>
+                                    <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
+                                      T2A
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {index < librarySyntax.length - 1 && (
+                                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                )}
                               </div>
-                            );
-                          }
-                          
-                          return components;
-                        }).flat()}
+                            )}
+                          </Draggable>
+                        ))}
                         
-                        {/* Always add final components */}
+                        {/* Final hardcoded components */}
                         {librarySyntax.length > 0 && (
                           <>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground" />
                             <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
                               Internal Stuffer-Barcode Array
                             </div>
+                            
                             {/* Add polyA if last library is KO/KD */}
-                            {librarySyntax.length > 0 && 
-                             (librarySyntax[librarySyntax.length - 1].type === 'knockout' || 
+                            {(librarySyntax[librarySyntax.length - 1].type === 'knockout' || 
                               librarySyntax[librarySyntax.length - 1].type === 'knockdown') && (
                               <>
                                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -492,6 +565,7 @@ export const MultiCassetteSetup = ({
           >
             Generate {cassetteCount} Cassettes from Library Syntax
           </Button>
-    </Card>
-  )
-}
+        </Card>
+      </DragDropContext>
+    )
+  }

@@ -1,3 +1,66 @@
+interface CassetteElement {
+  element: string;
+  position: 'first' | 'internal' | 'last';
+  encoding: string;
+}
+
+/**
+ * Processes genetic cassette elements and returns their DNA encodings
+ * @param elements Comma-separated list of genetic elements (e.g., "OE-LibraryA, KO-Gene1, KD-Gene2")
+ * @returns Array of objects with element info and their DNA encodings
+ */
+export const processCassetteElements = (elements: string): CassetteElement[] | { error: string } => {
+  const tokens = elements.split(',').map(t => t.trim());
+  const result: CassetteElement[] = [];
+  
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    const isFirst = i === 0;
+    const isLast = i === tokens.length - 1;
+    const position = isFirst ? 'first' : isLast ? 'last' : 'internal';
+    
+    // Handle OE (overexpression) elements
+    if (token.startsWith('OE-')) {
+      const libraryName = token.substring(3);
+      result.push({
+        element: token,
+        position,
+        encoding: `Intron-${libraryName}-T2A${isLast ? '-IS-BCs' : ''}`
+      });
+    }
+    // Handle KO (knockout) elements
+    else if (token.startsWith('KO-')) {
+      let encoding: string;
+      if (isFirst) {
+        encoding = 'STOP-Triplex-Adaptor-gRNAs';
+      } else if (isLast) {
+        encoding = 'Adaptor-gRNA-IS-BCs-PolyA';
+      } else {
+        encoding = 'Adaptor-gRNAs';
+      }
+      result.push({ element: token, position, encoding });
+    }
+    // Handle KD (knockdown) elements
+    else if (token.startsWith('KD-')) {
+      let encoding: string;
+      if (isFirst) {
+        encoding = 'STOP-Triplex-Adaptor-shRNA';
+      } else if (isLast) {
+        encoding = 'Adaptor-shRNA-IS-BCs-PolyA';
+      } else {
+        encoding = 'Adaptor-shRNA';
+      }
+      result.push({ element: token, position, encoding });
+    }
+    // Handle unknown prefixes
+    else {
+      return { error: `Unknown element type in token: ${token}. Must start with OE-, KO-, or KD-` };
+    }
+  }
+  
+  return result;
+};
+
 /**
  * Validates a DNA barcode string
  * @param barcode The DNA barcode to validate
