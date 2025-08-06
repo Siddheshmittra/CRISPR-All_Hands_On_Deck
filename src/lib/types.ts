@@ -2,7 +2,7 @@ export interface AnnotatedSegment {
   name: string;
   sequence: string;
   type: 'module' | 'linker' | 'hardcoded';
-  action?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin' | 'synthetic';
+  action?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin' | 'synthetic' | 'hardcoded';
 }
 
 export interface ModuleMetadata {

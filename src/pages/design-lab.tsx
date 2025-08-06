@@ -131,8 +131,11 @@ const DesignLab = () => {
 
   const handleAddCassette = (modules: Module[], barcode?: string) => {
     const newCassette: Cassette = {
-      id: `cassette-${Date.now()}`,
-      modules: modules,
+      id: `cassette-${crypto.randomUUID()}`,
+      modules: modules.map(module => ({
+        ...module,
+        id: `${module.id}-${crypto.randomUUID()}` // Ensure module IDs are also unique
+      })),
       barcode: barcode?.trim() || undefined
     }
     setCassetteBatch(prev => [...prev, newCassette])

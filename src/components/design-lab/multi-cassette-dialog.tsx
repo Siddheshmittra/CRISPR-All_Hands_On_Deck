@@ -102,7 +102,7 @@ export const MultiCassetteSetup = ({
       if (module.type === 'overexpression') {
         result.push({
           ...HARDCODED_COMPONENTS.intron,
-          id: `intron-${Date.now()}-${idx}`
+          id: `intron-${crypto.randomUUID()}`
         });
       }
 
@@ -110,18 +110,21 @@ export const MultiCassetteSetup = ({
       if (idx === firstKOIdx && firstKOIdx !== -1) {
         result.push({
           ...HARDCODED_COMPONENTS.stop,
-          id: `stop-${Date.now()}-${idx}`
+          id: `stop-${crypto.randomUUID()}`
         });
       }
 
-      // Add the module itself
-      result.push(module);
+      // Add the module itself with a new ID to ensure uniqueness
+      result.push({
+        ...module,
+        id: `${module.id}-${crypto.randomUUID()}`
+      });
 
       // Add T2A after OE modules (except last)
       if (module.type === 'overexpression' && idx !== ordered.length - 1) {
         result.push({
           ...HARDCODED_COMPONENTS.t2a,
-          id: `t2a-${Date.now()}-${idx}`
+          id: `t2a-${crypto.randomUUID()}`
         });
       }
     });
@@ -129,7 +132,7 @@ export const MultiCassetteSetup = ({
     // Add Internal Stuffer-Barcode Array at the end
     result.push({
       ...HARDCODED_COMPONENTS.isbc,
-      id: `isbc-${Date.now()}`
+      id: `isbc-${crypto.randomUUID()}`
     });
 
     // Add polyA if last module is KO/KD
@@ -137,7 +140,7 @@ export const MultiCassetteSetup = ({
     if (lastModule && (lastModule.type === 'knockout' || lastModule.type === 'knockdown')) {
       result.push({
         ...HARDCODED_COMPONENTS.polya,
-        id: `polya-${Date.now()}`
+        id: `polya-${crypto.randomUUID()}`
       });
     }
 
