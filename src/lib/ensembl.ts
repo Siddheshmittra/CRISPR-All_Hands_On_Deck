@@ -2,6 +2,7 @@ import { LRUCache } from 'lru-cache'
 import shRNADb from './shRNA.json';
 import rawGrnaDb from './gRNA.json';
 import { Module } from './types';
+import { safeLocalStorage } from './uuid';
 
 interface ShRNARecord {
   'Symbol': string;
@@ -59,13 +60,13 @@ function getLocalStorageKey(type: 'gene' | 'cdna', key: string): string {
 }
 
 function getFromLocalStorage<T>(type: 'gene' | 'cdna', key: string): T | null {
-  const stored = localStorage.getItem(getLocalStorageKey(type, key));
+  const stored = safeLocalStorage.getItem(getLocalStorageKey(type, key));
   if (!stored) return null;
   try {
     const { value, timestamp } = JSON.parse(stored);
     // Check if cache is older than 24 hours
     if (Date.now() - timestamp > 24 * 60 * 60 * 1000) {
-      localStorage.removeItem(getLocalStorageKey(type, key));
+      safeLocalStorage.removeItem(getLocalStorageKey(type, key));
       return null;
     }
     return value as T;
@@ -75,18 +76,13 @@ function getFromLocalStorage<T>(type: 'gene' | 'cdna', key: string): T | null {
 }
 
 function setInLocalStorage(type: 'gene' | 'cdna', key: string, value: any): void {
-  try {
-    localStorage.setItem(
-      getLocalStorageKey(type, key),
-      JSON.stringify({
-        value,
-        timestamp: Date.now(),
-      })
-    );
-  } catch (e) {
-    // Handle quota exceeded or other storage errors
-    console.warn('Failed to store in localStorage:', e);
-  }
+  safeLocalStorage.setItem(
+    getLocalStorageKey(type, key),
+    JSON.stringify({
+      value,
+      timestamp: Date.now(),
+    })
+  );
 }
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {

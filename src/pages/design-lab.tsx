@@ -3,6 +3,7 @@ import { DragDropContext, type DropResult, Droppable } from "@hello-pangea/dnd"
 import { Header } from "@/components/design-lab/header"
 import { DesignMode } from "@/components/design-lab/design-mode"
 import { ModuleSelector } from "@/components/design-lab/module-selector"
+import { randomUUID } from "@/lib/uuid"
 import { ConstructLayout } from "@/components/design-lab/construct-layout"
 import { FinalConstruct } from "@/components/design-lab/final-construct"
 import { MultiCassetteSetup } from "@/components/design-lab/multi-cassette-dialog"
@@ -131,10 +132,10 @@ const DesignLab = () => {
 
   const handleAddCassette = (modules: Module[], barcode?: string) => {
     const newCassette: Cassette = {
-      id: `cassette-${crypto.randomUUID()}`,
+      id: `cassette-${randomUUID()}`,
       modules: modules.map(module => ({
         ...module,
-        id: `${module.id}-${crypto.randomUUID()}` // Ensure module IDs are also unique
+        id: `${module.id}-${randomUUID()}` // Ensure module IDs are also unique
       })),
       barcode: barcode?.trim() || undefined
     }
@@ -376,11 +377,6 @@ const DesignLab = () => {
   }
 
 
-  const handleRandomize = () => {
-    const shuffled = [...constructModules].sort(() => Math.random() - 0.5)
-    setConstructModules(shuffled)
-  }
-
   const handleReset = () => {
     setConstructModules([])
     setSelectedModules([])
@@ -427,67 +423,74 @@ const DesignLab = () => {
               />
             )}
             
-            {inputMode === 'manual' && (
-              <DragDropContext onDragEnd={handleDragEnd}>
-                <div className="flex flex-row gap-4 items-start">
-                  <div className="flex-1">
-                    {cassetteMode === 'single' ? (
-                                            <SimpleModuleSelector
-                        onModuleAdd={handleModuleSelect}
-                        constructModules={constructModules}
-                      />
-                    ) : (
-                      <>
-                        <ModuleSelector
-                          selectedModules={selectedModules}
-                          onModuleSelect={handleModuleSelect}
-                          onModuleDeselect={handleModuleDeselect}
-                          customModules={customModules}
-                          onCustomModulesChange={setCustomModules}
-                          folders={folders}
-                          setFolders={setFolders}
-                          handleModuleClick={handleModuleClick}
-                          hideTypeSelector={cassetteMode === 'multi'}
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <div className="flex flex-row gap-4 items-start">
+                <div className="flex-1">
+                  {inputMode === 'manual' && (
+                    <>
+                      {cassetteMode === 'single' ? (
+                        <SimpleModuleSelector
+                          onModuleAdd={handleModuleSelect}
+                          constructModules={constructModules}
                         />
-                        <MultiCassetteSetup
-                          cassetteCount={cassetteCount}
-                          setCassetteCount={setCassetteCount}
-                          onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
-                          folders={folders}
-                          customModules={customModules}
-                          librarySyntax={librarySyntax}
-                          onAddLibrary={handleAddLibrary}
-                          onRemoveLibrary={handleRemoveLibrary}
-                          onLibraryTypeChange={handleLibraryTypeChange}
-                        />
-                      </>
-                    )}
-                    {cassetteMode !== 'multi' && (
-                      <ConstructLayout
-                        constructModules={constructWithLinkers}
-                        onModuleRemove={handleModuleRemove}
-                        onRandomize={handleRandomize}
-                        onReset={handleReset}
-                        isMultiCassetteMode={false}
-                        onAddCassette={handleAddCassette}
-                      />
-                    )}
-                    <LinkerSelector
+                      ) : (
+                        <>
+                          <ModuleSelector
+                            selectedModules={selectedModules}
+                            onModuleSelect={handleModuleSelect}
+                            onModuleDeselect={handleModuleDeselect}
+                            customModules={customModules}
+                            onCustomModulesChange={setCustomModules}
+                            folders={folders}
+                            setFolders={setFolders}
+                            handleModuleClick={handleModuleClick}
+                            hideTypeSelector={cassetteMode === 'multi'}
+                          />
+                          <MultiCassetteSetup
+                            cassetteCount={cassetteCount}
+                            setCassetteCount={setCassetteCount}
+                            onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
+                            folders={folders}
+                            customModules={customModules}
+                            librarySyntax={librarySyntax}
+                            onAddLibrary={handleAddLibrary}
+                            onRemoveLibrary={handleRemoveLibrary}
+                            onLibraryTypeChange={handleLibraryTypeChange}
+                          />
+                        </>
+                      )}
+                    </>
+                  )}
+                  
+                  {cassetteMode !== 'multi' && (
+                    <ConstructLayout
+                      constructModules={constructWithLinkers}
+                      onModuleRemove={handleModuleRemove}
+                      onReset={handleReset}
+                      isMultiCassetteMode={false}
+                      onAddCassette={handleAddCassette}
+                    />
+                  )}
+                  
+                  {inputMode === 'manual' && (
+                    <>
+                      <LinkerSelector
                         selectedLinker={selectedLinkerId}
                         onLinkerChange={setSelectedLinkerId}
                         autoLink={autoLink}
                         onAutoLinkChange={setAutoLink}
-                    />
-                    <CassetteBatch 
-                      cassetteBatch={cassetteBatch}
-                      onDeleteCassette={handleDeleteCassette}
-                      onExportBatch={handleExportBatch}
-                      onUpdateCassette={handleUpdateCassette}
-                    />
-                  </div>
+                      />
+                      <CassetteBatch 
+                        cassetteBatch={cassetteBatch}
+                        onDeleteCassette={handleDeleteCassette}
+                        onExportBatch={handleExportBatch}
+                        onUpdateCassette={handleUpdateCassette}
+                      />
+                    </>
+                  )}
                 </div>
-              </DragDropContext>
-            )}
+              </div>
+            </DragDropContext>
             
             <FinalConstruct constructModules={constructWithLinkers} />
           </div>

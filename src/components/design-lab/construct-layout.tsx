@@ -9,7 +9,6 @@ import { Badge } from "../ui/badge"
 interface ConstructLayoutProps {
   constructModules: ConstructItem[]
   onModuleRemove: (moduleId: string) => void
-  onRandomize: () => void
   onReset: () => void
   onAddCassette?: (modules: Module[]) => void
   isMultiCassetteMode?: boolean
@@ -29,7 +28,6 @@ function getTypeArrow(type: string) {
 export const ConstructLayout = ({
   constructModules,
   onModuleRemove,
-  onRandomize,
   onReset,
   onAddCassette,
   isMultiCassetteMode = false
@@ -46,11 +44,7 @@ export const ConstructLayout = ({
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">3. Syntax</h2>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={onRandomize}>
-            <Shuffle className="h-4 w-4 mr-2" />
-            Randomize
-          </Button>
-          <Button variant="outline" size="sm" onClick={onReset}>
+<Button variant="outline" size="sm" onClick={onReset}>
             <RotateCcw className="h-4 w-4 mr-2" />
             Reset
           </Button>

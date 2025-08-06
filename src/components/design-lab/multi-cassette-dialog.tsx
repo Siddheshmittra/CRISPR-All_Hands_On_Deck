@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useMemo, useRef, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +10,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { toast } from "sonner"
 import { Module, LibrarySyntax } from "@/lib/types"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
+import { randomUUID } from "@/lib/uuid"
 
 // Hardcoded syntax components with their sequences and types
 const HARDCODED_COMPONENTS = {
@@ -16,7 +18,7 @@ const HARDCODED_COMPONENTS = {
     id: 't2a',
     name: 'T2A',
     type: 'hardcoded' as const,
-    sequence: 'GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCT',
+    sequence: 'GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCT',
     color: 'bg-muted',
     description: 'T2A self-cleaving peptide'
   },
@@ -102,7 +104,7 @@ export const MultiCassetteSetup = ({
       if (module.type === 'overexpression') {
         result.push({
           ...HARDCODED_COMPONENTS.intron,
-          id: `intron-${crypto.randomUUID()}`
+          id: `intron-${randomUUID()}`,
         });
       }
 
@@ -110,21 +112,21 @@ export const MultiCassetteSetup = ({
       if (idx === firstKOIdx && firstKOIdx !== -1) {
         result.push({
           ...HARDCODED_COMPONENTS.stop,
-          id: `stop-${crypto.randomUUID()}`
+          id: `stop-${randomUUID()}`,
         });
       }
 
       // Add the module itself with a new ID to ensure uniqueness
       result.push({
         ...module,
-        id: `${module.id}-${crypto.randomUUID()}`
+        id: `${module.id}-${randomUUID()}`,
       });
 
       // Add T2A after OE modules (except last)
       if (module.type === 'overexpression' && idx !== ordered.length - 1) {
         result.push({
           ...HARDCODED_COMPONENTS.t2a,
-          id: `t2a-${crypto.randomUUID()}`
+          id: `t2a-${randomUUID()}`,
         });
       }
     });
@@ -132,7 +134,7 @@ export const MultiCassetteSetup = ({
     // Add Internal Stuffer-Barcode Array at the end
     result.push({
       ...HARDCODED_COMPONENTS.isbc,
-      id: `isbc-${crypto.randomUUID()}`
+      id: `isbc-${randomUUID()}`,
     });
 
     // Add polyA if last module is KO/KD
@@ -140,7 +142,7 @@ export const MultiCassetteSetup = ({
     if (lastModule && (lastModule.type === 'knockout' || lastModule.type === 'knockdown')) {
       result.push({
         ...HARDCODED_COMPONENTS.polya,
-        id: `polya-${crypto.randomUUID()}`
+        id: `polya-${randomUUID()}`,
       });
     }
 
