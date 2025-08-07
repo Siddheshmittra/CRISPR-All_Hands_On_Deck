@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import { Module, LibrarySyntax } from "@/lib/types"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { randomUUID } from "@/lib/uuid"
+import { NaturalLanguageInput } from "./NaturalLanguageInput"
 
 // Hardcoded syntax components with their sequences and types
 const HARDCODED_COMPONENTS = {
@@ -68,29 +69,43 @@ interface MultiCassetteSetupProps {
   onRemoveLibrary: (libraryId: string) => void;
   onLibraryTypeChange: (libraryId: string, type: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => void;
   onReorderLibraries: (newOrder: LibrarySyntax[]) => void;
+  onLibrariesChange?: (libraries: LibrarySyntax[]) => void;
 }
 
 
 
-export const MultiCassetteSetup = ({
-  cassetteCount,
-  setCassetteCount,
-  showGoButton = false,
-  onAddCassettes,
-  folders,
-  customModules,
-  librarySyntax,
-  onAddLibrary,
-  onRemoveLibrary,
-  onLibraryTypeChange,
-  onReorderLibraries,
-}: MultiCassetteSetupProps) => {
+export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
+  const {
+    cassetteCount,
+    setCassetteCount,
+    showGoButton = false,
+    onAddCassettes,
+    folders,
+    customModules,
+    librarySyntax,
+    onAddLibrary,
+    onRemoveLibrary,
+    onLibraryTypeChange,
+    onReorderLibraries,
+    onLibrariesChange
+  } = props;
   const [selectedLibrary, setSelectedLibrary] = useState<string>('total-library')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [libraries, setLibraries] = useState<LibrarySyntax[]>([])
 
+  // Initialize libraries from props
+  useEffect(() => {
+    if (props.librarySyntax) {
+      setLibraries(props.librarySyntax);
+    }
+  }, [props.librarySyntax]);
 
-
-
+  // Update parent when libraries change
+  useEffect(() => {
+    if (onLibrariesChange) {
+      onLibrariesChange(libraries);
+    }
+  }, [libraries, onLibrariesChange]);
 
   const applyCassetteSyntax = (modules: Module[]): Module[] => {
     // 1. Re-order so all OE/KI come before KO/KD
@@ -397,21 +412,62 @@ export const MultiCassetteSetup = ({
     onReorderLibraries(newLibrarySyntax);
   };
 
+  // Handle modules generated from natural language input
+  const handleModulesGenerated = (newModules: Module[]) => {
+    if (newModules.length === 0) return;
+
+    // Add to the first cassette or create a new one
+    if (libraries.length > 0) {
+      const updatedLibraries = [...libraries];
+      updatedLibraries[0].modules = [
+        ...updatedLibraries[0].modules,
+        ...newModules
+      ];
+      setLibraries(updatedLibraries);
+      onLibrariesChange?.(updatedLibraries);
+    } else {
+      const newLibrary: LibrarySyntax = {
+        id: `library-${Date.now()}`,
+        name: 'Generated Design',
+        modules: newModules,
+        type: 'overexpression' // Default type, can be changed later
+      };
+      const newLibraries = [newLibrary];
+      setLibraries(newLibraries);
+      onLibrariesChange?.(newLibraries);
+    }
+
+    toast.success(`Added ${newModules.length} module${newModules.length > 1 ? 's' : ''} to your design`);
+  };
+
+  // Handle errors from natural language input
+  const handleNaturalLanguageError = (error: string) => {
+    toast.error(error);
+  };
+
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
-      <Card className="p-6 mb-4">
-        <h3 className="text-lg font-semibold mb-4">Multi-Cassette Setup</h3>
-        
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block mb-1 text-sm font-medium">Number of Cassettes</label>
-            <Input
-              type="number"
-              min={1}
-              value={cassetteCount}
-              onChange={e => setCassetteCount(Math.max(1, parseInt(e.target.value) || 1))}
-            />
-          </div>
+    <div className="space-y-6">
+      <Card className="p-4">
+        <NaturalLanguageInput 
+          onModulesGenerated={handleModulesGenerated}
+          onError={handleNaturalLanguageError}
+        />
+      </Card>
+      
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Card className="p-6 mb-4">
+          <h3 className="text-lg font-semibold mb-4">Multi-Cassette Setup</h3>
+          
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block mb-1 text-sm font-medium">Number of Cassettes</label>
+              <Input
+                type="number"
+                min={1}
+                value={cassetteCount}
+                onChange={e => setCassetteCount(Math.max(1, parseInt(e.target.value) || 1))}
+              />
+            </div>
           <div>
             <label className="block mb-1 text-sm font-medium">Add Library to Syntax</label>
             <div className="flex gap-2">
@@ -567,5 +623,6 @@ export const MultiCassetteSetup = ({
           </Button>
         </Card>
       </DragDropContext>
-    )
+    </div>
+  )
   }

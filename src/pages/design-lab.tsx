@@ -424,97 +424,94 @@ const DesignLab = () => {
   }, [customModules])
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-card shadow-elevated rounded-lg overflow-hidden">
-          <Header />
+    <div className="min-h-screen bg-white">
+      <Header />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-8">
+          <DesignMode
+            cassetteMode={cassetteMode}
+            onCassetteModeChange={setCassetteMode}
+            inputMode={inputMode}
+            onInputModeChange={setInputMode}
+          />
           
-          <div className="p-6 space-y-6">
-            <DesignMode
-              cassetteMode={cassetteMode}
-              onCassetteModeChange={setCassetteMode}
-              inputMode={inputMode}
-              onInputModeChange={setInputMode}
+          {inputMode === 'natural' && (
+            <NaturalLanguageMode
+              onSuggestedConstruct={modules => setConstructModules(modules)}
             />
-            
-            {inputMode === 'natural' && (
-              <NaturalLanguageMode
-                onSuggestedConstruct={modules => setConstructModules(modules)}
-              />
-            )}
-            
-            <DragDropContext onDragEnd={handleDragEnd}>
-              <div className="flex flex-row gap-4 items-start">
-                <div className="flex-1">
-                  {inputMode === 'manual' && (
-                    <>
-                      {cassetteMode === 'single' ? (
-                        <SimpleModuleSelector
-                          onModuleAdd={handleModuleSelect}
-                          constructModules={constructModules}
+          )}
+          
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div className="flex flex-row gap-4 items-start">
+              <div className="flex-1">
+                {inputMode === 'manual' && (
+                  <>
+                    {cassetteMode === 'single' ? (
+                      <SimpleModuleSelector
+                        onModuleAdd={handleModuleSelect}
+                        constructModules={constructModules}
+                      />
+                    ) : (
+                      <>
+                        <ModuleSelector
+                          selectedModules={selectedModules}
+                          onModuleSelect={handleModuleSelect}
+                          onModuleDeselect={handleModuleDeselect}
+                          customModules={customModules}
+                          onCustomModulesChange={setCustomModules}
+                          folders={folders}
+                          setFolders={setFolders}
+                          handleModuleClick={handleModuleClick}
+                          hideTypeSelector={cassetteMode === 'multi'}
                         />
-                      ) : (
-                        <>
-                          <ModuleSelector
-                            selectedModules={selectedModules}
-                            onModuleSelect={handleModuleSelect}
-                            onModuleDeselect={handleModuleDeselect}
-                            customModules={customModules}
-                            onCustomModulesChange={setCustomModules}
-                            folders={folders}
-                            setFolders={setFolders}
-                            handleModuleClick={handleModuleClick}
-                            hideTypeSelector={cassetteMode === 'multi'}
-                          />
-                          <MultiCassetteSetup
-                            cassetteCount={cassetteCount}
-                            setCassetteCount={setCassetteCount}
-                            onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
-                            folders={folders}
-                            customModules={customModules}
-                            librarySyntax={librarySyntax}
-                            onAddLibrary={handleAddLibrary}
-                            onRemoveLibrary={handleRemoveLibrary}
-                            onLibraryTypeChange={handleLibraryTypeChange}
-                            onReorderLibraries={handleReorderLibraries}
-                          />
-                        </>
-                      )}
-                    </>
-                  )}
-                  
-                  {cassetteMode !== 'multi' && (
-                    <ConstructLayout
-                      constructModules={constructWithLinkers}
-                      onModuleRemove={handleModuleRemove}
-                      onReset={handleReset}
-                      isMultiCassetteMode={false}
-                      onAddCassette={handleAddCassette}
+                        <MultiCassetteSetup
+                          cassetteCount={cassetteCount}
+                          setCassetteCount={setCassetteCount}
+                          onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
+                          folders={folders}
+                          customModules={customModules}
+                          librarySyntax={librarySyntax}
+                          onAddLibrary={handleAddLibrary}
+                          onRemoveLibrary={handleRemoveLibrary}
+                          onLibraryTypeChange={handleLibraryTypeChange}
+                          onReorderLibraries={handleReorderLibraries}
+                        />
+                      </>
+                    )}
+                  </>
+                )}
+                
+                {cassetteMode !== 'multi' && (
+                  <ConstructLayout
+                    constructModules={constructWithLinkers}
+                    onModuleRemove={handleModuleRemove}
+                    onReset={handleReset}
+                    isMultiCassetteMode={false}
+                    onAddCassette={handleAddCassette}
+                  />
+                )}
+                
+                {inputMode === 'manual' && (
+                  <>
+                    <LinkerSelector
+                      selectedLinker={selectedLinkerId}
+                      onLinkerChange={setSelectedLinkerId}
+                      autoLink={autoLink}
+                      onAutoLinkChange={setAutoLink}
                     />
-                  )}
-                  
-                  {inputMode === 'manual' && (
-                    <>
-                      <LinkerSelector
-                        selectedLinker={selectedLinkerId}
-                        onLinkerChange={setSelectedLinkerId}
-                        autoLink={autoLink}
-                        onAutoLinkChange={setAutoLink}
-                      />
-                      <CassetteBatch 
-                        cassetteBatch={cassetteBatch}
-                        onDeleteCassette={handleDeleteCassette}
-                        onExportBatch={handleExportBatch}
-                        onUpdateCassette={handleUpdateCassette}
-                      />
-                    </>
-                  )}
-                </div>
+                    <CassetteBatch 
+                      cassetteBatch={cassetteBatch}
+                      onDeleteCassette={handleDeleteCassette}
+                      onExportBatch={handleExportBatch}
+                      onUpdateCassette={handleUpdateCassette}
+                    />
+                  </>
+                )}
               </div>
-            </DragDropContext>
-            
-            <FinalConstruct constructModules={constructWithLinkers} />
-          </div>
+            </div>
+          </DragDropContext>
+          
+          <FinalConstruct constructModules={constructWithLinkers} />
         </div>
       </div>
     </div>

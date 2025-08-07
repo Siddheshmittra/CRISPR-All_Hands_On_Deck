@@ -57,10 +57,30 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   // Type selector state
   const [selectedType, setSelectedType] = useState<'overexpression' | 'knockout' | 'knockdown' | 'knockin'>('overexpression')
   const typeOptions = [
-    { value: 'overexpression', label: 'OE' },
-    { value: 'knockout', label: 'KO' },
-    { value: 'knockdown', label: 'KD' },
-    { value: 'knockin', label: 'KI*' },
+    { 
+      value: 'overexpression', 
+      label: 'OE',
+      className: 'bg-[hsl(66,70%,47%)] hover:bg-[hsl(66,70%,40%)] text-foreground',
+      outlineClassName: 'text-[hsl(66,70%,47%)] border-[hsl(66,70%,47%)] hover:bg-[hsl(66,70%,47%)]/10'
+    },
+    { 
+      value: 'knockout', 
+      label: 'KO',
+      className: 'bg-[hsl(13,95%,59%)] hover:bg-[hsl(13,95%,50%)] text-white',
+      outlineClassName: 'text-[hsl(13,95%,59%)] border-[hsl(13,95%,59%)] hover:bg-[hsl(13,95%,59%)]/10'
+    },
+    { 
+      value: 'knockdown', 
+      label: 'KD',
+      className: 'bg-[hsl(32,75%,49%)] hover:bg-[hsl(32,75%,40%)] text-white',
+      outlineClassName: 'text-[hsl(32,75%,49%)] border-[hsl(32,75%,49%)] hover:bg-[hsl(32,75%,49%)]/10'
+    },
+    { 
+      value: 'knockin', 
+      label: 'KI*',
+      className: 'bg-[hsl(220,35%,65%)] hover:bg-[hsl(220,35%,55%)] text-foreground',
+      outlineClassName: 'text-[hsl(220,35%,65%)] border-[hsl(220,35%,65%)] hover:bg-[hsl(220,35%,65%)]/10'
+    },
   ]
 
   const [newFolderName, setNewFolderName] = useState("")
@@ -1046,9 +1066,13 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                         <Button
                           key={option.value}
                           type="button"
-                          variant={scanGenesPerturbationType === option.value ? 'default' : 'outline'}
+                          variant="outline"
                           size="sm"
-                          className="flex-1 min-w-[100px]"
+                          className={`flex-1 min-w-[100px] transition-colors ${
+                            scanGenesPerturbationType === option.value 
+                              ? option.className 
+                              : option.outlineClassName
+                          }`}
                           onClick={() => setScanGenesPerturbationType(option.value as any)}
                         >
                           {option.label}

@@ -49,7 +49,6 @@ export function CodingFrameDialog({ open, onOpenChange, onConfirm, geneName }: C
             {endsCodingFrame 
               ? "A stop codon will be added if not present." 
               : "A 2A self-cleaving peptide sequence will be added to enable polycistronic expression."}
-            }
           </div>
         </div>
         
