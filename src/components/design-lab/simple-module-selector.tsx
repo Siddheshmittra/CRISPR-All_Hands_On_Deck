@@ -26,10 +26,34 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
   const typeOptions = [
-    { value: 'overexpression', label: 'OE', icon: '↑' },
-    { value: 'knockout', label: 'KO', icon: '✖' },
-    { value: 'knockdown', label: 'KD', icon: '↓' },
-    { value: 'knockin', label: 'KI*', icon: '→' },
+    { 
+      value: 'overexpression', 
+      label: 'OE', 
+      icon: '↑',
+      className: 'bg-[hsl(66,70%,47%)] hover:bg-[hsl(66,70%,40%)] text-white font-semibold',
+      outlineClassName: 'text-[hsl(66,70%,47%)] border-[hsl(66,70%,47%)] hover:bg-[hsl(66,70%,47%)]/20 hover:text-[hsl(66,70%,47%)] font-medium'
+    },
+    { 
+      value: 'knockout', 
+      label: 'KO', 
+      icon: '✖',
+      className: 'bg-[hsl(13,95%,59%)] hover:bg-[hsl(13,95%,50%)] text-white font-semibold',
+      outlineClassName: 'text-[hsl(13,95%,59%)] border-[hsl(13,95%,59%)] hover:bg-[hsl(13,95%,59%)]/20 hover:text-[hsl(13,95%,59%)] font-medium'
+    },
+    { 
+      value: 'knockdown', 
+      label: 'KD', 
+      icon: '↓',
+      className: 'bg-[hsl(32,75%,49%)] hover:bg-[hsl(32,75%,40%)] text-white font-semibold',
+      outlineClassName: 'text-[hsl(32,75%,49%)] border-[hsl(32,75%,49%)] hover:bg-[hsl(32,75%,49%)]/20 hover:text-[hsl(32,75%,49%)] font-medium'
+    },
+    { 
+      value: 'knockin', 
+      label: 'KI*', 
+      icon: '→',
+      className: 'bg-[hsl(220,35%,65%)] hover:bg-[hsl(220,35%,55%)] text-white font-semibold',
+      outlineClassName: 'text-[hsl(220,35%,65%)] border-[hsl(220,35%,65%)] hover:bg-[hsl(220,35%,65%)]/20 hover:text-[hsl(220,35%,65%)] font-medium'
+    },
   ]
 
   const handleSearch = async (query: string) => {
@@ -243,113 +267,133 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-semibold mb-4">Add Modules to Construct</h2>
-      
-      {showSyntheticSelector && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <SyntheticGeneSelector
-            onGeneSelect={handleSyntheticGeneSelect}
-            onCustomSequence={handleCustomSequence}
-            onClose={() => setShowSyntheticSelector(false)}
-          />
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {/* Type Selector */}
-        <div className="flex gap-2">
-          {typeOptions.map(option => (
-            <Button
-              key={option.value}
-              variant={selectedType === option.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setSelectedType(option.value as any)
-                // If knockin is selected, immediately show synthetic gene selector
-                if (option.value === 'knockin') {
-                  setShowSyntheticSelector(true)
-                }
-              }}
-              className="flex-1"
-            >
-              <span className="mr-2">{option.icon}</span>
-              {option.label}
-            </Button>
-          ))}
-        </div>
+    <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="space-y-5">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add Modules to Construct</h2>
         
-        {/* Legend */}
-        <div className="text-xs text-muted-foreground text-center">
-          *indicates knock-ins of synthetic genes
+        {/* Type Selector - Styled to match scan genes dialog */}
+        <div className="p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Perturbation Type</div>
+          <div className="flex gap-2 flex-wrap">
+            {typeOptions.map(option => (
+              <Button
+                key={option.value}
+                type="button"
+                variant="outline"
+                size="sm"
+                className={`flex-1 min-w-[80px] transition-all duration-200 ${
+                  selectedType === option.value 
+                    ? option.className + ' shadow-md scale-[1.02]' 
+                    : option.outlineClassName + ' hover:shadow-md hover:scale-[1.02] hover:font-semibold'
+                }`}
+                onClick={() => {
+                  setSelectedType(option.value as any);
+                  // If knockin is selected, show synthetic gene selector
+                  if (option.value === 'knockin') {
+                    setShowSyntheticSelector(true);
+                  }
+                }}
+              >
+                <span className="drop-shadow-sm">{option.icon} {option.label}</span>
+              </Button>
+            ))}
+          </div>
+          <p className="mt-3 text-sm text-gray-700 dark:text-gray-300 font-medium">
+            *indicates knock-ins of synthetic genes
+          </p>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={`Search for genes to ${selectedType}...`}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+        {showSyntheticSelector && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <SyntheticGeneSelector
+              onGeneSelect={handleSyntheticGeneSelect}
+              onCustomSequence={handleCustomSequence}
+              onClose={() => setShowSyntheticSelector(false)}
+            />
+          </div>
+        )}
+
+        {/* Search - Enhanced with better styling */}
+        <div className="space-y-2">
+          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Search for genes to {selectedType}
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+            <Input
+              placeholder={`e.g. TP53, BRCA1, EGFR`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-11 text-base border-gray-300 dark:border-gray-600 focus-visible:ring-2 focus-visible:ring-primary"
+            />
+          </div>
         </div>
 
         {/* Suggestions */}
-        {loading && (
-          <div className="text-center py-4 text-muted-foreground">
-            Searching...
-          </div>
-        )}
-
-        {!loading && suggestions.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground">Search Results</h3>
-            {suggestions.map((suggestion, index) => (
-              <Card 
-                key={suggestion.symbol} 
-                className="p-3 hover:bg-muted/50 cursor-pointer transition-colors"
-                onClick={() => handleAddModule(suggestion)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-semibold">{suggestion.symbol}</h4>
-                      <Badge variant="secondary" className="text-xs">
-                        {selectedType.toUpperCase()}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {suggestion.description || suggestion.name || "Human gene"}
-                    </p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {/* Quick Add Common Genes */}
-        {!searchTerm && suggestions.length === 0 && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground">Quick Add Common Genes</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {['BATF', 'IRF4', 'PDCD1', 'TET2', 'GZMB', 'IFNG'].map(gene => (
-                <Button
-                  key={gene}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuickAddModule(gene)}
-                  className="justify-start"
-                >
-                  <Plus className="h-3 w-3 mr-2" />
-                  {gene}
-                </Button>
-              ))}
+        <div className="space-y-3">
+          {loading ? (
+            <div className="text-center py-4 text-muted-foreground">
+              Searching...
             </div>
-          </div>
-        )}
+          ) : !searchTerm && suggestions.length === 0 ? (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Quick Add Common Genes</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {['BATF', 'IRF4', 'PDCD1', 'TET2', 'GZMB', 'IFNG'].map(gene => {
+                  const selectedTypeOption = typeOptions.find(opt => opt.value === selectedType);
+                  return (
+                    <Button
+                      key={gene}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickAddModule(gene)}
+                      className={`justify-start hover:bg-opacity-20 ${selectedTypeOption?.outlineClassName.split(' ').filter(c => c.startsWith('hover:bg-[') || c.startsWith('hover:text-[')).join(' ')}`}
+                    >
+                      <Plus className="h-3 w-3 mr-2" />
+                      {gene}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : suggestions.length > 0 && (
+            <>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Search Results</h3>
+              <div className="space-y-2">
+                {suggestions.map((suggestion) => (
+                  <Card 
+                    key={suggestion.symbol} 
+                    className="p-3 hover:bg-muted/50 cursor-pointer transition-all duration-200 hover:shadow-md border border-gray-200 dark:border-gray-700"
+                    onClick={() => handleAddModule(suggestion)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <h4 className="font-bold text-gray-900 dark:text-white">{suggestion.symbol}</h4>
+                          <Badge 
+                            variant="secondary" 
+                            className="text-xs font-medium px-2 py-0.5"
+                            style={{
+                              backgroundColor: selectedType === 'overexpression' ? 'hsl(66,70%,47%)' : 
+                                            selectedType === 'knockout' ? 'hsl(13,95%,59%)' :
+                                            selectedType === 'knockdown' ? 'hsl(32,75%,49%)' : 'hsl(220,35%,65%)',
+                              color: selectedType === 'knockout' || selectedType === 'knockdown' ? 'white' : 'hsl(0 0% 98%)'
+                            }}
+                          >
+                            {selectedType.toUpperCase()}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {suggestion.description || suggestion.name || "Human gene"}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Module Count */}
         <div className="text-sm text-muted-foreground text-center">

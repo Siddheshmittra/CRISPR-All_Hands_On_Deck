@@ -110,25 +110,73 @@ async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export async function searchEnsembl(query: string): Promise<Array<{ symbol: string; description: string; sequence: string }>> {
-  if (query.length < 2) return []
+  if (query.length < 2) return [];
   
+  const searchHGNC = async (): Promise<Array<{ symbol: string; description: string; sequence: string }>> => {
+    try {
+      const response = await fetch(`https://rest.genenames.org/search/${encodeURIComponent(query)}`, {
+        headers: { "Accept": "application/json" }
+      });
+      
+      if (!response.ok) throw new Error(`HGNC API responded with status ${response.status}`);
+      
+      const data = await response.json();
+      const hits = data.response?.docs || [];
+      
+      return hits.slice(0, 5).map((hit: any) => ({
+        symbol: hit.symbol,
+        description: hit.name || `Human gene ${hit.symbol}`,
+        sequence: ""
+      }));
+    } catch (error) {
+      console.warn('HGNC search failed, falling back to direct Ensembl search:', error);
+      throw error; // This will trigger the fallback to Ensembl search
+    }
+  };
+  
+  const searchDirectEnsembl = async (): Promise<Array<{ symbol: string; description: string; sequence: string }>> => {
+    try {
+      const response = await fetch(
+        `https://rest.ensembl.org/lookup/symbol/homo_sapiens/${encodeURIComponent(query)}?expand=1`,
+        { headers: { "Content-Type": "application/json" } }
+      );
+      
+      if (!response.ok) {
+        // If not found, try search endpoint
+        const searchResponse = await fetch(
+          `https://rest.ensembl.org/lookup/symbol/homo_sapiens/${encodeURIComponent(query)}*?expand=1`,
+          { headers: { "Content-Type": "application/json" } }
+        );
+        
+        if (!searchResponse.ok) return [];
+        
+        const data = await searchResponse.json();
+        return Object.values(data).slice(0, 5).map((gene: any) => ({
+          symbol: gene.display_name,
+          description: gene.description || `Human gene ${gene.display_name}`,
+          sequence: ""
+        }));
+      }
+      
+      const gene = await response.json();
+      return [{
+        symbol: gene.display_name,
+        description: gene.description || `Human gene ${gene.display_name}`,
+        sequence: ""
+      }];
+    } catch (error) {
+      console.error('Direct Ensembl search failed:', error);
+      return [];
+    }
+  };
+  
+  // First try HGNC, fall back to direct Ensembl search if it fails
   try {
-    // Use HGNC API for gene search (same as module-selector.tsx)
-    const JSON_HDR = { headers: { "Accept": "application/json" } }
-    const searchURL = `https://rest.genenames.org/search/${encodeURIComponent(query)}`
-    const sRes = await fetch(searchURL, JSON_HDR).then(r => r.json())
-    const hits = (sRes.response?.docs || []).slice(0, 5) // Limit to 5 results
-    
-    const results = hits.map(({ symbol, name }: { symbol: string; name: string }) => ({
-      symbol,
-      description: name || `Human gene ${symbol}`,
-      sequence: ""
-    }))
-    
-    return results
+    const results = await searchHGNC();
+    if (results.length > 0) return results;
+    return await searchDirectEnsembl();
   } catch (error) {
-    console.error('Ensembl search error:', error)
-    return []
+    return await searchDirectEnsembl();
   }
 }
 

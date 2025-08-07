@@ -18,7 +18,12 @@ export const Header = () => {
             <div className="flex items-center gap-4">
               <div className="text-right">
               <h1 className="text-2xl font-bold text-gray-900">
-  CRISPR-All <span className="italic">Hands On Deck!</span>
+  CRISPR-All{' '}
+  <span className="italic">
+    <span className="text-[hsl(66,70%,47%)]">Hands</span>{' '}
+    <span className="text-[hsl(13,95%,59%)]">On</span>{' '}
+    <span className="text-[hsl(32,75%,49%)]">Deck</span><span className="text-[hsl(220,35%,65%)]">!</span>
+  </span>
 </h1>
                 <p className="text-sm text-gray-600">
                   Design modular, combinatorial genetic perturbations in primary human T cells.

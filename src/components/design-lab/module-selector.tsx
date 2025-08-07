@@ -1015,18 +1015,45 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
 
       {/* Scan Genes Dialog */}
       {showScanGenesDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-4">Scan Genes</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
+            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Scan Genes</h3>
+            
+            {/* Perturbation Type Selector - Moved to top */}
+            <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+              <div className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Perturbation Type</div>
+              <div className="flex gap-2 flex-wrap">
+                {typeOptions.map((option) => (
+                  <Button
+                    key={option.value}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={`flex-1 min-w-[100px] transition-all duration-200 font-medium ${
+                      scanGenesPerturbationType === option.value 
+                        ? option.className + ' shadow-md scale-[1.02]' 
+                        : option.outlineClassName + ' hover:shadow-md hover:scale-[1.02]'
+                    }`}
+                    onClick={() => setScanGenesPerturbationType(option.value as any)}
+                  >
+                    <span className="drop-shadow-sm">{option.label}</span>
+                  </Button>
+                ))}
+              </div>
+              <p className="mt-3 text-sm text-gray-700 dark:text-gray-300 font-medium">
+                This will be applied to all genes being added
+              </p>
+            </div>
+            
+            <p className="text-base font-medium text-gray-800 dark:text-gray-200 mb-5">
               Choose how you'd like to add genes to your library:
             </p>
             
             <div className="space-y-6">
               {/* File Upload Option */}
-              <div className="border rounded-lg p-4">
-                <h4 className="font-medium mb-2">Upload File</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-5 bg-white dark:bg-gray-800 hover:shadow-md transition-shadow duration-200">
+                <h4 className="text-base font-semibold mb-2 text-gray-900 dark:text-white">Upload File</h4>
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
                   Upload a CSV or Excel file with gene names
                 </p>
                 <Button 
@@ -1043,9 +1070,9 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
               </div>
               
               {/* Text Input Option */}
-              <div className="border rounded-lg p-4">
-                <h4 className="font-medium mb-2">Paste Gene Names</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-5 bg-white dark:bg-gray-800 hover:shadow-md transition-shadow duration-200">
+                <h4 className="text-base font-semibold mb-2 text-gray-900 dark:text-white">Paste Gene Names</h4>
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
                   Enter gene names separated by commas, spaces, or new lines
                 </p>
                 
@@ -1056,30 +1083,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                     onChange={(e) => setScanGenesLibraryName(e.target.value)}
                     className="mb-3"
                   />
-                  
-                  <div className="mb-3">
-                    <label className="block text-sm font-medium text-foreground mb-1">
-                      Perturbation Type
-                    </label>
-                    <div className="flex gap-2 flex-wrap">
-                      {typeOptions.map((option) => (
-                        <Button
-                          key={option.value}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className={`flex-1 min-w-[100px] transition-colors ${
-                            scanGenesPerturbationType === option.value 
-                              ? option.className 
-                              : option.outlineClassName
-                          }`}
-                          onClick={() => setScanGenesPerturbationType(option.value as any)}
-                        >
-                          {option.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
                   
                   <textarea
                     placeholder="Enter gene names here...\ne.g.: TP53, BRCA1, EGFR\nor one per line:
