@@ -22,7 +22,8 @@ export function generateGenbank(
   for (const seg of segments) {
     const start = pos
     const end = pos + seg.sequence.length - 1
-    featuresSection += `     misc_feature    ${start}..${end}\n                     /label="${seg.name}"\n`
+    const label = seg.type === 'module' && seg.action ? `${seg.name} [${seg.action}]` : seg.name
+    featuresSection += `     misc_feature    ${start}..${end}\n                     /label="${label}"\n`
     pos = end + 1
   }
 

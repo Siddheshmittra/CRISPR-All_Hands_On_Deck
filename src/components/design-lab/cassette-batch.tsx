@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trash2, Download, Edit3, Check, X, GripVertical, ScanBarcode } from "lucide-react"
+import { Trash2, Download, Edit3, Check, X, GripVertical, ScanBarcode, Loader2, Copy } from "lucide-react"
 import { toast } from "sonner"
 import { Module, AnnotatedSegment } from "@/lib/types"
 import { SequenceViewer } from "./sequence-viewer"
+import { generateGenbank } from "@/lib/genbank"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { validateBarcode, generateBarcode } from "@/lib/barcode-utils"
@@ -22,9 +23,11 @@ interface CassetteBatchProps {
   onUpdateCassette?: (cassetteId: string, modules: Module[], barcode?: string) => void
 }
 
-const T2A_SEQUENCE = "GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCT";
-const STOP_TAMPLEX_SEQUENCE = "TAATAA";
-const POLYA_SEQUENCE = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+const T2A_SEQUENCE = "GAAGGAAGAGGAAGCCTTCTCACATGCGGAGATGTGGAAGAGAATCCTGGACCA";
+const STOP_TAMPLEX_SEQUENCE = "TGA";
+const POLYA_SEQUENCE = "caccgggtcttcaacttgtttattgcagcttataatggttacaaataaagcaatagcatcacaaatttcacaaataaagcatttttttcactgcattctagttgtggtttgtccaaactcatcaatgtatcttatcatgtctggaagacctgtttacc";
+const TRIPLEX_SEQUENCE = "gaattcgattcgtcagtagggttgtaaaggtttttcttttcctgagaaaacaaccttttgttttctcaggttttgctttttggcctttccctagctttaaaaaaaaaaaagcaaaactcaccgaggcagttccataggatggcaagatcctggtattggtctgcga";
+const ADAPTOR_SEQUENCE = "GTAA";
 
 export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, onUpdateCassette }: CassetteBatchProps) => {
   const [editingCassetteId, setEditingCassetteId] = useState<string | null>(null)
@@ -34,6 +37,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
   const [expandedCassetteId, setExpandedCassetteId] = useState<string | null>(null);
   const [cassetteSegments, setCassetteSegments] = useState<Record<string, AnnotatedSegment[]>>({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
   const CASSETTES_PER_PAGE = 20; // Limit to 20 cassettes per page
 
   // Do not early-return before all hooks are declared; render guard moved below
@@ -68,6 +72,42 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
     setEditingModules([])
     setEditingBarcode('')
     setBarcodeError('')
+  }
+
+  const handleCopySequence = async (cassette: Cassette) => {
+    try {
+      const segments = await generateAnnotatedSequence(cassette.modules)
+      const sequence = segments.map(s => s.sequence).join('')
+      await navigator.clipboard.writeText(sequence)
+      toast.success('Nucleotide sequence copied to clipboard')
+    } catch (err) {
+      console.error('Failed to copy sequence', err)
+      toast.error('Failed to copy sequence')
+    }
+  }
+
+  const handleExportGenbankCassette = async (cassette: Cassette) => {
+    try {
+      const segments = await generateAnnotatedSequence(cassette.modules)
+      const nameBase = cassette.modules.length > 0 ? cassette.modules.map(m => `${m.name || 'Unnamed'}[${m.type}]`).join('_') : cassette.id
+      const gb = generateGenbank((nameBase || 'CASSETTE').toUpperCase(), segments, {})
+      const blob = new Blob([gb], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${nameBase || cassette.id}.gb`
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      setTimeout(() => {
+        URL.revokeObjectURL(url)
+        try { document.body.removeChild(link) } catch {}
+      }, 1000)
+      toast.success('GenBank file exported')
+    } catch (err) {
+      console.error('Failed to export GenBank', err)
+      toast.error('Failed to export GenBank')
+    }
   }
   
   const handleGenerateBarcode = () => {
@@ -165,12 +205,17 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
       }
     }
 
-    // Rule 4: always add Internal Stuffer-Barcode Array after last module
-    segments.push({
-      name: 'Internal Stuffer-Barcode Array',
-      sequence: 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCGNNNNNNNNNNNNNAGCG',
-      type: 'hardcoded'
-    });
+      // Rule 4: add Internal Stuffer then Barcodes after last module
+      segments.push({
+        name: 'Internal Stuffer',
+        sequence: 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCG',
+        type: 'hardcoded'
+      });
+      segments.push({
+        name: 'Barcodes',
+        sequence: 'NNNNNNNNNNNAGCG',
+        type: 'hardcoded'
+      });
 
     // Rule 5: if last module is KO/KD, add polyA after IS-BCs
     const lastModule = ordered[ordered.length - 1];
@@ -230,36 +275,124 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
 
   const exportBatchAsCSV = async () => {
     try {
+      setIsExportingCsv(true)
+      // Normalize component labels for stable column keys
+      const toKey = (label: string) => label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+
+      // Expand combined components into discrete ones for columnization
+      const explodeSegments = (segments: AnnotatedSegment[]) => {
+        const expanded: AnnotatedSegment[] = []
+        for (const seg of segments) {
+          if (seg.name === 'STOP-Triplex-Adaptor') {
+            expanded.push({ name: 'STOP', sequence: STOP_TAMPLEX_SEQUENCE, type: 'hardcoded' })
+            expanded.push({ name: 'Triplex', sequence: TRIPLEX_SEQUENCE, type: 'hardcoded' })
+            expanded.push({ name: 'Adaptor', sequence: ADAPTOR_SEQUENCE, type: 'hardcoded' })
+          } else if (seg.name === 'Internal Stuffer-Barcode Array') {
+            // Split into Internal Stuffer + Barcodes
+            expanded.push({ name: 'Internal Stuffer', sequence: 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCG', type: 'hardcoded' })
+            expanded.push({ name: 'Barcodes', sequence: 'NNNNNNNNNNNAGCG', type: 'hardcoded' })
+          } else {
+            expanded.push(seg)
+          }
+        }
+        return expanded
+      }
+
+      // Compute all cassette segments in parallel (preserves cassette order)
+      const perCassetteSegments: AnnotatedSegment[][] = await Promise.all(
+        cassetteBatch.map(c => generateAnnotatedSequence(c.modules).then(explodeSegments))
+      )
+
+      // Derive a global column order that follows the cassette syntax order.
+      type Token = { kind: 'component'; key: string; occurrence: number } | { kind: 'module'; index: number }
+      const orderedTokens: Token[] = []
+      const maxOccurrenceByComponent: Record<string, number> = {}
+      let maxModuleIndex = 0
+
+      for (const segments of perCassetteSegments) {
+        const localCounts: Record<string, number> = {}
+        let localModuleIndex = 0
+        for (const seg of segments) {
+          if (seg.type === 'module') {
+            localModuleIndex += 1
+            if (localModuleIndex > maxModuleIndex) {
+              orderedTokens.push({ kind: 'module', index: localModuleIndex })
+              maxModuleIndex = localModuleIndex
+            }
+          } else {
+            const key = toKey(seg.name)
+            localCounts[key] = (localCounts[key] || 0) + 1
+            const occ = localCounts[key]
+            if (occ > (maxOccurrenceByComponent[key] || 0)) {
+              orderedTokens.push({ kind: 'component', key, occurrence: occ })
+              maxOccurrenceByComponent[key] = occ
+            }
+          }
+        }
+      }
+
+      // Build header: base, tokens (in syntax order), and final_sequence last
+      const baseHeader = ['cassette_id', 'barcode', 'modules', 'final_length']
+      const header: string[] = [...baseHeader]
+      for (const token of orderedTokens) {
+        if (token.kind === 'component') header.push(`${token.key}_${token.occurrence}_sequence`)
+        else { header.push(`module_${token.index}_name`); header.push(`module_${token.index}_sequence`) }
+      }
+      header.push('final_sequence')
+
       const rows: string[] = []
-      const header = [
-        'cassette_id',
-        'barcode',
-        'modules',
-        'segments',
-        'final_length',
-        'final_sequence'
-      ]
       rows.push(header.join(','))
 
-      for (const cassette of cassetteBatch) {
-        const segments = await generateAnnotatedSequence(cassette.modules)
-        const finalSeq = segments.map(s => s.sequence).join('')
-        const modulesStr = cassette.modules.map(m => m.name).join(' + ')
-        const segmentsStr = segments.map(s => s.name).join(' + ')
+      const esc = (v: string | null | undefined) => {
+        const s = (v ?? '').replace(/"/g, '""')
+        return `"${s}"`
+      }
 
-        const esc = (v: string | null | undefined) => {
-          const s = (v ?? '').replace(/"/g, '""')
-          return `"${s}"`
+      // Compose rows
+      for (let idx = 0; idx < cassetteBatch.length; idx++) {
+        const cassette = cassetteBatch[idx]
+        const segments = perCassetteSegments[idx]
+        const finalSeq = segments.map(s => s.sequence).join('')
+        const modulesStr = cassette.modules.map(m => `${m.name} [${m.type}]`).join(' + ')
+
+        // Buckets for components
+        const componentBuckets: Record<string, string[]> = {}
+        const componentKeys = Object.keys(maxOccurrenceByComponent)
+        for (const key of componentKeys) componentBuckets[key] = []
+
+        const moduleNames: string[] = []
+        const moduleSeqs: string[] = []
+
+        for (const seg of segments) {
+          if (seg.type === 'module') {
+            moduleNames.push(seg.name)
+            moduleSeqs.push(seg.sequence)
+          } else {
+            const key = toKey(seg.name)
+            if (!componentBuckets[key]) componentBuckets[key] = []
+            componentBuckets[key].push(seg.sequence)
+          }
         }
 
-        const row = [
+        const row: (string | number)[] = [
           esc(cassette.id),
           esc(cassette.barcode || ''),
           esc(modulesStr),
-          esc(segmentsStr),
-          String(finalSeq.length),
-          esc(finalSeq)
+          String(finalSeq.length)
         ]
+
+        for (const token of orderedTokens) {
+          if (token.kind === 'component') {
+            const arr = componentBuckets[token.key] || []
+            row.push(esc(arr[token.occurrence - 1] || ''))
+          } else {
+            row.push(esc(moduleNames[token.index - 1] || ''))
+            row.push(esc(moduleSeqs[token.index - 1] || ''))
+          }
+        }
+
+        row.push(esc(finalSeq))
+
         rows.push(row.join(','))
       }
 
@@ -270,14 +403,20 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       link.href = url
       link.download = `cassette-batch_${timestamp}.csv`
+      link.style.display = 'none'
       document.body.appendChild(link)
       link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      // Delay revocation to avoid canceling download in some browsers
+      setTimeout(() => {
+        URL.revokeObjectURL(url)
+        try { document.body.removeChild(link) } catch {}
+      }, 1000)
       toast.success(`Exported ${cassetteBatch.length} cassettes as CSV`)
     } catch (err) {
       console.error('Failed to export CSV', err)
       toast.error('Failed to export CSV')
+    } finally {
+      setIsExportingCsv(false)
     }
   }
 
@@ -301,9 +440,18 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
             <Download className="h-4 w-4 mr-2" />
             Export JSON
           </Button>
-          <Button variant="outline" size="sm" onClick={exportBatchAsCSV}>
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
+          <Button variant="outline" size="sm" onClick={exportBatchAsCSV} disabled={isExportingCsv}>
+            {isExportingCsv ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Exporting CSV...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -351,6 +499,14 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
                       Edit
                     </Button>
                   )}
+                  <Button variant="outline" size="sm" onClick={() => handleExportGenbankCassette(cassette)} title="Export GenBank">
+                    <Download className="h-4 w-4 mr-1" />
+                    Export GenBank
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleCopySequence(cassette)} title="Copy full nucleotide sequence">
+                    <Copy className="h-4 w-4 mr-1" />
+                    Copy
+                  </Button>
                   <Button variant="ghost" size="sm" onClick={() => onDeleteCassette(cassette.id)}>
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>

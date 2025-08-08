@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +25,7 @@ const POLYA_SEQUENCE = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
 export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   const [constructName, setConstructName] = useState("")
+  const [isNameEdited, setIsNameEdited] = useState(false)
   const [promoter, setPromoter] = useState("EF1a")
   const [barcode, setBarcode] = useState("")
   const [polyASignal, setPolyASignal] = useState("bGH")
@@ -36,10 +37,10 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
     constructModules.forEach((item, index) => {
       const isLinker = item.type === 'linker';
       segments.push({
-        name: item.name,
+        name: item.type !== 'linker' ? `${item.name} [${(item as Module).type}]` : item.name,
         sequence: item.sequence || "",
         type: isLinker ? 'linker' : 'module',
-        action: isLinker ? undefined : item.type
+        action: isLinker ? undefined : (item as Module).type
       });
       
       const nextItem = constructModules[index + 1];
@@ -57,7 +58,30 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   const fullSequence = generateAnnotatedSequence().map(s => s.sequence).join('');
 
 
-  const modules = constructModules.filter(item => item.type !== 'linker') as Module[]
+  const modules = useMemo(() => (
+    constructModules.filter(item => item.type !== 'linker') as Module[]
+  ), [constructModules])
+
+  // Derive a sensible default name from current modules and their perturbation types
+  useEffect(() => {
+    if (isNameEdited) return
+    if (modules.length === 0) {
+      setConstructName("")
+      return
+    }
+    const typeAbbrev: Record<Module['type'], string> = {
+      overexpression: 'OE',
+      knockout: 'KO',
+      knockdown: 'KD',
+      knockin: 'KI',
+      synthetic: 'KI',
+      hardcoded: ''
+    }
+    // Keep current order of modules (already arranged elsewhere if needed)
+    const parts = modules.map(m => `${typeAbbrev[m.type] || ''}_${m.name}`.replace(/^_/, ''))
+    const autoName = parts.filter(Boolean).join('+')
+    setConstructName(autoName)
+  }, [modules, isNameEdited])
 
   // Generate predicted function
   const generatePredictedFunction = () => {
@@ -90,7 +114,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
     
     const exportData = {
       name: constructName,
-      modules: modules,
+      modules: modules.map(m => ({ ...m, label: `${m.name} [${m.type}]` })),
       details: {
         promoter,
         barcode,
@@ -164,7 +188,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
             id="construct-name"
             placeholder="e.g. KO_TET2+KO_DOK"
             value={constructName}
-            onChange={(e) => setConstructName(e.target.value)}
+            onChange={(e) => { setIsNameEdited(true); setConstructName(e.target.value) }}
           />
         </div>
 

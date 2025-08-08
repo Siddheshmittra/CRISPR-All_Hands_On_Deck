@@ -32,7 +32,7 @@ export const SequenceViewer: React.FC<SequenceViewerProps> = ({ segments }) => {
     <div className="w-full p-2 border rounded-md bg-background">
       <div className="font-mono text-sm break-all whitespace-pre-wrap">
         {segments.map((segment, index) => (
-          <Tippy key={index} content={`${segment.name} (${segment.type}) - ${segment.sequence.length}bp`}>
+          <Tippy key={index} content={`${segment.name} - ${segment.sequence.length}bp`}>
             <span className={`px-1 rounded ${getSegmentStyle(segment)}`}>
               {segment.sequence}
             </span>

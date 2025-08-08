@@ -57,7 +57,9 @@ export function useConstructManager(initialModules: Module[] = []) {
     })
 
     // Rule 4: always add Internal Stuffer-Barcode Array after the last module
-    result.push(createLinker('Internal Stuffer-Barcode Array', ordered.length, 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCGNNNNNNNNNNNNNAGCG'))
+    // Split into Internal Stuffer + Barcodes to match updated hardcoded elements
+    result.push(createLinker('Internal Stuffer', ordered.length, 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCG'))
+    result.push(createLinker('Barcodes', ordered.length + 0.1, 'NNNNNNNNNNNAGCG'))
 
     // Rule 5: if the last module is KO/KD, add polyA after IS-BCs
     const lastModule = ordered[ordered.length - 1]

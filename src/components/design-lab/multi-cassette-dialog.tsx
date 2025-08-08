@@ -31,9 +31,7 @@ const HARDCODED_COMPONENTS = {
     id: 't2a',
     name: 'T2A',
     type: 'hardcoded' as const,
-    // From the table (T2A)
-    sequence:
-      'GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCT',
+    sequence: 'GAAGGAAGAGGAAGCCTTCTCACATGCGGAGATGTGGAAGAGAATCCTGGACCA',
     color: 'bg-muted',
     description: 'T2A self-cleaving peptide'
   },
@@ -49,9 +47,7 @@ const HARDCODED_COMPONENTS = {
     id: 'triplex',
     name: 'Triplex',
     type: 'hardcoded' as const,
-    sequence:
-      'gaattcgatcgtcagtagggttgtaaaggtttttcttttcctgagaaaacaaccttttgttttcttccagtgttttgctttttggcctttccctagcttt' +
-      'aaaaaaaaaaaaaaagcaaaactcaccgaggcagttccataggatggcaagatcctggtattggtctgcga',
+    sequence: 'gaattcgattcgtcagtagggttgtaaaggtttttcttttcctgagaaaacaaccttttgttttctcaggttttgctttttggcctttccctagctttaaaaaaaaaaaagcaaaactcaccgaggcagttccataggatggcaagatcctggtattggtctgcga',
     color: 'bg-muted',
     description: 'Triplex sequence'
   },
@@ -63,19 +59,27 @@ const HARDCODED_COMPONENTS = {
     color: 'bg-muted',
     description: 'Adaptor sequence'
   },
-  isbc: {
-    id: 'isbc',
-    name: 'IS-BCs',
+  internalStuffer: {
+    id: 'internal-stuffer',
+    name: 'Internal Stuffer',
     type: 'hardcoded' as const,
-    sequence: 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCGNNNNNNNNNNNNNAGCG',
+    sequence: 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCG',
     color: 'bg-muted',
-    description: 'Internal Stuffer - Barcodes'
+    description: 'Internal Stuffer'
+  },
+  barcodes: {
+    id: 'barcodes',
+    name: 'Barcodes',
+    type: 'hardcoded' as const,
+    sequence: 'NNNNNNNNNNNAGCG',
+    color: 'bg-muted',
+    description: 'Barcodes'
   },
   polya: {
     id: 'polya',
     name: 'polyA',
     type: 'hardcoded' as const,
-    sequence: 'A'.repeat(300),
+    sequence: 'caccgggtcttcaacttgtttattgcagcttataatggttacaaataaagcaatagcatcacaaatttcacaaataaagcatttttttcactgcattctagttgtggtttgtccaaactcatcaatgtatcttatcatgtctggaagacctgtttacc',
     color: 'bg-muted',
     description: 'Poly-A tail for mRNA stability'
   }
@@ -175,9 +179,10 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
       // KO/KD specific tail handled after loop to follow rule 4 & 5 strictly
     });
 
-    // Rule 4: Last module always has IS-BCs after it
+    // Rule 4: Last module always has Internal Stuffer then Barcodes after it
     if (ordered.length > 0) {
-      result.push({ ...HARDCODED_COMPONENTS.isbc, id: `isbc-end-${randomUUID()}` } as any);
+      result.push({ ...HARDCODED_COMPONENTS.internalStuffer, id: `internal-stuffer-end-${randomUUID()}` } as any);
+      result.push({ ...HARDCODED_COMPONENTS.barcodes, id: `barcodes-end-${randomUUID()}` } as any);
     }
 
     // Rule 5: If last module is KO/KD, then add a polyA after IS-BCs
