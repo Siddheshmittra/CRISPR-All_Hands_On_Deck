@@ -17,9 +17,9 @@ interface FinalConstructProps {
   constructModules: ConstructItem[]
 }
 
-const T2A_SEQUENCE = "GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCT"
-const STOP_TAMPLEX_SEQUENCE = "TAATAA" 
-const POLYA_SEQUENCE = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+const T2A_SEQUENCE = "GAAGGAAGAGGAAGCCTTCTCACATGCGGAGATGTGGAAGAGAATCCTGGACCA"
+const STOP_TAMPLEX_SEQUENCE = "TGA"
+const POLYA_SEQUENCE = "caccgggtcttcaacttgtttattgcagcttataatggttacaaataaagcaatagcatcacaaatttcacaaataaagcatttttttcactgcattctagttgtggtttgtccaaactcatcaatgtatcttatcatgtctggaagacctgtttacc"
 
 
 
@@ -33,24 +33,19 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
 
   const generateAnnotatedSequence = (): AnnotatedSegment[] => {
     const segments: AnnotatedSegment[] = [];
-    
-    constructModules.forEach((item, index) => {
+
+    // The incoming construct already contains any required linkers
+    // (Intron, T2A, STOP/Triplex/Adaptor, Internal Stuffer, Barcodes, polyA).
+    // Just mirror them as annotated segments without injecting extras here.
+    constructModules.forEach((item) => {
       const isLinker = item.type === 'linker';
       segments.push({
-        name: item.type !== 'linker' ? `${item.name} [${(item as Module).type}]` : item.name,
+        name: isLinker ? item.name : `${item.name} [${(item as Module).type}]`,
         sequence: item.sequence || "",
         type: isLinker ? 'linker' : 'module',
-        action: isLinker ? undefined : (item as Module).type
+        action: isLinker ? undefined : (item as Module).type,
       });
-      
-      const nextItem = constructModules[index + 1];
-      if (item.type !== 'linker' && nextItem && nextItem.type !== 'linker') {
-        segments.push({ name: 'T2A', sequence: T2A_SEQUENCE, type: 'hardcoded' });
-      }
     });
-
-    // Add Stop/PolyA at the end
-    segments.push({ name: 'Stop/PolyA', sequence: STOP_TAMPLEX_SEQUENCE + POLYA_SEQUENCE, type: 'hardcoded' });
 
     return segments;
   };
