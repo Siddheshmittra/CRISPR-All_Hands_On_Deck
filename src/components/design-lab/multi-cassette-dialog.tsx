@@ -266,13 +266,15 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     let successfulCassettes: Module[][] = [];
 
     try {
-      // Pre-enrich modules for libraries where type changes
+      // Pre-enrich modules if sequence is missing or when library remaps type
       for (let i = 0; i < libraryModuleLists.length; i++) {
         const list = libraryModuleLists[i];
         const enrichedList: Module[] = [];
         for (const mod of list) {
           const modWithOriginal = mod as Module & { originalType?: Module['type'] };
-          if (modWithOriginal.originalType && modWithOriginal.originalType !== modWithOriginal.type) {
+          const needsTypeRemap = !!(modWithOriginal.originalType && modWithOriginal.originalType !== modWithOriginal.type);
+          const missingSequence = !modWithOriginal.sequence || modWithOriginal.sequence.length === 0;
+          if (needsTypeRemap || missingSequence) {
             try {
               const enriched = await enrichModuleWithSequence({ ...mod });
               enrichedList.push(enriched);
@@ -510,7 +512,10 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                                     'bg-card text-card-foreground'
                                   }`}
                                 >
-                                  {library.name}
+                                  {(() => {
+                                    const getTypeArrow = (t: string) => t === 'knockdown' ? '↓' : t === 'knockout' ? '✖' : t === 'knockin' ? '→' : '↑';
+                                    return `${getTypeArrow(library.type)} ${library.name}`;
+                                  })()}
                                   <Button
                                     size="sm"
                                     variant="ghost"

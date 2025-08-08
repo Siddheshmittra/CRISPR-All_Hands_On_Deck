@@ -8,11 +8,13 @@ import { ConstructLayout } from "@/components/design-lab/construct-layout"
 import { FinalConstruct } from "@/components/design-lab/final-construct"
 import { MultiCassetteSetup } from "@/components/design-lab/multi-cassette-dialog"
 import { NaturalLanguageMode } from "@/components/design-lab/natural-language-mode"
+import { MultiCassetteNatural } from "@/components/design-lab/multi-cassette-natural"
 import { NaturalLanguageInput } from "@/components/design-lab/NaturalLanguageInput"
 import { LibraryManager } from "@/components/design-lab/library-manager"
 import { Card } from "@/components/ui/card"
 import { CassetteBatch } from "@/components/design-lab/cassette-batch"
 import { SimpleModuleSelector } from "@/components/design-lab/simple-module-selector"
+import { LibraryViewer } from "@/components/design-lab/library-viewer"
 import { Trash2 } from "lucide-react"
 import React from "react"
 import { useConstructManager } from "@/hooks/use-construct-manager"
@@ -54,15 +56,17 @@ const DesignLab = () => {
   }])
   const [cassetteBatch, setCassetteBatch] = useState<Cassette[]>([])
   const [librarySyntax, setLibrarySyntax] = useState<LibrarySyntax[]>([])
+  const [selectedFolderId, setSelectedFolderId] = useState<string>('total-library')
 
   const handleAddLibrary = (libraryId: string, perturbationType?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => {
+    const existing = librarySyntax.find(l => l.id === libraryId)
+    if (existing) return
     const library = folders.find(f => f.id === libraryId)
-    if (!library || librarySyntax.find(l => l.id === libraryId)) return
 
     // Enforce Total Library constraint: only add if all contained modules share a single perturbation type
     const isTotalLibrary = library.id === 'total-library'
     const moduleObjs = (library.modules || []).map((id: string) => customModules.find(m => m.id === id)).filter(Boolean) as Module[]
-    if (isTotalLibrary) {
+    if (library && isTotalLibrary) {
       const uniqueTypes = new Set(moduleObjs.map(m => m.type))
       if (uniqueTypes.size > 1) {
         toast?.error?.('Total Library contains mixed perturbation types. Please split into separate libraries or set a uniform type before adding.')
@@ -80,7 +84,7 @@ const DesignLab = () => {
 
     const newLibrary: LibrarySyntax = {
       id: libraryId,
-      name: library.name,
+      name: library?.name || libraryId,
       type: moduleType
     }
     setLibrarySyntax(prev => [...prev, newLibrary])
@@ -459,9 +463,33 @@ const DesignLab = () => {
           )}
 
           {inputMode === 'natural' && cassetteMode === 'multi' && (
-            <NaturalLanguageMode
-              onSuggestedConstruct={modules => setConstructModules(modules)}
-            />
+            <>
+              <MultiCassetteNatural
+                folders={folders}
+                setFolders={setFolders}
+                customModules={customModules}
+                setCustomModules={setCustomModules}
+                onAddLibrary={handleAddLibrary}
+                setSelectedFolderId={setSelectedFolderId}
+              />
+              <LibraryViewer folders={folders} customModules={customModules} />
+              <MultiCassetteSetup
+                onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
+                folders={folders}
+                customModules={customModules}
+                librarySyntax={librarySyntax}
+                onAddLibrary={handleAddLibrary}
+                onRemoveLibrary={handleRemoveLibrary}
+                onLibraryTypeChange={handleLibraryTypeChange}
+                onReorderLibraries={handleReorderLibraries}
+              />
+              <CassetteBatch 
+                cassetteBatch={cassetteBatch}
+                onDeleteCassette={handleDeleteCassette}
+                onExportBatch={handleExportBatch}
+                onUpdateCassette={handleUpdateCassette}
+              />
+            </>
           )}
           
           <DragDropContext onDragEnd={handleDragEnd}>
@@ -532,7 +560,9 @@ const DesignLab = () => {
             </div>
           </DragDropContext>
           
-          <FinalConstruct constructModules={constructWithLinkers} />
+          {cassetteMode === 'single' && (
+            <FinalConstruct constructModules={constructWithLinkers} />
+          )}
         </div>
       </div>
     </div>

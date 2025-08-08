@@ -15,14 +15,21 @@ export function generateGenbank(
 ): string {
   const sequence = segments.map(s => s.sequence).join('').toUpperCase()
   const locusLine = `LOCUS       ${constructName.padEnd(16)}${String(sequence.length).padStart(11)} bp    DNA`
-  const definitionLine = `DEFINITION  ${details.predictedFunction}`
+  const definitionText = details?.predictedFunction || 'Synthetic construct';
+  const definitionLine = `DEFINITION  ${definitionText}`
 
   let featuresSection = 'FEATURES             Location/Qualifiers\n'
   let pos = 1
   for (const seg of segments) {
     const start = pos
     const end = pos + seg.sequence.length - 1
-    const label = seg.type === 'module' && seg.action ? `${seg.name} [${seg.action}]` : seg.name
+    // Label format: ModuleName [PERTURBATION]
+    // Avoid duplicating type; if seg.name already contains a bracketed type, don't append again.
+    let label = seg.name;
+    const hasTypeInName = /\[[^\]]+\]$/.test(label || '');
+    if (seg.type === 'module' && seg.action && !hasTypeInName) {
+      label = `${seg.name} [${seg.action}]`;
+    }
     featuresSection += `     misc_feature    ${start}..${end}\n                     /label="${label}"\n`
     pos = end + 1
   }

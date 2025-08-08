@@ -59,9 +59,7 @@ export async function dispatchEdits(edits: EditInstruction[]): Promise<{
     warnings.push(`Skipped invalid gene symbols: ${invalid.join(', ')}`);
   }
 
-  if (sensitive.length > 0) {
-    warnings.push(`Warning: The following genes require special handling: ${sensitive.join(', ')}`);
-  }
+  // Sensitive warnings disabled per user preference
 
   const modules = await Promise.all(valid.map(createModule));
   

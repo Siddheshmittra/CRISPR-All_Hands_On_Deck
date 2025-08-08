@@ -1,7 +1,5 @@
-// Sensitive genes that should require confirmation
-const SENSITIVE_GENES = [
-  'TP53', 'MYC', 'KRAS', 'BRAF', 'PIK3CA', 'PTEN', 'AKT1', 'BCL2', 'MDM2'
-];
+// Sensitive genes list disabled per user preference
+const SENSITIVE_GENES: string[] = [];
 
 export function isSensitiveGene(symbol: string): boolean {
   return SENSITIVE_GENES.includes(symbol.toUpperCase());

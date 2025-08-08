@@ -1,0 +1,74 @@
+import { useState, useMemo } from 'react'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { ChevronDown } from 'lucide-react'
+import type { Module } from '@/lib/types'
+
+interface LibraryViewerProps {
+  folders: Array<{ id: string; name: string; modules: string[]; open?: boolean }>
+  customModules: Module[]
+  showTotal?: boolean
+}
+
+export function LibraryViewer({ folders, customModules, showTotal = false }: LibraryViewerProps) {
+  const [openIds, setOpenIds] = useState<Record<string, boolean>>({})
+
+  const visibleFolders = useMemo(() => {
+    return folders.filter(f => (showTotal ? true : f.id !== 'total-library'))
+  }, [folders, showTotal])
+
+  const getModules = (folderId: string) => {
+    const folder = folders.find(f => f.id === folderId)
+    if (!folder) return [] as Module[]
+    return folder.modules.map(id => customModules.find(m => m.id === id)).filter(Boolean) as Module[]
+  }
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-lg font-semibold mb-4">2. Planned Libraries</h2>
+      <div className="space-y-2">
+        {visibleFolders.map((folder) => {
+          const isOpen = openIds[folder.id] ?? true
+          const mods = getModules(folder.id)
+          return (
+            <div key={folder.id} className="border rounded bg-muted">
+              <div
+                className="flex items-center cursor-pointer px-2 py-1 select-none"
+                onClick={() => setOpenIds(prev => ({ ...prev, [folder.id]: !isOpen }))}
+              >
+                <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+                <div className="font-semibold mr-2">{folder.name}</div>
+                <Badge variant="secondary">{mods.length}</Badge>
+              </div>
+              {isOpen && (
+                <div className="flex flex-wrap gap-2 p-2 bg-background/50">
+                  {mods.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No modules</div>
+                  ) : (
+                    mods.map(m => (
+                      <div
+                        key={m.id}
+                        className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-all ${
+                          m.type === 'overexpression' ? 'bg-overexpression/90 text-overexpression-foreground border-overexpression/30' :
+                          m.type === 'knockout' ? 'bg-knockout/90 text-knockout-foreground border-knockout/30' :
+                          m.type === 'knockdown' ? 'bg-knockdown/90 text-knockdown-foreground border-knockdown/30' :
+                          m.type === 'knockin' ? 'bg-knockin/90 text-knockin-foreground border-knockin/30' :
+                          'bg-card text-card-foreground border-border'
+                        }`}
+                        title={`${m.name} [${m.type}]`}
+                      >
+                        {m.name} [{m.type}]
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}
+
+

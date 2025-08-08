@@ -471,8 +471,8 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       setIsLibraryLoading(true)
       
       // Show loading state
-      const toastId = toast.loading(`Processing ${rows.length} genes...`, {
-        description: 'This may take a moment.'
+      const toastId = toast.loading(`Scanning ${rows.length} genes...`, {
+        description: 'Loading library…'
       });
 
       try {
@@ -543,35 +543,41 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         }
     }
 
-    // Always create the folder and add modules, even if some failed
+    // Always add modules; always create a dedicated library for this import, and also add to Total Library
     if (newModules.length > 0) {
-      // Add all modules at once for better performance
-      onCustomModulesChange([...customModules, ...newModules]);
+      // Append modules using the provided setter (non-functional API)
+      onCustomModulesChange([...customModules, ...newModules])
 
-      const newFolder = {
-        id: `folder-${Date.now()}`,
-        name: folderName,
-        modules: newModules.map(m => m.id),
-        open: true
-      };
+      const newModuleIds = newModules.map(m => m.id)
 
-      setFolders([...folders, newFolder]);
+      {
+        const updated = [...folders]
+        // Ensure Total Library exists and append
+        const totalIdx = updated.findIndex(f => f.id === 'total-library')
+        if (totalIdx >= 0) {
+          const total = { ...updated[totalIdx] }
+          total.modules = [...total.modules, ...newModuleIds]
+          updated[totalIdx] = total
+        } else {
+          updated.unshift({ id: 'total-library', name: 'Total Library', modules: [...newModuleIds], open: true })
+        }
+
+        // Always create a new library for this file/import
+        const newFolder = {
+          id: `folder-${Date.now()}`,
+          name: folderName,
+          modules: newModuleIds,
+          open: true,
+        }
+        setFolders([...updated, newFolder])
+      }
       
       // Update the loading toast with results
       const successfulGenes = newModules.length - failedGenes.length;
       if (failedGenes.length === 0) {
         toast.success(`Successfully added all ${newModules.length} genes to '${folderName}' library with sequences!`, { id: toastId });
       } else if (successfulGenes > 0) {
-        toast.success(
-          `Added ${newModules.length} genes to '${folderName}' library. ${successfulGenes} with sequences, ${failedGenes.length} without.`,
-          { 
-            id: toastId,
-            action: failedGenes.length <= 5 ? {
-              label: 'View failed',
-              onClick: () => alert(`Genes without sequences:\n${failedGenes.join('\n')}`)
-            } : undefined
-          }
-        );
+        toast.success(`Added ${newModules.length} genes to '${folderName}' library. ${successfulGenes} with sequences, ${failedGenes.length} without.`, { id: toastId });
       } else {
         toast.warning(
           `Added ${newModules.length} genes to '${folderName}' library, but no sequences were found.`, 
