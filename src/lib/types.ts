@@ -25,6 +25,7 @@ export interface Module {
   metadata?: ModuleMetadata; // Additional metadata for the module
   isEnriching?: boolean; // Flag to show loading state during sequence enrichment
   originalSequence?: string; // Store the original sequence before any enrichment or modification
+  originalType?: "overexpression" | "knockout" | "knockdown" | "knockin" | "synthetic" | "hardcoded"; // Preserve original perturbation type when remapped by syntax
 }
 
 export interface SyntheticGene {

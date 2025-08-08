@@ -659,43 +659,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const isSelected = (moduleId: string) => 
     selectedModules.some(m => m.id === moduleId)
 
-  // Import/export logic
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  function handleImportLibrary() {
-    if (fileInputRef.current) fileInputRef.current.click()
-  }
-  
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        try {
-          const imported = JSON.parse(e.target?.result as string)
-          // If modules don't have sequences, try to enrich them
-          const enrichedModules = await Promise.all(
-            imported.map(async (module: Module) => {
-              if (!module.sequence) {
-                try {
-                  return await enrichModuleWithSequence(module)
-                } catch (error) {
-                  console.error(`Failed to enrich ${module.name}:`, error)
-                  return module
-                }
-              }
-              return module
-            })
-          )
-          onCustomModulesChange([...customModules, ...enrichedModules])
-          toast.success(`Imported ${enrichedModules.length} modules`)
-        } catch (error) {
-          console.error('Failed to import library:', error)
-          toast.error('Failed to import library')
-        }
-      }
-      reader.readAsText(file)
-    }
-  }
+  // Export logic
   
   // Export: prompt for folder selection
   function handleExportLibrary() {
@@ -806,9 +770,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       {/* Import/Export and Folder/Library creation below search */}
       <div className="flex gap-2 mb-2">
         <Button variant="outline" size="sm" onClick={() => setShowScanGenesDialog(true)}>
-          Scan Genes
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleImportLibrary}>
           Import
         </Button>
         <Button variant="outline" size="sm" onClick={handleExportLibrary}>
@@ -829,13 +790,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             </Button>
           </>
         )}
-        <input
-          type="file"
-          accept=".json"
-          ref={fileInputRef}
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
         <input
           type="file"
           accept=".csv,.xlsx"
@@ -1013,11 +967,11 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         </div>
       )}
 
-      {/* Scan Genes Dialog */}
+      {/* Import Dialog */}
       {showScanGenesDialog && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
-            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Scan Genes</h3>
+            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Import</h3>
             
             {/* Perturbation Type Selector - Moved to top */}
             <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">

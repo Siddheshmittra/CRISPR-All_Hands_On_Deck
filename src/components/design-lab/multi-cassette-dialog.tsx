@@ -14,52 +14,74 @@ import { randomUUID } from "@/lib/uuid"
 import { NaturalLanguageInput } from "./NaturalLanguageInput"
 
 // Hardcoded syntax components with their sequences and types
+// Sequences follow the rules table provided by the user
 const HARDCODED_COMPONENTS = {
+  intron: {
+    id: 'intron',
+    name: 'Intron',
+    type: 'hardcoded' as const,
+    sequence:
+      'GTAAGTCTTATTTAGTGGAAAGAATAGATCTTCTGTTCTTTCAAAAGCAGAAATGGCAATAACATTTTGTGCCATGA' +
+      'tttttttttt' +
+      'CTGCAG',
+    color: 'bg-muted',
+    description: 'Intron sequence for mRNA processing'
+  },
   t2a: {
     id: 't2a',
     name: 'T2A',
     type: 'hardcoded' as const,
-    sequence: 'GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCT',
+    // From the table (T2A)
+    sequence:
+      'GAGGGCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCCAGGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCAGAGGCT',
     color: 'bg-muted',
     description: 'T2A self-cleaving peptide'
   },
   stop: {
     id: 'stop',
-    name: 'STOP-Triplex-Adaptor',
+    name: 'STOP',
     type: 'hardcoded' as const,
-    sequence: 'TAATAAgaattcgattcgtcagtagggttgtaaaggtttttcttttcctgagaaaacaaccttttgttttctcaggttttgctttttggcctttccctagctttaaaaaaaaaaaagcaaaactcaccgaggcagttccataggatggcaagatcctggtattggtctgcgaGTAA',
+    sequence: 'TGA',
     color: 'bg-muted',
-    description: 'STOP codon with Triplex-Adaptor sequence'
+    description: 'Stop codon'
   },
-  intron: {
-    id: 'intron',
-    name: 'Intron',
+  triplex: {
+    id: 'triplex',
+    name: 'Triplex',
     type: 'hardcoded' as const,
-    sequence: 'GTAAGTCTTATTTAGTGGAAAGAATAGATCTTCTGTTCTTTCAAAAGCAGAAATGGCAATAACATTTTGTGCCATGAttttttttttCTGCAG',
+    sequence:
+      'gaattcgatcgtcagtagggttgtaaaggtttttcttttcctgagaaaacaaccttttgttttcttccagtgttttgctttttggcctttccctagcttt' +
+      'aaaaaaaaaaaaaaagcaaaactcaccgaggcagttccataggatggcaagatcctggtattggtctgcga',
     color: 'bg-muted',
-    description: 'Intron sequence for mRNA processing'
+    description: 'Triplex sequence'
+  },
+  adaptor: {
+    id: 'adaptor',
+    name: 'Adaptor',
+    type: 'hardcoded' as const,
+    sequence: 'GTAA',
+    color: 'bg-muted',
+    description: 'Adaptor sequence'
   },
   isbc: {
     id: 'isbc',
-    name: 'Internal Stuffer-Barcode Array',
+    name: 'IS-BCs',
     type: 'hardcoded' as const,
     sequence: 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCGNNNNNNNNNNNNNAGCG',
     color: 'bg-muted',
-    description: 'Internal Stuffer-Barcode Array'
+    description: 'Internal Stuffer - Barcodes'
   },
   polya: {
     id: 'polya',
     name: 'polyA',
     type: 'hardcoded' as const,
-    sequence: 'A'.repeat(300), // Truncated for display
+    sequence: 'A'.repeat(300),
     color: 'bg-muted',
     description: 'Poly-A tail for mRNA stability'
   }
 } as const;
 
 interface MultiCassetteSetupProps {
-  cassetteCount: number;
-  setCassetteCount: (n: number) => void;
   showGoButton?: boolean;
   onAddCassettes?: (cassettes: Module[][]) => void;
   folders: any[];
@@ -76,8 +98,6 @@ interface MultiCassetteSetupProps {
 
 export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
   const {
-    cassetteCount,
-    setCassetteCount,
     showGoButton = false,
     onAddCassettes,
     folders,
@@ -92,6 +112,13 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
   const [selectedLibrary, setSelectedLibrary] = useState<string>('total-library')
   const [isGenerating, setIsGenerating] = useState(false)
   const [libraries, setLibraries] = useState<LibrarySyntax[]>([])
+  
+  // Always visualize syntax with OE/KI first then KO/KD (Rule 2)
+  const orderedSyntax = useMemo(() => {
+    const geneLike = librarySyntax.filter(l => l.type === 'overexpression' || l.type === 'knockin')
+    const koKd = librarySyntax.filter(l => l.type === 'knockout' || l.type === 'knockdown')
+    return [...geneLike, ...koKd]
+  }, [librarySyntax])
 
   // Initialize libraries from props
   useEffect(() => {
@@ -108,116 +135,55 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
   }, [libraries, onLibrariesChange]);
 
   const applyCassetteSyntax = (modules: Module[]): Module[] => {
-    // 1. Re-order so all OE/KI come before KO/KD
-    const early = modules.filter(m => m.type === 'overexpression' || m.type === 'knockin');
-    const late = modules.filter(m => m.type === 'knockout' || m.type === 'knockdown');
-    const ordered = [...early, ...late];
-    
+    // 1) Order: all OE/KI ("gene-like") then KO/KD
+    const geneLike = modules.filter(m => m.type === 'overexpression' || m.type === 'knockin');
+    const koKd = modules.filter(m => m.type === 'knockout' || m.type === 'knockdown');
+    const ordered = [...geneLike, ...koKd];
+
     const result: Module[] = [];
-    const firstKOIdx = ordered.findIndex(m => m.type === 'knockout' || m.type === 'knockdown');
     const lastIdx = ordered.length - 1;
+    const firstKoKdIdx = ordered.findIndex(m => m.type === 'knockout' || m.type === 'knockdown');
+    const lastKoKdIdx = ordered.length - 1;
 
-    ordered.forEach((module, idx) => {
-      const isFirst = idx === 0;
-      const isLast = idx === lastIdx;
-      const isFirstKO = idx === firstKOIdx && firstKOIdx !== -1;
-      const isLastKO = idx === lastIdx && (module.type === 'knockout' || module.type === 'knockdown');
-      const isInternal = !isFirst && !isLast;
-      const isKO = module.type === 'knockout';
-      const isKD = module.type === 'knockdown';
-      const isOE = module.type === 'overexpression';
-
-      // Handle OE modules
-      if (isOE) {
-        // Add Intron before OE module (first position)
-        if (isFirst) {
-          result.push({
-            ...HARDCODED_COMPONENTS.intron,
-            id: `intron-${randomUUID()}`,
-          });
-        }
-
-        // Add the OE module
-        result.push({
-          ...module,
-          id: `${module.id}-${randomUUID()}`,
-        });
-
-        // Add T2A after OE module (unless it's the last element)
-        if (!isLast) {
-          result.push({
-            ...HARDCODED_COMPONENTS.t2a,
-            id: `t2a-${randomUUID()}`,
-          });
-        }
-      }
-      
-      // Handle KO modules
-      else if (isKO) {
-        // Add STOP-Triplex-Adaptor before first KO module
-        if (isFirstKO) {
-          result.push({
-            ...HARDCODED_COMPONENTS.stop,
-            id: `stop-${randomUUID()}`,
-          });
-        }
-
-        // Add the KO module
-        result.push({
-          ...module,
-          id: `${module.id}-${randomUUID()}`,
-        });
-
-        // Add Adaptor after KO module (unless it's the last element)
-        if (isInternal) {
-          result.push({
-            ...HARDCODED_COMPONENTS.t2a, // Using T2A as a generic adaptor for now
-            id: `adaptor-${randomUUID()}`,
-          });
-        }
-      }
-      
-      // Handle KD modules
-      else if (isKD) {
-        // Add STOP-Triplex-Adaptor before first KD module
-        if (isFirstKO) {
-          result.push({
-            ...HARDCODED_COMPONENTS.stop,
-            id: `stop-${randomUUID()}`,
-          });
-        }
-
-        // Add the KD module
-        result.push({
-          ...module,
-          id: `${module.id}-${randomUUID()}`,
-        });
-
-        // Add Adaptor after KD module (unless it's the last element)
-        if (isInternal) {
-          result.push({
-            ...HARDCODED_COMPONENTS.t2a, // Using T2A as a generic adaptor for now
-            id: `adaptor-${randomUUID()}`,
-          });
-        }
-      }
+    // Handle gene-like libraries (OE/KI)
+    geneLike.forEach((module, localIdx) => {
+      // Intron-GENE-T2A for each gene library
+      result.push({ ...HARDCODED_COMPONENTS.intron, id: `intron-${randomUUID()}` } as any);
+      result.push({ ...module, id: `${module.id}-${randomUUID()}` });
+      result.push({ ...HARDCODED_COMPONENTS.t2a, id: `t2a-${randomUUID()}` } as any);
     });
 
-    // Add Internal Stuffer-Barcode Array at the end
+    // Handle KO/KD region according to position rules
+    koKd.forEach((module, localIdx) => {
+      const globalIdx = geneLike.length + localIdx;
+      const isFirstKoKd = localIdx === 0;
+      const isLastKoKd = globalIdx === lastIdx;
+
+      if (isFirstKoKd) {
+        // STOP-Triplex-Adaptor before first KO/KD
+        result.push({ ...HARDCODED_COMPONENTS.stop, id: `stop-${randomUUID()}` } as any);
+        result.push({ ...HARDCODED_COMPONENTS.triplex, id: `triplex-${randomUUID()}` } as any);
+        result.push({ ...HARDCODED_COMPONENTS.adaptor, id: `adaptor-${randomUUID()}` } as any);
+      } else {
+        // Internal: Adaptor only before module
+        result.push({ ...HARDCODED_COMPONENTS.adaptor, id: `adaptor-${randomUUID()}` } as any);
+      }
+
+      // Add the KO/KD module (represents gRNA/shRNA)
+      result.push({ ...module, id: `${module.id}-${randomUUID()}` });
+
+      // KO/KD specific tail handled after loop to follow rule 4 & 5 strictly
+    });
+
+    // Rule 4: Last module always has IS-BCs after it
     if (ordered.length > 0) {
-      result.push({
-        ...HARDCODED_COMPONENTS.isbc,
-        id: `isbc-${randomUUID()}`,
-      });
+      result.push({ ...HARDCODED_COMPONENTS.isbc, id: `isbc-end-${randomUUID()}` } as any);
     }
 
-    // Add polyA if last module is KO/KD
+    // Rule 5: If last module is KO/KD, then add a polyA after IS-BCs
     const lastModule = ordered[ordered.length - 1];
     if (lastModule && (lastModule.type === 'knockout' || lastModule.type === 'knockdown')) {
-      result.push({
-        ...HARDCODED_COMPONENTS.polya,
-        id: `polya-${randomUUID()}`,
-      });
+      result.push({ ...HARDCODED_COMPONENTS.polya, id: `polya-${randomUUID()}` } as any);
     }
 
     return result;
@@ -231,141 +197,125 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
       return;
     }
 
-    // Show a confirmation dialog for large numbers of cassettes
-    if (cassetteCount > 10) {
-      const proceed = confirm(`You're generating ${cassetteCount} cassettes. This may take a while. Continue?`);
-      if (!proceed) return;
-    }
-
     // Initialize loading state
     setIsGenerating(true);
-    const loadingToast = toast.loading(`Preparing to generate ${cassetteCount} cassettes...`);
+    const loadingToast = toast.loading('Preparing to generate all combinations...');
     
-    // Optimize batch size based on cassette count
-    const BATCH_SIZE = Math.min(5, Math.max(1, Math.floor(50 / librarySyntax.length)));
-    const totalBatches = Math.ceil(cassetteCount / BATCH_SIZE);
-    let processedCount = 0;
+    // Build module lists for each library in the syntax order
+    const libraryModuleLists: Module[][] = [];
+    for (const libSyntax of librarySyntax) {
+      const library = folders.find(f => f.id === libSyntax.id);
+      if (!library || !library.modules || library.modules.length === 0) {
+        toast.error(`Library '${library?.name || libSyntax.id}' is empty or not found.`);
+        setIsGenerating(false);
+        toast.dismiss(loadingToast);
+        return;
+      }
+      const libraryModules = customModules.filter(m => library.modules.includes(m.id));
+      if (libraryModules.length === 0) {
+        toast.error(`No modules found for library '${library.name}'.`);
+        setIsGenerating(false);
+        toast.dismiss(loadingToast);
+        return;
+      }
+      // Map modules to the library's specified type
+      libraryModuleLists.push(
+        libraryModules.map((randomModule) => ({
+          ...randomModule,
+          id: `${randomModule.id}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+          type: libSyntax.type,
+          sequence: randomModule.type === libSyntax.type ? randomModule.sequence : '',
+          sequenceSource: randomModule.sequenceSource,
+          originalType: randomModule.type,
+          originalSequence: randomModule.sequence
+        }))
+      );
+    }
+
+    // Compute total combinations
+    const totalCombos = libraryModuleLists.reduce((acc, list) => acc * list.length, 1);
+    const MAX_COMBINATIONS = 1000;
+    let capNotice = '';
+    const combosToGenerate = Math.min(totalCombos, MAX_COMBINATIONS);
+    if (totalCombos > MAX_COMBINATIONS) {
+      capNotice = ` (capped at ${MAX_COMBINATIONS} of ${totalCombos} total)`;
+    }
     let successfulCassettes: Module[][] = [];
 
     try {
-      for (let batchNum = 0; batchNum < totalBatches; batchNum++) {
-        const batchStart = batchNum * BATCH_SIZE;
-        const batchEnd = Math.min(batchStart + BATCH_SIZE, cassetteCount);
-        const currentBatchSize = batchEnd - batchStart;
-        
-        // Update loading message
-        toast.loading(
-          `Generating cassettes ${batchStart + 1}-${batchEnd} of ${cassetteCount}...`, 
-          { id: loadingToast }
-        );
-
-        // Process each cassette in the batch
-        const batchPromises = Array.from({ length: currentBatchSize }, async (_, i) => {
-        const cassettePromises = librarySyntax.map(async (libSyntax) => {
-          const library = folders.find(f => f.id === libSyntax.id);
-          if (!library || !library.modules || library.modules.length === 0) {
-            throw new Error(`Library '${library?.name || libSyntax.id}' is empty or not found.`);
-          }
-          const libraryModules = customModules.filter(m => library.modules.includes(m.id));
-          if (libraryModules.length === 0) {
-            throw new Error(`No modules found for library '${library.name}'.`);
-          }
-
-          const randomModule = libraryModules[Math.floor(Math.random() * libraryModules.length)];
+      // Pre-enrich modules for libraries where type changes
+      for (let i = 0; i < libraryModuleLists.length; i++) {
+        const list = libraryModuleLists[i];
+        const enrichedList: Module[] = [];
+        for (const mod of list) {
+          const modWithOriginal = mod as Module & { originalType?: Module['type'] };
+          if (modWithOriginal.originalType && modWithOriginal.originalType !== modWithOriginal.type) {
             try {
-              // Create a new module with the correct type from library syntax
-              const moduleWithNewType = {
-                ...randomModule,
-                id: `${randomModule.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                type: libSyntax.type, // Ensure we use the type from library syntax
-                // Only clear sequence if type changed and we need to re-enrich
-                sequence: randomModule.type === libSyntax.type ? randomModule.sequence : '',
-                sequenceSource: randomModule.sequenceSource,
-                // Preserve the original type in case we need to revert
-                originalType: randomModule.type,
-                // Store original sequence as fallback
-                originalSequence: randomModule.sequence
-              };
-              
-              // If the type has changed, we need to update the module's properties accordingly
-              if (randomModule.type !== libSyntax.type) {
-                // Clear any type-specific properties that might conflict
-                delete moduleWithNewType.sequence;
-                delete moduleWithNewType.sequenceSource;
-              }
-              
-              // Only enrich if necessary
-              if (randomModule.type !== libSyntax.type) {
-                // Update loading message for this specific module
-                toast.loading(
-                  `Processing ${libSyntax.name} (${libSyntax.type})...`, 
-                  { id: loadingToast }
-                );
-                
-                const enriched = await enrichModuleWithSequence(moduleWithNewType)
-                  .catch(err => {
-                    console.error(`Failed to enrich ${randomModule.name}`, err);
-                    toast.warning(`Using basic module for ${randomModule.name}`, {
-                      id: `warning-${randomModule.id}`,
-                      duration: 3000
-                    });
-                    return moduleWithNewType; // Return unenriched module as fallback
-                  });
-                
-                // Apply cassette syntax to the enriched module
-                return applyCassetteSyntax([enriched]);
-              }
-              
-              // If no enrichment needed, just apply cassette syntax
-              return applyCassetteSyntax([moduleWithNewType]);
-              
-            } catch (error) {
-              console.error('Error processing module:', error);
-              toast.error(`Error processing ${randomModule.name}`, {
-                id: `error-${randomModule.id}`,
-                duration: 3000
-              });
-              return [];
+              const enriched = await enrichModuleWithSequence({ ...mod });
+              enrichedList.push(enriched);
+            } catch (err) {
+              console.error(`Failed to enrich ${mod.name}`, err);
+              enrichedList.push(mod);
             }
-        });
-        
-        const cassetteModules = await Promise.all(cassettePromises);
-        // Flatten the array of module arrays into a single array of modules
-        return cassetteModules.flat();
-      });
+          } else {
+            enrichedList.push(mod);
+          }
+        }
+        libraryModuleLists[i] = enrichedList;
+      }
 
-      // Process batch with timeout to prevent UI freeze
-      const batchTimeout = new Promise<Module[][]>((resolve) => {
-        setTimeout(() => resolve([]), 30000); // 30s timeout per batch
-      });
-      
-      const newCassettes = await Promise.race([
-        Promise.all(batchPromises),
-        batchTimeout
-      ]);
-      
-      // Filter out any empty cassettes from failed module processing
-      const validCassettes = newCassettes.filter(cassette => cassette.length > 0);
-      successfulCassettes = [...successfulCassettes, ...validCassettes];
-      processedCount += validCassettes.length;
-      
-      // Update progress
-      const progress = Math.min(100, Math.round((processedCount / cassetteCount) * 100));
-      toast.loading(
-        `Generated ${processedCount} of ${cassetteCount} cassettes (${progress}%)...`, 
-        { id: loadingToast }
-      );
-      
-      // Small delay to allow UI to update
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
+      // Fast path: single-library case; just iterate that list
+      if (libraryModuleLists.length === 1) {
+        const list = libraryModuleLists[0];
+        for (let i = 0; i < Math.min(list.length, combosToGenerate); i++) {
+          const cassette = applyCassetteSyntax([list[i]]);
+          successfulCassettes.push(cassette);
+          if (i % 25 === 0) {
+            toast.loading(`Generated ${i + 1}/${combosToGenerate}${capNotice}...`, { id: loadingToast });
+            await new Promise(r => setTimeout(r, 0));
+          }
+        }
+      } else {
+      // Iterate combinations using mixed-radix counters to avoid huge intermediate arrays
+      const radices = libraryModuleLists.map(list => list.length);
+      const indices = new Array(radices.length).fill(0);
+      let produced = 0;
+      const YIELD_EVERY = 25;
+
+      while (produced < combosToGenerate) {
+        // Build the current cassette modules
+        const currentModules = indices.map((idx, i) => libraryModuleLists[i][idx]);
+        let cassette: Module[] = []
+        try {
+          cassette = applyCassetteSyntax(currentModules);
+        } catch (e) {
+          console.error('applyCassetteSyntax failed', e)
+          // Fallback: push raw modules if syntax application fails
+          cassette = currentModules
+        }
+        successfulCassettes.push(cassette);
+        produced++;
+
+        if (produced % YIELD_EVERY === 0) {
+          toast.loading(`Generated ${produced}/${combosToGenerate}${capNotice}...`, { id: loadingToast });
+          await new Promise(r => setTimeout(r, 0));
+        }
+
+        // Increment mixed-radix counter
+        let pos = indices.length - 1;
+        while (pos >= 0) {
+          indices[pos]++;
+          if (indices[pos] < radices[pos]) break;
+          indices[pos] = 0;
+          pos--;
+        }
+        if (pos < 0) break; // Completed all combinations
+      }
+      }
     
-    // Only keep the requested number of cassettes
-    const finalCassettes = successfulCassettes.slice(0, cassetteCount);
-    
-    if (finalCassettes.length > 0) {
-      onAddCassettes(finalCassettes);
-      toast.success(`Successfully generated ${finalCassettes.length} cassettes.`, {
+    if (successfulCassettes.length > 0) {
+      onAddCassettes(successfulCassettes);
+      toast.success(`Successfully generated ${successfulCassettes.length} cassettes${capNotice}.`, {
         id: loadingToast,
         duration: 5000
       });
@@ -456,18 +406,17 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
       
       <DragDropContext onDragEnd={handleDragEnd}>
         <Card className="p-6 mb-4">
-          <h3 className="text-lg font-semibold mb-4">Multi-Cassette Setup</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Multi-Cassette Setup</h3>
+            {isGenerating && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="inline-block h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+                Generating...
+              </div>
+            )}
+          </div>
           
           <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block mb-1 text-sm font-medium">Number of Cassettes</label>
-              <Input
-                type="number"
-                min={1}
-                value={cassetteCount}
-                onChange={e => setCassetteCount(Math.max(1, parseInt(e.target.value) || 1))}
-              />
-            </div>
           <div>
             <label className="block mb-1 text-sm font-medium">Add Library to Syntax</label>
             <div className="flex gap-2">
@@ -529,21 +478,40 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                       </span>
                     ) : (
                       <>
-                        {/* Initial hardcoded components */}
-                        {librarySyntax.some(lib => lib.type === 'overexpression') && (
-                          <div className="flex items-center gap-2">
-                            <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
-                              Intron
-                            </div>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        )}
-
-                        {/* Draggable libraries */}
-                        {librarySyntax.map((library, index) => (
+                        {/* Draggable libraries with rule-aware decorations */}
+                        {orderedSyntax.map((library, index) => (
                           <Draggable key={library.id} draggableId={library.id} index={index}>
                             {(provided, snapshot) => (
                               <div className="flex items-center gap-2" ref={provided.innerRef} {...provided.draggableProps}>
+                                {/* Pre-decoration according to rules */}
+                                {(['overexpression','knockin'] as const).includes(library.type as any) && (
+                                  <>
+                                    <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">Intron</div>
+                                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                  </>
+                                )}
+                                {(['knockout','knockdown'] as const).includes(library.type as any) && (() => {
+                                  const firstKoKdIndex = orderedSyntax.findIndex(l => l.type === 'knockout' || l.type === 'knockdown');
+                                  const isFirstKoKd = index === firstKoKdIndex;
+                                  if (isFirstKoKd) {
+                                    return (
+                                      <>
+                                        <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">STOP</div>
+                                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                        <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">Triplex</div>
+                                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                        <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">Adaptor</div>
+                                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                      </>
+                                    );
+                                  }
+                                  return (
+                                    <>
+                                      <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">Adaptor</div>
+                                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                    </>
+                                  );
+                                })()}
                                 <div
                                   {...provided.dragHandleProps}
                                   className={`px-3 py-2 rounded-md text-sm font-medium cursor-move transition-all ${
@@ -568,42 +536,37 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                                     <X className="h-3 w-3" />
                                   </Button>
                                 </div>
-                                
-                                {/* Add T2A after OE libraries (except if it's the last element) */}
-                                {library.type === 'overexpression' && index < librarySyntax.length - 1 && (
-                                  <div className="flex items-center gap-2">
+                                {/* Post-decoration according to rules */}
+                                {(['overexpression','knockin'] as const).includes(library.type as any) && (
+                                  <>
                                     <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                    <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
-                                      T2A
-                                    </div>
-                                  </div>
+                                    <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">T2A</div>
+                                  </>
                                 )}
-                                
-                                {index < librarySyntax.length - 1 && (
+                                {/* Draw arrows between libraries */}
+                                {index < orderedSyntax.length - 1 && (
                                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
                                 )}
                               </div>
                             )}
                           </Draggable>
                         ))}
-                        
-                        {/* Final hardcoded components */}
-                        {librarySyntax.length > 0 && (
+                        {/* Global tail per rules 4 & 5 */}
+                        {orderedSyntax.length > 0 && (
                           <>
-                            <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
-                              Internal Stuffer-Barcode Array
-                            </div>
-                            
-                            {/* Add polyA if last library is KO/KD */}
-                            {(librarySyntax[librarySyntax.length - 1].type === 'knockout' || 
-                              librarySyntax[librarySyntax.length - 1].type === 'knockdown') && (
-                              <>
-                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">
-                                  polyA
-                                </div>
-                              </>
-                            )}
+                            <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">IS-BCs</div>
+                            {(() => {
+                              const last = orderedSyntax[orderedSyntax.length - 1];
+                              if (last.type === 'knockout' || last.type === 'knockdown') {
+                                return (
+                                  <>
+                                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                    <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">polyA</div>
+                                  </>
+                                );
+                              }
+                              return null;
+                            })()}
                           </>
                         )}
                       </>
@@ -619,7 +582,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
             onClick={handleManualGenerate}
             disabled={librarySyntax.length === 0}
           >
-            Generate {cassetteCount} Cassettes from Library Syntax
+            Generate All Combinations from Library Syntax
           </Button>
         </Card>
       </DragDropContext>

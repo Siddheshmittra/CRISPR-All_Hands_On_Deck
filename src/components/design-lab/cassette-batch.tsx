@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trash2, Download, Edit3, Check, X, GripVertical, ScanBarcode } from "lucide-react"
+import { toast } from "sonner"
 import { Module, AnnotatedSegment } from "@/lib/types"
 import { SequenceViewer } from "./sequence-viewer"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
@@ -35,9 +36,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
   const [currentPage, setCurrentPage] = useState(1);
   const CASSETTES_PER_PAGE = 20; // Limit to 20 cassettes per page
 
-  if (cassetteBatch.length === 0) {
-    return null
-  }
+  // Do not early-return before all hooks are declared; render guard moved below
 
   const handleStartEdit = (cassette: Cassette) => {
     setEditingCassetteId(cassette.id)
@@ -229,6 +228,63 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
   const endIndex = startIndex + CASSETTES_PER_PAGE
   const currentCassettes = cassetteBatch.slice(startIndex, endIndex)
 
+  const exportBatchAsCSV = async () => {
+    try {
+      const rows: string[] = []
+      const header = [
+        'cassette_id',
+        'barcode',
+        'modules',
+        'segments',
+        'final_length',
+        'final_sequence'
+      ]
+      rows.push(header.join(','))
+
+      for (const cassette of cassetteBatch) {
+        const segments = await generateAnnotatedSequence(cassette.modules)
+        const finalSeq = segments.map(s => s.sequence).join('')
+        const modulesStr = cassette.modules.map(m => m.name).join(' + ')
+        const segmentsStr = segments.map(s => s.name).join(' + ')
+
+        const esc = (v: string | null | undefined) => {
+          const s = (v ?? '').replace(/"/g, '""')
+          return `"${s}"`
+        }
+
+        const row = [
+          esc(cassette.id),
+          esc(cassette.barcode || ''),
+          esc(modulesStr),
+          esc(segmentsStr),
+          String(finalSeq.length),
+          esc(finalSeq)
+        ]
+        rows.push(row.join(','))
+      }
+
+      const csvContent = rows.join('\n')
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      link.href = url
+      link.download = `cassette-batch_${timestamp}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      toast.success(`Exported ${cassetteBatch.length} cassettes as CSV`)
+    } catch (err) {
+      console.error('Failed to export CSV', err)
+      toast.error('Failed to export CSV')
+    }
+  }
+
+  if (cassetteBatch.length === 0) {
+    return null
+  }
+
   return (
     <Card className="p-6 mt-6">
       <div className="flex items-center justify-between mb-4">
@@ -240,10 +296,16 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
             </p>
           )}
         </div>
-        <Button variant="outline" size="sm" onClick={onExportBatch}>
-          <Download className="h-4 w-4 mr-2" />
-          Export Batch
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={onExportBatch}>
+            <Download className="h-4 w-4 mr-2" />
+            Export JSON
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportBatchAsCSV}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </div>
       
       {/* Pagination Controls */}

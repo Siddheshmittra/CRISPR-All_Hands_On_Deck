@@ -39,7 +39,7 @@ const DesignLab = () => {
     setSelectedLinkerId,
     constructWithLinkers,
   } = useConstructManager([])
-  const [cassetteCount, setCassetteCount] = useState(2)
+  // Removed explicit cassette count; all combinations will be generated
   const [overexpressionCount, setOverexpressionCount] = useState(0)
   const [knockoutCount, setKnockoutCount] = useState(0)
   const [knockdownCount, setKnockdownCount] = useState(0)
@@ -465,8 +465,6 @@ const DesignLab = () => {
                           hideTypeSelector={cassetteMode === 'multi'}
                         />
                         <MultiCassetteSetup
-                          cassetteCount={cassetteCount}
-                          setCassetteCount={setCassetteCount}
                           onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
                           folders={folders}
                           customModules={customModules}
