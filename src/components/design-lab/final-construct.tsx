@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 import Tippy from '@tippyjs/react';
 import { Download, Eye, EyeOff } from "lucide-react"
 import { generateGenbank } from "@/lib/genbank"
@@ -26,9 +26,7 @@ const POLYA_SEQUENCE = "caccgggtcttcaacttgtttattgcagcttataatggttacaaataaagcaatag
 export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   const [constructName, setConstructName] = useState("")
   const [isNameEdited, setIsNameEdited] = useState(false)
-  const [promoter, setPromoter] = useState("EF1a")
   const [barcode, setBarcode] = useState("")
-  const [polyASignal, setPolyASignal] = useState("bGH")
   const [showSequence, setShowSequence] = useState(true)
 
   const generateAnnotatedSequence = (): AnnotatedSegment[] => {
@@ -111,9 +109,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
       name: constructName,
       modules: modules.map(m => ({ ...m, label: `${m.name} [${m.type}]` })),
       details: {
-        promoter,
         barcode,
-        polyASignal,
         cassetteCount: constructModules.length
       },
       sequence: fullSequence,
@@ -187,36 +183,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="promoter">Promoter:</Label>
-            <Select value={promoter} onValueChange={setPromoter}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="EF1a">EF1a</SelectItem>
-                <SelectItem value="CMV">CMV</SelectItem>
-                <SelectItem value="PGK">PGK</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div>
-            <Label htmlFor="polya">PolyA Signal:</Label>
-            <Select value={polyASignal} onValueChange={setPolyASignal}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bGH">bGH</SelectItem>
-                <SelectItem value="SV40">SV40</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div>
+<div>
           <Label htmlFor="barcode">Barcode:</Label>
           <Input
             id="barcode"
