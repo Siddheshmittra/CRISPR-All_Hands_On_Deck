@@ -57,16 +57,23 @@ const DesignLab = () => {
     const library = folders.find(f => f.id === libraryId)
     if (!library || librarySyntax.find(l => l.id === libraryId)) return
 
-    // If perturbationType is provided, use it; otherwise, determine from first module
+    // Enforce Total Library constraint: only add if all contained modules share a single perturbation type
+    const isTotalLibrary = library.id === 'total-library'
+    const moduleObjs = (library.modules || []).map((id: string) => customModules.find(m => m.id === id)).filter(Boolean) as Module[]
+    if (isTotalLibrary) {
+      const uniqueTypes = new Set(moduleObjs.map(m => m.type))
+      if (uniqueTypes.size > 1) {
+        toast?.error?.('Total Library contains mixed perturbation types. Please split into separate libraries or set a uniform type before adding.')
+        return
+      }
+    }
+
+    // Decide library type: explicit override > contained modules' uniform type > first module fallback
     let moduleType: 'overexpression' | 'knockout' | 'knockdown' | 'knockin' = 'overexpression';
-    
     if (perturbationType) {
       moduleType = perturbationType;
-    } else {
-      // Fallback to checking the first module's type if no perturbationType provided
-      const firstModuleId = library.modules[0];
-      const firstModule = customModules.find(m => m.id === firstModuleId);
-      moduleType = firstModule?.type || 'overexpression';
+    } else if (moduleObjs.length > 0) {
+      moduleType = moduleObjs[0].type
     }
 
     const newLibrary: LibrarySyntax = {

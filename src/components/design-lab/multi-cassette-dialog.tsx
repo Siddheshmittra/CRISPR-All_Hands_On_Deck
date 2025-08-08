@@ -117,6 +117,24 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
   const [isGenerating, setIsGenerating] = useState(false)
   const [libraries, setLibraries] = useState<LibrarySyntax[]>([])
   
+  // Filter libraries: hide 'total-library' if it mixes perturbation types
+  const eligibleLibraries = useMemo(() => {
+    const result = folders.filter(folder => {
+      if (folder.id !== 'total-library') return true
+      const moduleObjs = (folder.modules || []).map((id: string) => customModules.find(m => m.id === id)).filter(Boolean)
+      const uniqueTypes = new Set(moduleObjs.map((m: any) => m?.type))
+      return uniqueTypes.size <= 1
+    })
+    return result
+  }, [folders, customModules])
+
+  // Ensure selection is always an eligible library
+  useEffect(() => {
+    if (!eligibleLibraries.find(l => l.id === selectedLibrary)) {
+      setSelectedLibrary(eligibleLibraries[0]?.id || '')
+    }
+  }, [eligibleLibraries, selectedLibrary])
+  
   // Always visualize syntax with OE/KI first then KO/KD (Rule 2)
   const orderedSyntax = useMemo(() => {
     const geneLike = librarySyntax.filter(l => l.type === 'overexpression' || l.type === 'knockin')
@@ -425,19 +443,19 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
           <div>
             <label className="block mb-1 text-sm font-medium">Add Library to Syntax</label>
             <div className="flex gap-2">
-              <select
-                value={selectedLibrary}
-                onChange={e => setSelectedLibrary(e.target.value)}
+                <select
+                  value={selectedLibrary}
+                  onChange={e => setSelectedLibrary(e.target.value)}
                 className="h-9 px-2 flex-1 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                {folders.map(folder => (
+                {eligibleLibraries.map(folder => (
                   <option key={folder.id} value={folder.id}>{folder.name}</option>
                 ))}
               </select>
               <Button
                 size="sm"
-                onClick={() => onAddLibrary(selectedLibrary)}
-                disabled={librarySyntax.find(l => l.id === selectedLibrary) !== undefined}
+                  onClick={() => onAddLibrary(selectedLibrary)}
+                  disabled={!selectedLibrary || librarySyntax.find(l => l.id === selectedLibrary) !== undefined}
               >
                 <Plus className="h-4 w-4" />
               </Button>
