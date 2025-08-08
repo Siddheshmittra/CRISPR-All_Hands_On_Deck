@@ -18,15 +18,19 @@ export interface EditInstruction {
 
 const systemPrompt = `You are a genetic engineering assistant that helps design genetic constructs.
 
-Input: Free text describing genetic modifications (e.g., "overexpress BATF, knockdown IRF4")
-Output: A JSON array of edit instructions with action and target gene.
+Input: Free text describing genetic modifications (e.g., "overexpress BATF, knockdown IRF4").
+Output: Return a JSON object with key "instructions" containing an array of edit instructions.
+
+Each instruction object:
+- action: one of [overexpress, knockdown, knockout, knockin]
+- target: gene symbol (string)
+- description: optional string
 
 Rules:
-- Only include valid gene symbols
 - Standardize actions to: overexpress, knockdown, knockout, knockin
 - If action is unclear, default to overexpress
 - Ignore any text that doesn't contain genetic modifications
-- Always return a valid JSON array, even if empty`;
+- Always return { "instructions": [] } if nothing is found.`;
 
 export async function parseInstructions(text: string): Promise<EditInstruction[]> {
   try {
@@ -66,7 +70,7 @@ export async function parseInstructions(text: string): Promise<EditInstruction[]
       throw new Error('No content in OpenAI response');
     }
     
-    let result;
+    let result: any;
     try {
       result = JSON.parse(completion.choices[0].message.content);
       console.log('Parsed response:', result);
@@ -74,22 +78,61 @@ export async function parseInstructions(text: string): Promise<EditInstruction[]
       console.error('Failed to parse response:', completion.choices[0].message.content);
       throw new Error('Invalid JSON response from OpenAI');
     }
-    
-    // Validate the response matches our schema
-    const schema = z.array(z.object({
+
+    // Extract array from multiple possible shapes when using json_object format
+    const extractArray = (obj: any): any[] => {
+      if (Array.isArray(obj)) return obj;
+      if (!obj || typeof obj !== 'object') return [];
+      const preferredKeys = ['instructions', 'edits', 'actions', 'items', 'result', 'results', 'data', 'list'];
+      for (const key of preferredKeys) {
+        if (Array.isArray(obj[key])) return obj[key];
+      }
+      // Fallback: first array value in the object
+      for (const value of Object.values(obj)) {
+        if (Array.isArray(value)) return value as any[];
+      }
+      // Fallback: treat single object as one instruction
+      if (obj && (obj.target || obj.gene || obj.symbol || obj.name)) return [obj];
+      return [];
+    };
+
+    const rawItems = extractArray(result);
+
+    // Normalize possible variations from the LLM
+    const normalizeAction = (value?: string): EditAction => {
+      const v = (value || '').toLowerCase().replace(/\s+/g, '');
+      if (['ko','knockout','knockoutgene','gene_knockout','delete'].includes(v)) return 'knockout';
+      if (['kd','knockdown','silence','repress','reduce','downregulate','downregulation','decrease','suppress'].includes(v)) return 'knockdown';
+      if (['ki','knockin','insert','integration'].includes(v)) return 'knockin';
+      if (['oe','overexpress','upregulate','upregulation','increase','express'].includes(v)) return 'overexpress';
+      return 'overexpress';
+    };
+
+    const normalizeTarget = (obj: any): string | undefined => {
+      const candidate = obj?.target ?? obj?.gene ?? obj?.symbol ?? obj?.name;
+      if (typeof candidate !== 'string') return undefined;
+      return candidate.trim();
+    };
+
+    const normalized = rawItems
+      .map((it: any) => {
+        const target = normalizeTarget(it);
+        const action = normalizeAction(it?.action ?? it?.operation ?? it?.type ?? it?.edit);
+        const description = typeof it?.description === 'string' ? it.description : undefined;
+        return target ? { action, target, description } : null;
+      })
+      .filter(Boolean) as Array<{ action: EditAction; target: string; description?: string }>;
+
+    // Validate using strict schema after normalization
+    const validated = z.array(z.object({
       action: z.enum(['overexpress', 'knockdown', 'knockout', 'knockin']).default('overexpress'),
       target: z.string().min(1, 'Target gene is required'),
       description: z.string().optional()
-    }));
-    
-    // Ensure we have an array and each item has required fields
-    const responseData = Array.isArray(result) ? result : [result];
-    const validated = schema.parse(responseData);
-    
-    // Map to EditInstruction type with required fields
+    })).parse(normalized);
+
     const parsed: EditInstruction[] = validated.map(item => ({
-      action: item.action || 'overexpress', // Ensure action has a default
-      target: item.target, // Required by schema
+      action: item.action || 'overexpress',
+      target: item.target,
       ...(item.description && { description: item.description })
     }));
     

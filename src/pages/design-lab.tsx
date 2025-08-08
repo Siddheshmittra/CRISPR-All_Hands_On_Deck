@@ -8,6 +8,7 @@ import { ConstructLayout } from "@/components/design-lab/construct-layout"
 import { FinalConstruct } from "@/components/design-lab/final-construct"
 import { MultiCassetteSetup } from "@/components/design-lab/multi-cassette-dialog"
 import { NaturalLanguageMode } from "@/components/design-lab/natural-language-mode"
+import { NaturalLanguageInput } from "@/components/design-lab/NaturalLanguageInput"
 import { LibraryManager } from "@/components/design-lab/library-manager"
 import { CassetteBatch } from "@/components/design-lab/cassette-batch"
 import { SimpleModuleSelector } from "@/components/design-lab/simple-module-selector"
@@ -442,7 +443,21 @@ const DesignLab = () => {
             onInputModeChange={setInputMode}
           />
           
-          {inputMode === 'natural' && (
+          {inputMode === 'natural' && cassetteMode === 'single' && (
+            <Card className="p-4">
+              <NaturalLanguageInput
+                onModulesGenerated={async (modules) => {
+                  // Enrich and add each module similarly to manual selection
+                  for (const m of modules) {
+                    await handleModuleSelect(m)
+                  }
+                }}
+                onError={(err) => toast.error(err)}
+              />
+            </Card>
+          )}
+
+          {inputMode === 'natural' && cassetteMode === 'multi' && (
             <NaturalLanguageMode
               onSuggestedConstruct={modules => setConstructModules(modules)}
             />

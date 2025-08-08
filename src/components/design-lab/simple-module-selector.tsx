@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Search, Plus, ArrowRight } from "lucide-react"
 import { toast } from "sonner"
 import { Module, EnsemblModule } from "@/lib/types"
+import { NaturalLanguageInput } from "./NaturalLanguageInput"
 import { SyntheticGeneSelector } from "./synthetic-gene-selector"
 import { SyntheticGene } from "@/lib/types"
 import { searchEnsembl } from "@/lib/ensembl"
@@ -269,6 +270,41 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="space-y-5">
+        {/* Natural Language Input for single-cassette */}
+        <div className="space-y-3">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Natural Language</h2>
+          <NaturalLanguageInput
+            onModulesGenerated={(newModules) => {
+              if (!newModules || newModules.length === 0) return
+              const remaining = 5 - constructModules.length
+              const toAdd = remaining > 0 ? newModules.slice(0, remaining) : []
+
+              if (toAdd.length === 0) {
+                toast.error("Maximum 5 modules allowed")
+                return
+              }
+
+              toAdd.forEach((m) => {
+                const unique: Module = {
+                  ...m,
+                  id: `${m.id || m.name}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+                }
+                onModuleAdd(unique)
+              })
+
+              if (newModules.length > toAdd.length) {
+                toast.error(`Added ${toAdd.length} modules, but hit the 5-module limit`)
+              } else {
+                toast.success(`Added ${toAdd.length} module${toAdd.length > 1 ? 's' : ''}`)
+              }
+            }}
+            onError={(err) => {
+              toast.error(err || "Failed to generate modules")
+            }}
+          />
+          <div className="h-px bg-border" />
+        </div>
+
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add Modules to Construct</h2>
         
         {/* Type Selector - Styled to match scan genes dialog */}
