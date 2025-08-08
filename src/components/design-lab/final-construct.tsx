@@ -151,7 +151,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">4. Final Construct</h2>
+        <h2 className="text-lg font-semibold">4. DNA Sequence</h2>
         <div className="flex gap-2">
           <Button 
             variant="outline" 
@@ -159,7 +159,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
             onClick={() => setShowSequence(!showSequence)}
           >
             {showSequence ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-            {showSequence ? "Hide" : "Show"} Sequence
+            {showSequence ? "Hide" : "Show"} Nucleotide Sequence
           </Button>
           <Button size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
@@ -199,7 +199,7 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
 
         {showSequence && (
           <div className="space-y-4">
-            <Label>Nucleotide Sequence:</Label>
+            <Label>Concatenated Nucleotide Sequence:</Label>
             
             <SequenceViewer segments={generateAnnotatedSequence()} />
           </div>

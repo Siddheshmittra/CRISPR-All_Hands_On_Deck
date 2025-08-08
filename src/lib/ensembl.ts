@@ -199,17 +199,44 @@ export async function resolveGene(
   console.log(`[resolveGene] Cache miss for key: ${cacheKey}. Fetching from Ensembl.`);
 
   const base = opts?.base ?? ENSEMBL;
-  const url = `${base}/lookup/symbol/${species}/${encodeURIComponent(symbol)}?expand=1`;
-  console.log(`[resolveGene] Fetching URL: ${url}`);
-  
-  const gene = await fetchJSON<LookupGene>(url);
-  console.log(`[resolveGene] Successfully fetched data for key: ${cacheKey}`, gene);
-  
-  // Cache the result
-  geneCache.set(cacheKey, gene);
-  setInLocalStorage('gene', cacheKey, gene);
-  
-  return gene;
+  // Retry strategy: try provided symbol, then known alias fixups, then HGNC search-derived symbols
+  const candidates = [symbol];
+  if (symbol.toUpperCase() === 'P53') candidates.push('TP53');
+  let lastError: any = null;
+  for (const sym of candidates) {
+    const url = `${base}/lookup/symbol/${species}/${encodeURIComponent(sym)}?expand=1`;
+    console.log(`[resolveGene] Fetching URL: ${url}`);
+    try {
+      const gene = await fetchJSON<LookupGene>(url);
+      console.log(`[resolveGene] Successfully fetched data for key: ${species}:${sym}`, gene);
+      geneCache.set(cacheKey, gene);
+      setInLocalStorage('gene', cacheKey, gene);
+      return gene;
+    } catch (e) {
+      lastError = e;
+      console.warn(`[resolveGene] Failed for symbol ${sym}:`, e);
+    }
+  }
+  // As a final fallback, query HGNC for synonyms/aliases and retry with top hits
+  try {
+    const hgncHits = await searchEnsembl(symbol);
+    for (const hit of hgncHits) {
+      const sym = hit.symbol;
+      const url = `${base}/lookup/symbol/${species}/${encodeURIComponent(sym)}?expand=1`;
+      console.log(`[resolveGene] Retrying with HGNC-derived symbol: ${sym} → ${url}`);
+      try {
+        const gene = await fetchJSON<LookupGene>(url);
+        geneCache.set(cacheKey, gene);
+        setInLocalStorage('gene', cacheKey, gene);
+        return gene;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+  } catch (e) {
+    lastError = e;
+  }
+  throw lastError || new Error(`Failed to resolve gene symbol ${symbol}`);
 }
 
 export function pickTranscript(g: LookupGene): string | undefined {

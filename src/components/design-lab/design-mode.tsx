@@ -11,7 +11,7 @@ interface DesignModeProps {
 export const DesignMode = ({ cassetteMode, onCassetteModeChange, inputMode, onInputModeChange }: DesignModeProps) => {
   return (
     <Card className="p-6">
-      <h2 className="text-lg font-semibold mb-4">1. Design Mode</h2>
+      <h2 className="text-lg font-semibold mb-4">1. Mode Selection</h2>
       <div className="flex flex-col gap-4">
         <div>
           <span className="block text-sm font-semibold mb-2">Cassette Mode</span>

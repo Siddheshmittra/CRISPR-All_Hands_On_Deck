@@ -10,6 +10,7 @@ import { MultiCassetteSetup } from "@/components/design-lab/multi-cassette-dialo
 import { NaturalLanguageMode } from "@/components/design-lab/natural-language-mode"
 import { NaturalLanguageInput } from "@/components/design-lab/NaturalLanguageInput"
 import { LibraryManager } from "@/components/design-lab/library-manager"
+import { Card } from "@/components/ui/card"
 import { CassetteBatch } from "@/components/design-lab/cassette-batch"
 import { SimpleModuleSelector } from "@/components/design-lab/simple-module-selector"
 import { Trash2 } from "lucide-react"

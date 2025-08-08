@@ -42,7 +42,7 @@ export const ConstructLayout = ({
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">3. Syntax</h2>
+        <h2 className="text-lg font-semibold">3. Encoding</h2>
         <div className="flex gap-2">
 <Button variant="outline" size="sm" onClick={onReset}>
             <RotateCcw className="h-4 w-4 mr-2" />
@@ -72,7 +72,7 @@ export const ConstructLayout = ({
               >
                 {constructModules.length === 0 ? (
                   <div className="w-full text-center text-muted-foreground pointer-events-none select-none">
-                    <p>Drop modules here to build your construct</p>
+                     <p>Arrange modules to define cassette encoding</p>
                     <p className="text-sm mt-1">Maximum 5 perturbations</p>
                   </div>
                 ) : (
@@ -145,9 +145,9 @@ export const ConstructLayout = ({
         </div>
       </div>
 
-      {constructModules.length > 0 && (
+       {constructModules.length > 0 && (
         <div className="mt-4 p-4 bg-muted rounded-lg">
-          <h3 className="font-medium mb-2">Cassette String:</h3>
+          <h3 className="font-medium mb-2">Encoding String:</h3>
           <p className="text-sm font-mono break-all">
             {constructModules.map(m => m.name).join(' → ')}
           </p>

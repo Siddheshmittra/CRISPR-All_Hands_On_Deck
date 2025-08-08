@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Search, Plus, ArrowRight } from "lucide-react"
 import { toast } from "sonner"
 import { Module, EnsemblModule } from "@/lib/types"
-import { NaturalLanguageInput } from "./NaturalLanguageInput"
 import { SyntheticGeneSelector } from "./synthetic-gene-selector"
 import { SyntheticGene } from "@/lib/types"
 import { searchEnsembl } from "@/lib/ensembl"
@@ -270,42 +269,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="space-y-5">
-        {/* Natural Language Input for single-cassette */}
-        <div className="space-y-3">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Natural Language</h2>
-          <NaturalLanguageInput
-            onModulesGenerated={(newModules) => {
-              if (!newModules || newModules.length === 0) return
-              const remaining = 5 - constructModules.length
-              const toAdd = remaining > 0 ? newModules.slice(0, remaining) : []
-
-              if (toAdd.length === 0) {
-                toast.error("Maximum 5 modules allowed")
-                return
-              }
-
-              toAdd.forEach((m) => {
-                const unique: Module = {
-                  ...m,
-                  id: `${m.id || m.name}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
-                }
-                onModuleAdd(unique)
-              })
-
-              if (newModules.length > toAdd.length) {
-                toast.error(`Added ${toAdd.length} modules, but hit the 5-module limit`)
-              } else {
-                toast.success(`Added ${toAdd.length} module${toAdd.length > 1 ? 's' : ''}`)
-              }
-            }}
-            onError={(err) => {
-              toast.error(err || "Failed to generate modules")
-            }}
-          />
-          <div className="h-px bg-border" />
-        </div>
-
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add Modules to Construct</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">2. Syntax: Select Perturbations</h2>
         
         {/* Type Selector - Styled to match scan genes dialog */}
         <div className="p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -351,9 +315,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
 
         {/* Search - Enhanced with better styling */}
         <div className="space-y-2">
-          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Search for genes to {selectedType}
-          </div>
+          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Search symbols for this cassette</div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
             <Input
@@ -373,7 +335,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
             </div>
           ) : !searchTerm && suggestions.length === 0 ? (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Quick Add Common Genes</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">Quick Add (OE)</h3>
               <div className="grid grid-cols-2 gap-2">
                 {['BATF', 'IRF4', 'PDCD1', 'TET2', 'GZMB', 'IFNG'].map(gene => {
                   const selectedTypeOption = typeOptions.find(opt => opt.value === selectedType);
@@ -394,7 +356,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
             </div>
           ) : suggestions.length > 0 && (
             <>
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Search Results</h3>
+               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Search Results</h3>
               <div className="space-y-2">
                 {suggestions.map((suggestion) => (
                   <Card 

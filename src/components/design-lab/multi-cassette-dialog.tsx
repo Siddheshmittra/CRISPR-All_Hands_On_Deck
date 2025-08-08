@@ -11,7 +11,7 @@ import { toast } from "sonner"
 import { Module, LibrarySyntax } from "@/lib/types"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { randomUUID } from "@/lib/uuid"
-import { NaturalLanguageInput } from "./NaturalLanguageInput"
+// Removed NaturalLanguageInput from multi-cassette manual section
 
 // Hardcoded syntax components with their sequences and types
 // Sequences follow the rules table provided by the user
@@ -385,47 +385,11 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     onReorderLibraries(newLibrarySyntax);
   };
 
-  // Handle modules generated from natural language input
-  const handleModulesGenerated = (newModules: Module[]) => {
-    if (newModules.length === 0) return;
-
-    // Add to the first cassette or create a new one
-    if (libraries.length > 0) {
-      const updatedLibraries = [...libraries];
-      updatedLibraries[0].modules = [
-        ...updatedLibraries[0].modules,
-        ...newModules
-      ];
-      setLibraries(updatedLibraries);
-      onLibrariesChange?.(updatedLibraries);
-    } else {
-      const newLibrary: LibrarySyntax = {
-        id: `library-${Date.now()}`,
-        name: 'Generated Design',
-        modules: newModules,
-        type: 'overexpression' // Default type, can be changed later
-      };
-      const newLibraries = [newLibrary];
-      setLibraries(newLibraries);
-      onLibrariesChange?.(newLibraries);
-    }
-
-    toast.success(`Added ${newModules.length} module${newModules.length > 1 ? 's' : ''} to your design`);
-  };
-
-  // Handle errors from natural language input
-  const handleNaturalLanguageError = (error: string) => {
-    toast.error(error);
-  };
+  // Natural language input removed for multi-cassette manual section
 
   return (
     <div className="space-y-6">
-      <Card className="p-4">
-        <NaturalLanguageInput 
-          onModulesGenerated={handleModulesGenerated}
-          onError={handleNaturalLanguageError}
-        />
-      </Card>
+      {/* Natural language input intentionally omitted in multi-cassette manual section */}
       
       <DragDropContext onDragEnd={handleDragEnd}>
         <Card className="p-6 mb-4">

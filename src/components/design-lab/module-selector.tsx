@@ -775,21 +775,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         <Button variant="outline" size="sm" onClick={handleExportLibrary}>
           Export
         </Button>
-        <BenchlingButton
-          isLinked={isBenchlingLinked}
-          isLinking={isBenchlingLinking}
-          onClick={handleBenchlingLink}
-        />
-        {isBenchlingLinked && (
-          <>
-            <Button variant="outline" size="sm" onClick={() => toast.info("Import from Benchling clicked (demo).")}>
-              Import from Benchling
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => toast.info("Export to Benchling clicked (demo).")}>
-              Export to Benchling
-            </Button>
-          </>
-        )}
         <input
           type="file"
           accept=".csv,.xlsx"
@@ -923,6 +908,29 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             </div>
           )}
         </Droppable>
+      </div>
+      {/* Integrations (moved from top to avoid clutter near module selection) */}
+      <div className="mt-4 p-3 border-t border-border">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-muted-foreground">Integrations</span>
+          <div className="flex gap-2">
+            <BenchlingButton
+              isLinked={isBenchlingLinked}
+              isLinking={isBenchlingLinking}
+              onClick={handleBenchlingLink}
+            />
+            {isBenchlingLinked && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => toast.info("Import from Benchling clicked (demo).")}>
+                  Import
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => toast.info("Export to Benchling clicked (demo).")}>
+                  Export
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
       </Card>
 

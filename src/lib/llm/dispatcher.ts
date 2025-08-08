@@ -1,5 +1,7 @@
 import { EditInstruction } from './llmParser';
 import { validateGenes } from './geneValidator';
+import { resolveGene } from '@/lib/ensembl';
+import type { Module } from '@/lib/types';
 
 // Map actions to module types
 export function mapActionToModuleType(action: string): 'overexpression' | 'knockdown' | 'knockout' | 'knockin' {
@@ -14,8 +16,18 @@ export function mapActionToModuleType(action: string): 'overexpression' | 'knock
 }
 
 export async function createModule(edit: EditInstruction): Promise<Module> {
-  const moduleType = mapActionToModuleType(edit.action);
-  
+  let moduleType = mapActionToModuleType(edit.action);
+
+  // If LLM suggested knockin for a natural gene (present in Ensembl), override to OE
+  if (moduleType === 'knockin') {
+    try {
+      await resolveGene(edit.target, 'homo_sapiens');
+      moduleType = 'overexpression';
+    } catch {
+      // Not found in Ensembl → keep as knockin (likely synthetic)
+    }
+  }
+
   return {
     id: `generated-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     name: edit.target,
