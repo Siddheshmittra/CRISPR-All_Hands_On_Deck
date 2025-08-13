@@ -595,6 +595,14 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     }
   };
 
+  // Close and reset the Import dialog
+  const handleCloseImportDialog = () => {
+    setShowScanGenesDialog(false)
+    setGeneTextInput('')
+    setScanGenesLibraryName('')
+    setScanGenesPerturbationType('overexpression')
+  }
+
   // Process genes from text input
   const handleProcessTextGenes = async () => {
     if (!geneTextInput.trim()) {
@@ -983,8 +991,8 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
 
       {/* Import Dialog */}
       {showScanGenesDialog && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={handleCloseImportDialog}>
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Import</h3>
             
             {/* Perturbation Type Selector - Moved to top */}
@@ -1076,12 +1084,7 @@ EGFR"
             <div className="flex justify-end mt-6">
               <Button
                 variant="outline"
-                onClick={() => {
-                  setShowScanGenesDialog(false)
-                  setGeneTextInput('')
-                  setScanGenesLibraryName('')
-                  setScanGenesPerturbationType('overexpression') // Reset to default
-                }}
+                onClick={handleCloseImportDialog}
               >
                 Cancel
               </Button>
