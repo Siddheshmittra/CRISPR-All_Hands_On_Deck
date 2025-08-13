@@ -3,10 +3,14 @@ import { z } from 'zod';
 
 console.log('OpenAI API Key:', import.meta.env.VITE_OPENAI_API_KEY ? 'Key found' : 'Key missing');
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true // Only for client-side usage
-});
+function createOpenAI(): OpenAI | null {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({
+    apiKey,
+    dangerouslyAllowBrowser: import.meta.env.DEV === true
+  });
+}
 
 export type EditAction = 'overexpress' | 'knockdown' | 'knockout' | 'knockin';
 
@@ -41,8 +45,10 @@ export async function parseInstructions(text: string): Promise<EditInstruction[]
       VITE_OPENAI_PROMPT_ID: import.meta.env.VITE_OPENAI_PROMPT_ID || 'Not set'
     });
 
-    if (!import.meta.env.VITE_OPENAI_API_KEY) {
-      throw new Error('OpenAI API key is not set');
+    const client = createOpenAI();
+    if (!client) {
+      // In production (Pages) with no key, return empty instructions gracefully
+      return [];
     }
     
     const messages = [
@@ -57,7 +63,7 @@ export async function parseInstructions(text: string): Promise<EditInstruction[]
 
     console.log('Sending messages to OpenAI:', messages);
     
-    const completion = await openai.chat.completions.create({
+    const completion = await client.chat.completions.create({
       model: 'gpt-4-turbo',
       messages,
       temperature: 0.1,

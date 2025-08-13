@@ -11,10 +11,14 @@ export interface PlannedLibrary {
   geneSymbols: string[];
 }
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true,
-});
+function createOpenAI(): OpenAI | null {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({
+    apiKey,
+    dangerouslyAllowBrowser: import.meta.env.DEV === true,
+  });
+}
 
 const systemPrompt = `You are a genetics assistant that designs gene libraries for multi-cassette experiments.
 
@@ -51,7 +55,12 @@ export async function planLibrariesFromPrompt(prompt: string, maxPerLibrary = 30
     },
   ];
 
-  const completion = await openai.chat.completions.create({
+  const client = createOpenAI();
+  if (!client) {
+    // In production (Pages) with no key, return empty result gracefully
+    return [];
+  }
+  const completion = await client.chat.completions.create({
     model: 'gpt-4-turbo',
     temperature: 0.2,
     response_format: { type: 'json_object' },
