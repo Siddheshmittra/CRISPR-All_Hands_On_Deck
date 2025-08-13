@@ -5,7 +5,8 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: '/gene-craft-lab/',
+  // Use root base on Vercel, GitHub Pages subpath otherwise
+  base: process.env.VERCEL ? '/' : '/gene-craft-lab/',
   server: {
     host: "::",
     port: 8080,
