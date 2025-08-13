@@ -45,12 +45,6 @@ export async function parseInstructions(text: string): Promise<EditInstruction[]
       VITE_OPENAI_PROMPT_ID: import.meta.env.VITE_OPENAI_PROMPT_ID || 'Not set'
     });
 
-    const client = createOpenAI();
-    if (!client) {
-      // In production (Pages) with no key, return empty instructions gracefully
-      return [];
-    }
-    
     const messages = [
       { 
         role: 'system' as const, 
@@ -62,26 +56,43 @@ export async function parseInstructions(text: string): Promise<EditInstruction[]
     ];
 
     console.log('Sending messages to OpenAI:', messages);
-    
-    const completion = await client.chat.completions.create({
-      model: 'gpt-4-turbo',
-      messages,
-      temperature: 0.1,
-      response_format: { type: 'json_object' },
-    });
-    
+
+    const proxy = import.meta.env.VITE_LLM_PROXY_URL;
+    let content: string | undefined;
+
+    if (proxy) {
+      const res = await fetch(`${proxy}/parse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages }),
+      });
+      if (!res.ok) throw new Error('Proxy call failed');
+      const data = await res.json();
+      content = data.content;
+    } else {
+      const client = createOpenAI();
+      if (!client) return [];
+      const completion = await client.chat.completions.create({
+        model: 'gpt-4-turbo',
+        messages,
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+      });
+      content = completion.choices?.[0]?.message?.content;
+    }
+
     console.log('OpenAI response received');
     
-    if (!completion.choices?.[0]?.message?.content) {
+    if (!content) {
       throw new Error('No content in OpenAI response');
     }
     
     let result: any;
     try {
-      result = JSON.parse(completion.choices[0].message.content);
+      result = JSON.parse(content);
       console.log('Parsed response:', result);
     } catch (e) {
-      console.error('Failed to parse response:', completion.choices[0].message.content);
+      console.error('Failed to parse response:', content);
       throw new Error('Invalid JSON response from OpenAI');
     }
 

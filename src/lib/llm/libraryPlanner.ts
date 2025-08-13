@@ -40,10 +40,6 @@ Rules:
 `;
 
 export async function planLibrariesFromPrompt(prompt: string, maxPerLibrary = 30): Promise<PlannedLibrary[]> {
-  if (!import.meta.env.VITE_OPENAI_API_KEY) {
-    throw new Error('OpenAI API key is not set');
-  }
-
   const messages = [
     {
       role: 'system' as const,
@@ -55,19 +51,30 @@ export async function planLibrariesFromPrompt(prompt: string, maxPerLibrary = 30
     },
   ];
 
-  const client = createOpenAI();
-  if (!client) {
-    // In production (Pages) with no key, return empty result gracefully
-    return [];
-  }
-  const completion = await client.chat.completions.create({
-    model: 'gpt-4-turbo',
-    temperature: 0.2,
-    response_format: { type: 'json_object' },
-    messages,
-  });
+  const proxy = import.meta.env.VITE_LLM_PROXY_URL;
+  let contentStr: string | undefined;
 
-  const content = completion.choices?.[0]?.message?.content || '{}';
+  if (proxy) {
+    const res = await fetch(`${proxy}/plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
+    });
+    if (!res.ok) throw new Error('Proxy call failed');
+    const data = await res.json();
+    contentStr = data.content || '{}';
+  } else {
+    const client = createOpenAI();
+    if (!client) return [];
+    const completion = await client.chat.completions.create({
+      model: 'gpt-4-turbo',
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+      messages,
+    });
+    contentStr = completion.choices?.[0]?.message?.content || '{}';
+  }
+  const content = contentStr || '{}';
   let parsed: any;
   try {
     parsed = JSON.parse(content);
