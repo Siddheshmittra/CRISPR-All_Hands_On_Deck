@@ -335,7 +335,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
             </div>
           ) : !searchTerm && suggestions.length === 0 ? (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Quick Add (OE)</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">Quick Add</h3>
               <div className="grid grid-cols-2 gap-2">
                 {['BATF', 'IRF4', 'PDCD1', 'TET2', 'GZMB', 'IFNG'].map(gene => {
                   const selectedTypeOption = typeOptions.find(opt => opt.value === selectedType);
