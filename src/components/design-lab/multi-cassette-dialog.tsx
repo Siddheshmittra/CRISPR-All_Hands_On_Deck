@@ -167,12 +167,21 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     const firstKoKdIdx = ordered.findIndex(m => m.type === 'knockout' || m.type === 'knockdown');
     const lastKoKdIdx = ordered.length - 1;
 
-    // Handle gene-like libraries (OE/KI)
+    // Handle gene-like libraries (OE vs KI as domains per figures)
     geneLike.forEach((module, localIdx) => {
-      // Intron-GENE-T2A for each gene library
-      result.push({ ...HARDCODED_COMPONENTS.intron, id: `intron-${randomUUID()}` } as any);
-      result.push({ ...module, id: `${module.id}-${randomUUID()}` });
-      result.push({ ...HARDCODED_COMPONENTS.t2a, id: `t2a-${randomUUID()}` } as any);
+      if (module.type === 'overexpression') {
+        // OE: Intron + OE + T2A (unchanged)
+        result.push({ ...HARDCODED_COMPONENTS.intron, id: `intron-${randomUUID()}` } as any);
+        result.push({ ...module, id: `${module.id}-${randomUUID()}` });
+        result.push({ ...HARDCODED_COMPONENTS.t2a, id: `t2a-${randomUUID()}` } as any);
+      } else {
+        // KI domain module: Intron + Domain(label) + IS + BC
+        result.push({ ...HARDCODED_COMPONENTS.intron, id: `intron-${randomUUID()}` } as any);
+        // Label domain explicitly for visualization
+        result.push({ ...module, id: `${module.id}-${randomUUID()}`, name: `Domain: ${module.name}` });
+        result.push({ ...HARDCODED_COMPONENTS.internalStuffer, id: `is-domain-${randomUUID()}` } as any);
+        result.push({ ...HARDCODED_COMPONENTS.barcodes, id: `bc-domain-${randomUUID()}` } as any);
+      }
     });
 
     // Handle KO/KD region according to position rules
@@ -197,8 +206,9 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
       // KO/KD specific tail handled after loop to follow rule 4 & 5 strictly
     });
 
-    // Rule 4: Last module always has Internal Stuffer then Barcodes after it
-    if (ordered.length > 0) {
+    // Rule 4 (modified): If no KI domain modules were present, add global IS-BCs tail
+    const hadKnockinDomain = geneLike.some(m => m.type === 'knockin');
+    if (ordered.length > 0 && !hadKnockinDomain) {
       result.push({ ...HARDCODED_COMPONENTS.internalStuffer, id: `internal-stuffer-end-${randomUUID()}` } as any);
       result.push({ ...HARDCODED_COMPONENTS.barcodes, id: `barcodes-end-${randomUUID()}` } as any);
     }
@@ -543,8 +553,8 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                             )}
                           </Draggable>
                         ))}
-                        {/* Global tail per rules 4 & 5 */}
-                        {orderedSyntax.length > 0 && (
+                        {/* Global tail per rules 4 & 5 (suppressed if KI domains present) */}
+                        {orderedSyntax.length > 0 && (!orderedSyntax.some(l => l.type === 'knockin')) && (
                           <>
                             <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">IS-BCs</div>
                             {(() => {
