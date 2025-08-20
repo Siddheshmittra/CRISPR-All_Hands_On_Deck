@@ -21,6 +21,9 @@ interface CassetteBatchProps {
   onDeleteCassette: (cassetteId: string) => void
   onExportBatch: () => void
   onUpdateCassette?: (cassetteId: string, modules: Module[], barcode?: string) => void
+  barcodeMode?: 'internal' | 'general'
+  requestGenerateBarcode?: (cassetteId: string) => string
+  isBarcodeTaken?: (barcode: string, cassetteId?: string) => boolean
 }
 
 const T2A_SEQUENCE = "GAAGGAAGAGGAAGCCTTCTCACATGCGGAGATGTGGAAGAGAATCCTGGACCA";
@@ -29,7 +32,7 @@ const POLYA_SEQUENCE = "caccgggtcttcaacttgtttattgcagcttataatggttacaaataaagcaatag
 const TRIPLEX_SEQUENCE = "gaattcgattcgtcagtagggttgtaaaggtttttcttttcctgagaaaacaaccttttgttttctcaggttttgctttttggcctttccctagctttaaaaaaaaaaaagcaaaactcaccgaggcagttccataggatggcaagatcctggtattggtctgcga";
 const ADAPTOR_SEQUENCE = "GTAA";
 
-export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, onUpdateCassette }: CassetteBatchProps) => {
+export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, onUpdateCassette, barcodeMode = 'general', requestGenerateBarcode, isBarcodeTaken }: CassetteBatchProps) => {
   const [editingCassetteId, setEditingCassetteId] = useState<string | null>(null)
   const [editingModules, setEditingModules] = useState<Module[]>([])
   const [editingBarcode, setEditingBarcode] = useState<string>('')
@@ -54,6 +57,12 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
       const validation = validateBarcode(editingBarcode)
       if (!validation.isValid) {
         setBarcodeError(validation.message)
+        return
+      }
+    }
+    if (barcodeMode === 'internal' && editingBarcode) {
+      if (isBarcodeTaken && isBarcodeTaken(editingBarcode, editingCassetteId || undefined)) {
+        setBarcodeError('Barcode already assigned to another cassette (Internal mode)')
         return
       }
     }
@@ -111,11 +120,15 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
   }
   
   const handleGenerateBarcode = () => {
+    if (requestGenerateBarcode) {
+      const b = requestGenerateBarcode(editingCassetteId || '')
+      setEditingBarcode(b)
+      setBarcodeError('')
+      return
+    }
     const existingBarcodes = cassetteBatch
       .map(c => c.barcode)
       .filter((b): b is string => !!b)
-    
-    // Generate a DNA barcode with default length of 12bp
     const newBarcode = generateBarcode(12, existingBarcodes)
     setEditingBarcode(newBarcode)
     setBarcodeError('')

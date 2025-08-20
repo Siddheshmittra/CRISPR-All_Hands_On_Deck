@@ -21,6 +21,7 @@ import { useConstructManager } from "@/hooks/use-construct-manager"
 import { LinkerSelector } from "@/components/design-lab/linker-selector"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { toast } from "sonner"
+import { generateBarcode } from "@/lib/barcode-utils"
 
 import { Module, LibrarySyntax } from "@/lib/types"
 
@@ -57,6 +58,42 @@ const DesignLab = () => {
   const [cassetteBatch, setCassetteBatch] = useState<Cassette[]>([])
   const [librarySyntax, setLibrarySyntax] = useState<LibrarySyntax[]>([])
   const [selectedFolderId, setSelectedFolderId] = useState<string>('total-library')
+
+  // Barcode system state
+  const [barcodeMode, setBarcodeMode] = useState<'internal' | 'general'>('internal')
+  const [barcodePool, setBarcodePool] = useState<string[]>([])
+
+  // Load internal pool on demand
+  React.useEffect(() => {
+    let mounted = true
+    if (barcodeMode === 'internal') {
+      import('@/lib/barcodes').then(({ loadBarcodePool }) => {
+        loadBarcodePool()
+          .then(pool => { if (mounted) setBarcodePool(pool) })
+          .catch(() => { if (mounted) setBarcodePool([]) })
+      })
+    }
+    return () => { mounted = false }
+  }, [barcodeMode])
+
+  const usedBarcodes = React.useMemo(() => new Set(
+    cassetteBatch.map(c => c.barcode).filter((b): b is string => !!b)
+  ), [cassetteBatch])
+
+  const nextBarcode = React.useCallback(() => {
+    if (barcodeMode === 'internal') {
+      try {
+        // Prefer pool selection, fallback to random unique
+        // dynamic require to avoid upfront loading
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { pickNextAvailable } = require('@/lib/barcodes') as any
+        const candidate: string | undefined = pickNextAvailable(barcodePool, usedBarcodes)
+        if (candidate) return candidate
+      } catch {}
+      return generateBarcode(12, Array.from(usedBarcodes))
+    }
+    return generateBarcode(12)
+  }, [barcodeMode, barcodePool, usedBarcodes])
 
   const handleAddLibrary = (libraryId: string, perturbationType?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => {
     const existing = librarySyntax.find(l => l.id === libraryId)
@@ -166,7 +203,7 @@ const DesignLab = () => {
         ...module,
         id: `${module.id}-${randomUUID()}` // Ensure module IDs are also unique
       })),
-      barcode: barcode?.trim() || undefined
+      barcode: (barcode?.trim()) || nextBarcode()
     }
     setCassetteBatch(prev => [...prev, newCassette])
   }
@@ -447,6 +484,18 @@ const DesignLab = () => {
             inputMode={inputMode}
             onInputModeChange={setInputMode}
           />
+          {/* Barcode Mode Selector */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Barcode Mode</span>
+            <select
+              value={barcodeMode}
+              onChange={(e) => setBarcodeMode(e.target.value as any)}
+              className="h-8 rounded-md border border-border bg-background px-2 text-sm"
+            >
+              <option value="internal">Internal (Roth lab)</option>
+              <option value="general">General</option>
+            </select>
+          </div>
           
           {inputMode === 'natural' && cassetteMode === 'single' && (
             <Card className="p-4">
@@ -488,6 +537,9 @@ const DesignLab = () => {
                 onDeleteCassette={handleDeleteCassette}
                 onExportBatch={handleExportBatch}
                 onUpdateCassette={handleUpdateCassette}
+                barcodeMode={barcodeMode}
+                requestGenerateBarcode={() => nextBarcode()}
+                isBarcodeTaken={(b, selfId) => !!cassetteBatch.find(c => c.barcode === b && c.id !== selfId)}
               />
             </>
           )}
@@ -553,6 +605,9 @@ const DesignLab = () => {
                       onDeleteCassette={handleDeleteCassette}
                       onExportBatch={handleExportBatch}
                       onUpdateCassette={handleUpdateCassette}
+                      barcodeMode={barcodeMode}
+                      requestGenerateBarcode={() => nextBarcode()}
+                      isBarcodeTaken={(b, selfId) => !!cassetteBatch.find(c => c.barcode === b && c.id !== selfId)}
                     />
                   </>
                 )}
