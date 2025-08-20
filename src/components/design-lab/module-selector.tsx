@@ -111,13 +111,24 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     setActiveFolderId(id)
   }
 
-  const handleBenchlingLink = () => {
+  const handleBenchlingLink = async () => {
+    const baseUrl = window.prompt('Benchling API base URL (e.g., https://your-tenant.benchling.com/api)') || ''
+    const token = window.prompt('Benchling API token (X-Benchling-API-Token)') || ''
+    if (!baseUrl || !token) return
     setIsBenchlingLinking(true)
-    setTimeout(() => {
-      setIsBenchlingLinking(false)
+    try {
+      const { setBenchlingConfig, testBenchlingConnection } = await import('@/lib/benchling')
+      setBenchlingConfig({ baseUrl, apiToken: token })
+      const ok = await testBenchlingConnection()
+      if (!ok) throw new Error('Connection test failed')
       setIsBenchlingLinked(true)
-      toast.success("Benchling account linked successfully!")
-    }, 2000)
+      toast.success('Benchling account linked')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to link Benchling. Please verify URL and token.')
+    } finally {
+      setIsBenchlingLinking(false)
+    }
   }
   
   // Fetch suggestions from HGNC
@@ -936,10 +947,37 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             />
             {isBenchlingLinked && (
               <>
-                <Button variant="outline" size="sm" onClick={() => toast.info("Import from Benchling clicked (demo).")}>
+                <Button variant="outline" size="sm" onClick={async () => {
+                  try {
+                    const { listDNASequences } = await import('@/lib/benchling')
+                    const seqs = await listDNASequences({ limit: 10 })
+                    if (!seqs.length) { toast.info('No DNA sequences found'); return }
+                    const pick = window.prompt('Import which sequence?\n' + seqs.map((s, i) => `${i+1}: ${s.name}`).join('\n'), seqs[0].name)
+                    const chosen = seqs.find(s => s.name === pick) || seqs[0]
+                    const newModule: Module = { id: `benchling-${chosen.id}`, name: chosen.name, type: 'knockin', description: `Imported from Benchling (${chosen.id})`, sequence: chosen.bases }
+                    onCustomModulesChange([...customModules, newModule])
+                    toast.success(`Imported '${chosen.name}' from Benchling`)
+                  } catch (e) {
+                    console.error(e)
+                    toast.error('Failed to import from Benchling')
+                  }
+                }}>
                   Import
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => toast.info("Export to Benchling clicked (demo).")}>
+                <Button variant="outline" size="sm" onClick={async () => {
+                  try {
+                    if (selectedModules.length === 0) { toast.info('Select a module to export'); return }
+                    const m = selectedModules[0]
+                    if (!m.sequence) { toast.error('Selected module has no sequence'); return }
+                    const folderId = window.prompt('Benchling Folder ID (optional)') || undefined
+                    const { createDNASequence } = await import('@/lib/benchling')
+                    const res = await createDNASequence({ name: m.name, bases: m.sequence, folderId })
+                    toast.success(`Exported to Benchling (id: ${res.id})`)
+                  } catch (e) {
+                    console.error(e)
+                    toast.error('Failed to export to Benchling')
+                  }
+                }}>
                   Export
                 </Button>
               </>
