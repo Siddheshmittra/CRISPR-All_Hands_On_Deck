@@ -15,6 +15,10 @@ import { SequenceViewer } from "./sequence-viewer"
 
 interface FinalConstructProps {
   constructModules: ConstructItem[]
+  barcodeMode?: 'internal' | 'general'
+  onBarcodeModeChange?: (mode: 'internal' | 'general') => void
+  requestGenerateBarcode?: () => string
+  isBarcodeTaken?: (barcode: string) => boolean
 }
 
 const T2A_SEQUENCE = "GAAGGAAGAGGAAGCCTTCTCACATGCGGAGATGTGGAAGAGAATCCTGGACCA"
@@ -23,10 +27,11 @@ const POLYA_SEQUENCE = "caccgggtcttcaacttgtttattgcagcttataatggttacaaataaagcaatag
 
 
 
-export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
+export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onBarcodeModeChange, requestGenerateBarcode, isBarcodeTaken }: FinalConstructProps) => {
   const [constructName, setConstructName] = useState("")
   const [isNameEdited, setIsNameEdited] = useState(false)
   const [barcode, setBarcode] = useState("")
+  const [barcodeError, setBarcodeError] = useState("")
   const [showSequence, setShowSequence] = useState(true)
 
   const generateAnnotatedSequence = (): AnnotatedSegment[] => {
@@ -104,6 +109,9 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
       toast.error("No modules to export")
       return
     }
+    if (!barcode || /^N+$/i.test(barcode)) {
+      toast.info("Warning: Barcode appears to be a placeholder (N's)")
+    }
     
     const exportData = {
       name: constructName,
@@ -130,6 +138,9 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
     if (modules.length === 0) {
       toast.error("No modules to export")
       return
+    }
+    if (!barcode || /^N+$/i.test(barcode)) {
+      toast.info("Warning: Barcode appears to be a placeholder (N's)")
     }
 
     const gb = generateGenbank(
@@ -173,6 +184,32 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
       </div>
 
       <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm">Barcode Mode</Label>
+            <select
+              value={barcodeMode}
+              onChange={(e) => onBarcodeModeChange?.(e.target.value as 'internal' | 'general')}
+              className="h-8 rounded-md border border-border bg-background px-2 text-sm"
+            >
+              <option value="internal">Internal (Roth lab)</option>
+              <option value="general">General</option>
+            </select>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (requestGenerateBarcode) {
+                const b = requestGenerateBarcode()
+                setBarcode(b)
+                setBarcodeError("")
+              }
+            }}
+          >
+            Choose Barcode
+          </Button>
+        </div>
         <div>
           <Label htmlFor="construct-name">Construct Name:</Label>
           <Input
@@ -183,13 +220,25 @@ export const FinalConstruct = ({ constructModules }: FinalConstructProps) => {
           />
         </div>
 
-<div>
+        <div>
           <Label htmlFor="barcode">Barcode:</Label>
           <Input
             id="barcode"
             value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value.trim().toUpperCase()
+              setBarcode(v)
+              if (barcodeMode === 'internal' && isBarcodeTaken && v) {
+                if (isBarcodeTaken(v)) setBarcodeError('Barcode already in use (Internal mode)')
+                else setBarcodeError('')
+              } else {
+                setBarcodeError('')
+              }
+            }}
           />
+          {barcodeError && (
+            <p className="text-xs text-red-500 mt-1">{barcodeError}</p>
+          )}
         </div>
 
         <div className="p-4 bg-muted rounded-lg">

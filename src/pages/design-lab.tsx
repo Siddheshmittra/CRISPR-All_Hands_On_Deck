@@ -616,7 +616,13 @@ const DesignLab = () => {
           </DragDropContext>
           
           {cassetteMode === 'single' && (
-            <FinalConstruct constructModules={constructWithLinkers} />
+            <FinalConstruct 
+              constructModules={constructWithLinkers}
+              barcodeMode={barcodeMode}
+              onBarcodeModeChange={setBarcodeMode}
+              requestGenerateBarcode={() => nextBarcode()}
+              isBarcodeTaken={(b) => !!cassetteBatch.find(c => c.barcode === b)}
+            />
           )}
         </div>
       </div>
