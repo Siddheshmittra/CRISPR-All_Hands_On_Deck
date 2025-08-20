@@ -231,7 +231,6 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
                   setBarcode(payload)
                 }
                 setBarcodeError("")
-                setBarcodeIndex(null) // index comes from general pool via prop below
               }
             }}
           >

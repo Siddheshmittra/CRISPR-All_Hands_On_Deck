@@ -121,8 +121,13 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
   
   const handleGenerateBarcode = () => {
     if (requestGenerateBarcode) {
-      const b = requestGenerateBarcode(editingCassetteId || '')
-      setEditingBarcode(b)
+      const payload = requestGenerateBarcode(editingCassetteId || '')
+      const parts = payload.split('|')
+      if (parts.length === 2 && /^[0-9]+$/.test(parts[0])) {
+        setEditingBarcode(parts[1])
+      } else {
+        setEditingBarcode(payload)
+      }
       setBarcodeError('')
       return
     }

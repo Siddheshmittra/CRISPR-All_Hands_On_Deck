@@ -35,6 +35,7 @@ function collectFromNode(node: any, acc: Set<string>, keyHint?: string) {
 
 let cachedPool: string[] | null = null;
 let cachedGeneralPool: Array<{ index: number; sequence: string }> | null = null;
+let cachedInternalPool: Array<{ index: number; sequence: string }> | null = null;
 
 export async function loadBarcodePool(): Promise<string[]> {
   // Legacy loader (Roth internal JSON). File may not exist; return empty pool.
@@ -58,35 +59,32 @@ export async function loadGeneralBarcodePool(): Promise<Array<{ index: number; s
     const root = (mod as any).default ?? mod;
     const out: Array<{ index: number; sequence: string }> = [];
 
-    const pushIfValid = (obj: any, fallbackIndex: number) => {
-      if (!obj || typeof obj !== 'object') return;
-      let seq: string | undefined;
-      let idx: number | undefined;
-      for (const k of Object.keys(obj)) {
-        const v = (obj as any)[k];
-        if (typeof v === 'string') {
-          const s = v.trim().toUpperCase();
-          // Prefer barcode-like keys
-          if (!seq && /barcode/i.test(k) && /^[ACGT]{8,}$/.test(s)) seq = s;
-          // Else accept any strong DNA string
-          if (!seq && /^[ACGT]{12,}$/.test(s)) seq = s;
-          if (idx == null && /number|index/i.test(k)) {
-            const n = Number(s.replace(/[^0-9]/g, ''));
-            if (!Number.isNaN(n)) idx = n;
-          }
-        } else if (typeof v === 'number') {
-          if (idx == null && /number|index/i.test(k)) idx = v;
+    if (Array.isArray(root)) {
+      // Expect first row to be headers with keys: "" -> "Barcode Number", "__1" -> "Barcode"
+      for (let i = 1; i < root.length; i++) {
+        const row = root[i];
+        if (!row || typeof row !== 'object') continue;
+        const idxRaw = (row as any)[''];
+        const seqRaw = (row as any)['__1'];
+        const idx = typeof idxRaw === 'number' ? idxRaw : Number(String(idxRaw ?? '').replace(/[^0-9]/g, ''));
+        const seq = String(seqRaw ?? '').trim().toUpperCase();
+        if (idx && /^[ACGT]{8,}$/.test(seq)) {
+          out.push({ index: idx, sequence: seq });
         }
       }
-      if (seq) out.push({ index: idx ?? fallbackIndex, sequence: seq });
-    };
-
-    if (Array.isArray(root)) {
-      root.forEach((row: any, i: number) => pushIfValid(row, i + 1));
     } else if (root && typeof root === 'object') {
-      // Fallback: traverse object values that look like rows
-      let i = 0;
-      for (const k of Object.keys(root)) pushIfValid((root as any)[k], ++i);
+      // Fallback object-of-rows
+      for (const k of Object.keys(root)) {
+        const row = (root as any)[k];
+        if (!row || typeof row !== 'object') continue;
+        const idxRaw = (row as any)[''];
+        const seqRaw = (row as any)['__1'];
+        const idx = typeof idxRaw === 'number' ? idxRaw : Number(String(idxRaw ?? '').replace(/[^0-9]/g, ''));
+        const seq = String(seqRaw ?? '').trim().toUpperCase();
+        if (idx && /^[ACGT]{8,}$/.test(seq)) {
+          out.push({ index: idx, sequence: seq });
+        }
+      }
     }
 
     // Deduplicate by sequence while keeping first index
@@ -101,6 +99,44 @@ export async function loadGeneralBarcodePool(): Promise<Array<{ index: number; s
     console.error('Failed to load General Barcodes.json', err);
     cachedGeneralPool = [];
     return cachedGeneralPool;
+  }
+}
+
+// Load the internal barcodes pool (array of objects: one numeric (index), one DNA string)
+export async function loadInternalBarcodePool(): Promise<Array<{ index: number; sequence: string }>> {
+  if (cachedInternalPool) return cachedInternalPool;
+  try {
+    const mod = await import('@/lib/Internal Barcodes.json');
+    const root = (mod as any).default ?? mod;
+    const out: Array<{ index: number; sequence: string }> = [];
+    if (Array.isArray(root)) {
+      for (const row of root) {
+        if (!row || typeof row !== 'object') continue;
+        let idx: number | undefined;
+        let seq: string | undefined;
+        for (const k of Object.keys(row)) {
+          const v = (row as any)[k];
+          if (typeof v === 'number' && idx == null) idx = v;
+          if (typeof v === 'string' && !seq) {
+            const s = v.trim().toUpperCase();
+            if (/^[ACGT]{8,}$/.test(s)) seq = s;
+          }
+        }
+        if (idx != null && seq) out.push({ index: idx, sequence: seq });
+      }
+    }
+    // Dedup by sequence
+    const seen = new Set<string>();
+    cachedInternalPool = out.filter(({ sequence }) => {
+      if (seen.has(sequence)) return false;
+      seen.add(sequence);
+      return true;
+    });
+    return cachedInternalPool;
+  } catch (err) {
+    console.error('Failed to load Internal Barcodes.json', err);
+    cachedInternalPool = [];
+    return cachedInternalPool;
   }
 }
 
