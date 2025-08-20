@@ -62,14 +62,18 @@ const DesignLab = () => {
   // Barcode system state
   const [barcodeMode, setBarcodeMode] = useState<'internal' | 'general'>('internal')
   const [barcodePool, setBarcodePool] = useState<string[]>([])
+  const [generalPool, setGeneralPool] = useState<Array<{ index: number; sequence: string }>>([])
 
   // Load Roth pool once (used by Choose Barcode regardless of mode)
   React.useEffect(() => {
     let mounted = true
-    import('@/lib/barcodes').then(({ loadBarcodePool }) => {
+    import('@/lib/barcodes').then(({ loadBarcodePool, loadGeneralBarcodePool }) => {
       loadBarcodePool()
         .then(pool => { if (mounted) setBarcodePool(pool) })
         .catch(() => { if (mounted) setBarcodePool([]) })
+      loadGeneralBarcodePool()
+        .then(pool => { if (mounted) setGeneralPool(pool) })
+        .catch(() => { if (mounted) setGeneralPool([]) })
     })
     return () => { mounted = false }
   }, [])
@@ -631,14 +635,15 @@ const DesignLab = () => {
               barcodeMode={barcodeMode}
               onBarcodeModeChange={setBarcodeMode}
               requestGenerateBarcode={() => {
-                if (barcodePool.length > 0) {
-                  if (barcodeMode === 'internal') {
-                    const { pickNextAvailable } = require('@/lib/barcodes') as any
-                    const candidate = pickNextAvailable(barcodePool, usedBarcodes)
-                    return candidate || nextBarcode()
-                  }
-                  const idx = Math.floor(Math.random() * barcodePool.length)
-                  return barcodePool[idx]
+                if (barcodeMode === 'internal' && barcodePool.length > 0) {
+                  const { pickNextAvailable } = require('@/lib/barcodes') as any
+                  const candidate = pickNextAvailable(barcodePool, usedBarcodes)
+                  return candidate || nextBarcode()
+                }
+                if (barcodeMode === 'general' && generalPool.length > 0) {
+                  const pick = generalPool[Math.floor(Math.random() * generalPool.length)]
+                  // Store index alongside sequence by returning a tagged string: INDEX|SEQUENCE
+                  return `${pick.index}|${pick.sequence}`
                 }
                 return nextBarcode()
               }}

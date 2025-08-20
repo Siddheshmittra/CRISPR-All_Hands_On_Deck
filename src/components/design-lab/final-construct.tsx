@@ -33,6 +33,8 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
   const [barcode, setBarcode] = useState("")
   const [barcodeError, setBarcodeError] = useState("")
   const [showSequence, setShowSequence] = useState(true)
+  const [barcodeIndex, setBarcodeIndex] = useState<number | null>(null)
+  const [integratedSegments, setIntegratedSegments] = useState<AnnotatedSegment[] | null>(null)
 
   const generateAnnotatedSequence = (): AnnotatedSegment[] => {
     const segments: AnnotatedSegment[] = [];
@@ -54,6 +56,23 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
   };
 
   const fullSequence = generateAnnotatedSequence().map(s => s.sequence).join('');
+
+  // Integrate chosen barcode into the Barcodes segment of the construct sequence preview
+  const integrateBarcodeIntoSegments = (segments: AnnotatedSegment[], bc: string): AnnotatedSegment[] => {
+    if (!bc || !/^[ACGT]+$/i.test(bc)) return segments;
+    return segments.map(seg => {
+      if (seg.name === 'Barcodes') {
+        // Replace the leading N run with actual barcode if length fits, else prefix
+        const placeholder = seg.sequence || '';
+        const replaced = placeholder.replace(/^N+/i, (m) => {
+          if (bc.length <= m.length) return bc + placeholder.slice(m.length, placeholder.length);
+          return bc; // overshoot: just place the barcode
+        });
+        return { ...seg, sequence: replaced };
+      }
+      return seg;
+    });
+  }
 
 
   const modules = useMemo(() => (
@@ -201,10 +220,18 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
             size="sm"
             onClick={() => {
               if (requestGenerateBarcode) {
-                // Choose from pool when available. In Internal mode, pick first unused; otherwise random from pool.
-                const b = requestGenerateBarcode()
-                setBarcode(b)
+                const payload = requestGenerateBarcode()
+                // Accept optional tagging: "index|sequence"
+                const parts = payload.split('|')
+                if (parts.length === 2 && /^[0-9]+$/.test(parts[0])) {
+                  setBarcodeIndex(Number(parts[0]))
+                  setBarcode(parts[1])
+                } else {
+                  setBarcodeIndex(null)
+                  setBarcode(payload)
+                }
                 setBarcodeError("")
+                setBarcodeIndex(null) // index comes from general pool via prop below
               }
             }}
           >
@@ -222,7 +249,7 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
         </div>
 
         <div>
-          <Label htmlFor="barcode">Barcode:</Label>
+          <Label htmlFor="barcode">Barcode {barcodeIndex != null ? `(General #${barcodeIndex})` : ''}:</Label>
           <Input
             id="barcode"
             value={barcode}
@@ -250,8 +277,21 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
         {showSequence && (
           <div className="space-y-4">
             <Label>Concatenated Nucleotide Sequence:</Label>
-            
-            <SequenceViewer segments={generateAnnotatedSequence()} />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const integrated = integrateBarcodeIntoSegments(generateAnnotatedSequence(), barcode)
+                  // We use a simple hack: re-render SequenceViewer with integrated segments by storing in state
+                  setIntegratedSegments(integrated)
+                  toast.success('Integrated barcode into sequence preview')
+                }}
+              >
+                Integrate Barcode
+              </Button>
+            </div>
+            <SequenceViewer segments={(typeof integratedSegments !== 'undefined' && integratedSegments) || generateAnnotatedSequence()} />
           </div>
         )}
       </div>
