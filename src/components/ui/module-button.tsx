@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Module } from "@/lib/types"
 import { Trash2, Loader2 } from "lucide-react"
+import { ModuleContextMenu } from "@/components/design-lab/module-context-menu"
 
 const moduleButtonVariants = cva(
   "inline-flex items-center justify-center rounded-md text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none",
@@ -39,10 +40,11 @@ export interface ModuleButtonProps
   moduleType?: Module['type']
   onRemove?: () => void
   showRemoveButton?: boolean
+  enableContextMenu?: boolean
 }
 
 const ModuleButton = React.forwardRef<HTMLDivElement, ModuleButtonProps>(
-  ({ className, variant, size, isSelected, moduleType, module, onRemove, showRemoveButton, children, ...props }, ref) => {
+  ({ className, variant, size, isSelected, moduleType, module, onRemove, showRemoveButton, enableContextMenu = true, children, ...props }, ref) => {
     const isLoading = module?.isEnriching;
     // Debug log to see what we're working with
     if (module) {
@@ -66,7 +68,7 @@ const ModuleButton = React.forwardRef<HTMLDivElement, ModuleButtonProps>(
       return 'Module';
     }, [module, children]);
 
-    return (
+    const buttonContent = (
       <div
         className={cn(
           moduleButtonVariants({ variant: buttonVariant, size, className }), 
@@ -101,6 +103,17 @@ const ModuleButton = React.forwardRef<HTMLDivElement, ModuleButtonProps>(
         )}
       </div>
     )
+
+    // Wrap with context menu if enabled and module is provided
+    if (enableContextMenu && module) {
+      return (
+        <ModuleContextMenu module={module}>
+          {buttonContent}
+        </ModuleContextMenu>
+      )
+    }
+
+    return buttonContent
   }
 )
 ModuleButton.displayName = "ModuleButton"

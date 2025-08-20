@@ -904,6 +904,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                                           onClick={() => handleModuleClick(module)}
                                           onRemove={() => handleDeleteModule(module.id, folder.id)}
                                           showRemoveButton={true}
+                                          enableContextMenu={true}
                                         />
                                       </div>
                                     )}

@@ -103,6 +103,7 @@ export const ConstructLayout = ({
                                     module={item}
                                     moduleType={item.type as any}
                                     className="cursor-move"
+                                    enableContextMenu={true}
                                   >
                                     {getTypeArrow(item.type)} {item.name || item.gene_id || item.id || item.type || 'Unnamed'}
                                   </ModuleButton>
