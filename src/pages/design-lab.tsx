@@ -63,18 +63,16 @@ const DesignLab = () => {
   const [barcodeMode, setBarcodeMode] = useState<'internal' | 'general'>('internal')
   const [barcodePool, setBarcodePool] = useState<string[]>([])
 
-  // Load internal pool on demand
+  // Load Roth pool once (used by Choose Barcode regardless of mode)
   React.useEffect(() => {
     let mounted = true
-    if (barcodeMode === 'internal') {
-      import('@/lib/barcodes').then(({ loadBarcodePool }) => {
-        loadBarcodePool()
-          .then(pool => { if (mounted) setBarcodePool(pool) })
-          .catch(() => { if (mounted) setBarcodePool([]) })
-      })
-    }
+    import('@/lib/barcodes').then(({ loadBarcodePool }) => {
+      loadBarcodePool()
+        .then(pool => { if (mounted) setBarcodePool(pool) })
+        .catch(() => { if (mounted) setBarcodePool([]) })
+    })
     return () => { mounted = false }
-  }, [barcodeMode])
+  }, [])
 
   const usedBarcodes = React.useMemo(() => new Set(
     cassetteBatch.map(c => c.barcode).filter((b): b is string => !!b)
@@ -484,18 +482,6 @@ const DesignLab = () => {
             inputMode={inputMode}
             onInputModeChange={setInputMode}
           />
-          {/* Barcode Mode Selector */}
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">Barcode Mode</span>
-            <select
-              value={barcodeMode}
-              onChange={(e) => setBarcodeMode(e.target.value as any)}
-              className="h-8 rounded-md border border-border bg-background px-2 text-sm"
-            >
-              <option value="internal">Internal (Roth lab)</option>
-              <option value="general">General</option>
-            </select>
-          </div>
           
           {inputMode === 'natural' && cassetteMode === 'single' && (
             <Card className="p-4">
@@ -538,7 +524,20 @@ const DesignLab = () => {
                 onExportBatch={handleExportBatch}
                 onUpdateCassette={handleUpdateCassette}
                 barcodeMode={barcodeMode}
-                requestGenerateBarcode={() => nextBarcode()}
+                requestGenerateBarcode={() => {
+                  // Always choose from pool when available (button semantics)
+                  if (barcodePool.length > 0) {
+                    if (barcodeMode === 'internal') {
+                      const { pickNextAvailable } = require('@/lib/barcodes') as any
+                      const candidate = pickNextAvailable(barcodePool, usedBarcodes)
+                      return candidate || nextBarcode()
+                    }
+                    // general: random from pool
+                    const idx = Math.floor(Math.random() * barcodePool.length)
+                    return barcodePool[idx]
+                  }
+                  return nextBarcode()
+                }}
                 isBarcodeTaken={(b, selfId) => !!cassetteBatch.find(c => c.barcode === b && c.id !== selfId)}
               />
             </>
@@ -606,7 +605,18 @@ const DesignLab = () => {
                       onExportBatch={handleExportBatch}
                       onUpdateCassette={handleUpdateCassette}
                       barcodeMode={barcodeMode}
-                      requestGenerateBarcode={() => nextBarcode()}
+                      requestGenerateBarcode={() => {
+                        if (barcodePool.length > 0) {
+                          if (barcodeMode === 'internal') {
+                            const { pickNextAvailable } = require('@/lib/barcodes') as any
+                            const candidate = pickNextAvailable(barcodePool, usedBarcodes)
+                            return candidate || nextBarcode()
+                          }
+                          const idx = Math.floor(Math.random() * barcodePool.length)
+                          return barcodePool[idx]
+                        }
+                        return nextBarcode()
+                      }}
                       isBarcodeTaken={(b, selfId) => !!cassetteBatch.find(c => c.barcode === b && c.id !== selfId)}
                     />
                   </>
@@ -620,7 +630,18 @@ const DesignLab = () => {
               constructModules={constructWithLinkers}
               barcodeMode={barcodeMode}
               onBarcodeModeChange={setBarcodeMode}
-              requestGenerateBarcode={() => nextBarcode()}
+              requestGenerateBarcode={() => {
+                if (barcodePool.length > 0) {
+                  if (barcodeMode === 'internal') {
+                    const { pickNextAvailable } = require('@/lib/barcodes') as any
+                    const candidate = pickNextAvailable(barcodePool, usedBarcodes)
+                    return candidate || nextBarcode()
+                  }
+                  const idx = Math.floor(Math.random() * barcodePool.length)
+                  return barcodePool[idx]
+                }
+                return nextBarcode()
+              }}
               isBarcodeTaken={(b) => !!cassetteBatch.find(c => c.barcode === b)}
             />
           )}

@@ -201,6 +201,7 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
             size="sm"
             onClick={() => {
               if (requestGenerateBarcode) {
+                // Choose from pool when available. In Internal mode, pick first unused; otherwise random from pool.
                 const b = requestGenerateBarcode()
                 setBarcode(b)
                 setBarcodeError("")
