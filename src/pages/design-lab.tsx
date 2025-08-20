@@ -18,7 +18,6 @@ import { LibraryViewer } from "@/components/design-lab/library-viewer"
 import { Trash2 } from "lucide-react"
 import React from "react"
 import { useConstructManager } from "@/hooks/use-construct-manager"
-import { LinkerSelector } from "@/components/design-lab/linker-selector"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { toast } from "sonner"
 import { generateBarcode } from "@/lib/barcode-utils"
@@ -601,12 +600,7 @@ const DesignLab = () => {
                 
                 {inputMode === 'manual' && (
                   <>
-                    <LinkerSelector
-                      selectedLinker={selectedLinkerId}
-                      onLinkerChange={setSelectedLinkerId}
-                      autoLink={autoLink}
-                      onAutoLinkChange={setAutoLink}
-                    />
+                    {/* Linker selector removed per request */}
                     <CassetteBatch 
                       cassetteBatch={cassetteBatch}
                       onDeleteCassette={handleDeleteCassette}
