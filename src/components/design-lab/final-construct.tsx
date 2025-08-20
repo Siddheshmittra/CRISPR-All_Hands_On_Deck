@@ -248,49 +248,48 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
         </div>
 
         <div>
-          <Label htmlFor="barcode">Barcode {barcodeIndex != null ? `(General #${barcodeIndex})` : ''}:</Label>
-          <Input
-            id="barcode"
-            value={barcode}
-            onChange={(e) => {
-              const v = e.target.value.trim().toUpperCase()
-              setBarcode(v)
-              if (barcodeMode === 'internal' && isBarcodeTaken && v) {
-                if (isBarcodeTaken(v)) setBarcodeError('Barcode already in use (Internal mode)')
-                else setBarcodeError('')
-              } else {
-                setBarcodeError('')
-              }
-            }}
-          />
+          <Label htmlFor="barcode">Barcode:</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="barcode"
+              value={barcode}
+              onChange={(e) => {
+                const v = e.target.value.trim().toUpperCase()
+                setBarcode(v)
+                if (barcodeMode === 'internal' && isBarcodeTaken && v) {
+                  if (isBarcodeTaken(v)) setBarcodeError('Barcode already in use (Internal mode)')
+                  else setBarcodeError('')
+                } else {
+                  setBarcodeError('')
+                }
+              }}
+            />
+            {barcodeIndex != null && (
+              <span className="px-2 py-1 rounded-md border border-border bg-muted text-xs font-mono">#{barcodeIndex}</span>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const integrated = integrateBarcodeIntoSegments(generateAnnotatedSequence(), barcode)
+                setIntegratedSegments(integrated)
+                toast.success('Integrated barcode into sequence preview')
+              }}
+            >
+              Integrate
+            </Button>
+          </div>
           {barcodeError && (
             <p className="text-xs text-red-500 mt-1">{barcodeError}</p>
           )}
         </div>
 
-        <div className="p-4 bg-muted rounded-lg">
-          <h3 className="font-medium mb-2">Predicted Function:</h3>
-          <p className="text-sm">{generatePredictedFunction()}</p>
-        </div>
+        {/* Predicted Function section removed per request */}
 
         {showSequence && (
           <div className="space-y-4">
             <Label>Concatenated Nucleotide Sequence:</Label>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const integrated = integrateBarcodeIntoSegments(generateAnnotatedSequence(), barcode)
-                  // We use a simple hack: re-render SequenceViewer with integrated segments by storing in state
-                  setIntegratedSegments(integrated)
-                  toast.success('Integrated barcode into sequence preview')
-                }}
-              >
-                Integrate Barcode
-              </Button>
-            </div>
-            <SequenceViewer segments={(typeof integratedSegments !== 'undefined' && integratedSegments) || generateAnnotatedSequence()} />
+            <SequenceViewer segments={integratedSegments ?? generateAnnotatedSequence()} />
           </div>
         )}
       </div>
