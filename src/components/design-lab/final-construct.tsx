@@ -106,6 +106,22 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
     setConstructName(autoName)
   }, [modules, isNameEdited])
 
+  // Auto-populate barcode when a construct exists and barcode is empty
+  useEffect(() => {
+    if (modules.length > 0 && !barcode && requestGenerateBarcode) {
+      const payload = requestGenerateBarcode()
+      const parts = payload.split('|')
+      if (parts.length === 2 && /^[0-9]+$/.test(parts[0])) {
+        setBarcodeIndex(Number(parts[0]))
+        setBarcode(parts[1].toUpperCase())
+      } else {
+        setBarcodeIndex(null)
+        setBarcode(payload.toUpperCase())
+      }
+      setBarcodeError("")
+    }
+  }, [modules.length, barcode, requestGenerateBarcode])
+
   // Generate predicted function
   const generatePredictedFunction = () => {
     if (modules.length === 0) return "No modules selected"
