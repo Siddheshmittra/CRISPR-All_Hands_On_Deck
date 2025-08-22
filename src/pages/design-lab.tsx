@@ -599,11 +599,11 @@ const DesignLab = () => {
                 )}
 
                 {/* 3. Encoding box */}
-                {cassetteMode !== 'multi' && constructModules.length > 0 && (
+                {cassetteMode !== 'multi' && constructWithLinkers.length > 0 && (
                   <Card className="p-6 mt-4">
                     <h2 className="text-lg font-semibold mb-2">3. Encoding</h2>
                     <p className="text-sm font-mono break-all">
-                      {constructModules.filter(m => (m as any).type !== 'linker').map(m => (m as any).name).join(' → ')}
+                      {constructWithLinkers.map(m => (m as any).name).join(' → ')}
                     </p>
                   </Card>
                 )}

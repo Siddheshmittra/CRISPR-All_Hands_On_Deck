@@ -95,22 +95,14 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
   }, [searchTerm])
 
   const handleQuickAddModule = (gene: string) => {
-    if (constructModules.length >= 5) {
-      toast.error("Maximum 5 modules allowed");
-      return;
+    // Knock-ins must come from synthetic genes only
+    if (selectedType === 'knockin') {
+      toast.error("Knock-ins are only available for synthetic genes.")
+      return
     }
 
-    // For knockin modules, show synthetic gene selector
-    if (selectedType === 'knockin') {
-      const mockSuggestion = {
-        symbol: gene,
-        name: gene,
-        description: `Human gene ${gene}`,
-        sequence: "",
-        isSynthetic: false
-      };
-      setSelectedSuggestion(mockSuggestion);
-      setShowSyntheticSelector(true);
+    if (constructModules.length >= 5) {
+      toast.error("Maximum 5 modules allowed");
       return;
     }
 
