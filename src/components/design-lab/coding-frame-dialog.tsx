@@ -7,15 +7,17 @@ import { Label } from "@/components/ui/label"
 interface CodingFrameDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (endsCodingFrame: boolean) => void
+  // onConfirm now reports whether a 2A/multicistronic element should be added
+  onConfirm: (addTwoA: boolean) => void
   geneName: string
 }
 
 export function CodingFrameDialog({ open, onOpenChange, onConfirm, geneName }: CodingFrameDialogProps) {
-  const [endsCodingFrame, setEndsCodingFrame] = useState<boolean>(true)
+  // true => YES: add 2A
+  const [addTwoA, setAddTwoA] = useState<boolean>(true)
 
   const handleConfirm = () => {
-    onConfirm(endsCodingFrame)
+    onConfirm(addTwoA)
     onOpenChange(false)
   }
 
@@ -25,30 +27,30 @@ export function CodingFrameDialog({ open, onOpenChange, onConfirm, geneName }: C
         <DialogHeader>
           <DialogTitle>Sequence Information</DialogTitle>
           <DialogDescription>
-            Does the sequence for <span className="font-semibold">{geneName}</span> end a coding frame?
+            For <span className="font-semibold">{geneName}</span>, should we add a multicistronic element?
           </DialogDescription>
         </DialogHeader>
         
         <div className="py-4">
           <RadioGroup 
-            value={endsCodingFrame ? "yes" : "no"} 
-            onValueChange={(value) => setEndsCodingFrame(value === "yes")}
+            value={addTwoA ? "yes" : "no"} 
+            onValueChange={(value) => setAddTwoA(value === "yes")}
             className="space-y-2"
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="yes" id="coding-frame-yes" />
-              <Label htmlFor="coding-frame-yes">Yes - This is a complete coding sequence</Label>
+              <Label htmlFor="coding-frame-yes">Yes - A 2A self-cleaving peptide sequence will be added to enable polycistronic expression.</Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="no" id="coding-frame-no" />
-              <Label htmlFor="coding-frame-no">No - This is a partial sequence</Label>
+              <Label htmlFor="coding-frame-no">No - No 2A or other multicistronic element will be added, next element in CRISPR-All Syntax should be another domain that continues this domain's reading frame</Label>
             </div>
           </RadioGroup>
           
           <div className="mt-4 text-sm text-muted-foreground">
-            {endsCodingFrame 
-              ? "A stop codon will be added if not present." 
-              : "A 2A self-cleaving peptide sequence will be added to enable polycistronic expression."}
+            {addTwoA 
+              ? "A 2A self-cleaving peptide sequence will be added to enable polycistronic expression." 
+              : "No 2A or other multicistronic element will be added. Continue this domain's reading frame in the next element."}
           </div>
         </div>
         

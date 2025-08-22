@@ -37,8 +37,8 @@ export function useConstructManager(initialModules: Module[] = []) {
     const firstKOIdx = ordered.findIndex(m => m.type === 'knockout' || m.type === 'knockdown')
 
     ordered.forEach((mod, idx) => {
-      // Rule 1: intron before every overexpression gene
-      if (mod.type === 'overexpression') {
+      // Rule KI/OE: intron before every overexpression or knockin domain
+      if (mod.type === 'overexpression' || mod.type === 'knockin') {
         result.push(createLinker('Intron', idx, 'GTAAGTCTTATTTAGTGGAAAGAATAGATCTTCTGTTCTTTCAAAAGCAGAAATGGCAATAACATTTTGTGCCATGAttttttttttCTGCAG'))
       }
 
@@ -50,8 +50,10 @@ export function useConstructManager(initialModules: Module[] = []) {
       // Actual module
       result.push(mod)
 
-      // Rule 1: T2A after overexpression gene
+      // Rule KI/OE: T2A after overexpression; conditional after knockin based on dialog choice
       if (mod.type === 'overexpression') {
+        result.push(createLinker('T2A', idx, 'GAAGGAAGAGGAAGCCTTCTCACATGCGGAGATGTGGAAGAGAATCCTGGACCA'))
+      } else if (mod.type === 'knockin' && (mod.metadata?.has2ASequence === true)) {
         result.push(createLinker('T2A', idx, 'GAAGGAAGAGGAAGCCTTCTCACATGCGGAGATGTGGAAGAGAATCCTGGACCA'))
       }
     })

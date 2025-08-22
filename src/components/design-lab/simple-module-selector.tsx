@@ -224,7 +224,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
     toast.success(`Added ${gene.name} (KI)${options?.add2ASequence ? ` with ${options.twoAType}` : ''}`)
   }
 
-  const handleCustomSequence = (sequence: string, options: { endsCodingFrame: boolean, add2ASequence?: boolean, twoAType?: string }) => {
+  const handleCustomSequence = (sequence: string, name: string, options: { endsCodingFrame: boolean, add2ASequence?: boolean, twoAType?: string }) => {
     if (constructModules.length >= 5) {
       toast.error("Maximum 5 modules allowed")
       return
@@ -244,7 +244,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
 
     const newModule: Module = {
       id: `custom-synthetic-${Date.now()}`,
-      name: "Custom Synthetic Gene",
+      name: name || "Custom Synthetic Gene",
       type: 'knockin',
       description: "Custom synthetic gene sequence" + (options.add2ASequence ? ` (with ${options.twoAType})` : ''),
       sequence: finalSequence,
