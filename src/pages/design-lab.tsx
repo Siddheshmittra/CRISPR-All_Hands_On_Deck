@@ -599,12 +599,16 @@ const DesignLab = () => {
                 )}
 
                 {/* 3. Encoding box */}
-                {cassetteMode !== 'multi' && constructWithLinkers.length > 0 && (
+                {cassetteMode !== 'multi' && (
                   <Card className="p-6 mt-4">
                     <h2 className="text-lg font-semibold mb-2">3. Encoding</h2>
-                    <p className="text-sm font-mono break-all">
-                      {constructWithLinkers.map(m => (m as any).name).join(' → ')}
-                    </p>
+                    {constructWithLinkers.length > 0 ? (
+                      <p className="text-sm font-mono break-all">
+                        {constructWithLinkers.map(m => (m as any).name).join(' → ')}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Add elements in Syntax to see the encoding string.</p>
+                    )}
                   </Card>
                 )}
                 
@@ -660,6 +664,28 @@ const DesignLab = () => {
               }}
               isBarcodeTaken={(b) => !!cassetteBatch.find(c => c.barcode === b)}
             />
+          )}
+
+          {/* 5. Predicted Function / Predicted Cellular Program */}
+          {cassetteMode === 'single' && (
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold mb-2">5. Predicted Function / Predicted Cellular Program</h2>
+              <p className="text-sm mb-2">
+                {(() => {
+                  const modules = constructWithLinkers.filter(item => (item as any).type !== 'linker') as any[];
+                  if (modules.length === 0) return 'No modules selected';
+                  const over = modules.filter(m => m.type === 'overexpression');
+                  const ko = modules.filter(m => m.type === 'knockout');
+                  const kd = modules.filter(m => m.type === 'knockdown');
+                  let prediction = 'Modulates epigenetic regulation. Enhances TCR signaling strength';
+                  if (over.length > 0) prediction += ` through overexpression of ${over.map(m => m.name).join(', ')}`;
+                  if (ko.length > 0) prediction += `${over.length > 0 ? ' and' : ''} knockout of ${ko.map(m => m.name).join(', ')}`;
+                  if (kd.length > 0) prediction += `${(over.length > 0 || ko.length > 0) ? ' and' : ''} knockdown of ${kd.map(m => m.name).join(', ')}`;
+                  return prediction + '.';
+                })()}
+              </p>
+              <p className="text-xs text-muted-foreground">Based on LLM interpretation of input genetic perturbations, correlate with own biologic predictions</p>
+            </Card>
           )}
         </div>
       </div>

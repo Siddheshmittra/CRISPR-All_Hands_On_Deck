@@ -60,15 +60,21 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
   // Integrate chosen barcode into the Barcodes segment of the construct sequence preview
   const integrateBarcodeIntoSegments = (segments: AnnotatedSegment[], bc: string): AnnotatedSegment[] => {
     if (!bc || !/^[ACGT]+$/i.test(bc)) return segments;
+    const bcUpper = bc.toUpperCase();
     return segments.map(seg => {
       if (seg.name === 'Barcodes') {
-        // Replace the leading N run with actual barcode if length fits, else prefix
         const placeholder = seg.sequence || '';
-        const replaced = placeholder.replace(/^N+/i, (m) => {
-          if (bc.length <= m.length) return bc + placeholder.slice(m.length, placeholder.length);
-          return bc; // overshoot: just place the barcode
-        });
-        return { ...seg, sequence: replaced };
+        const nMatch = placeholder.match(/^N+/i);
+        if (!nMatch) return seg;
+        const nRunLen = nMatch[0].length;
+        const tail = placeholder.slice(nRunLen);
+        const tailUpper = tail.toUpperCase();
+        const endsWithAGCG = bcUpper.endsWith('AGCG');
+        const adjustedTail = endsWithAGCG && tailUpper.startsWith('AGCG')
+          ? tail.slice(4)
+          : tail;
+        const result = bcUpper + adjustedTail;
+        return { ...seg, sequence: result };
       }
       return seg;
     });
@@ -284,21 +290,12 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
           )}
         </div>
 
-        {/* Predicted Function section removed per request */}
-
         {showSequence && (
           <div className="space-y-4">
             <Label>Concatenated Nucleotide Sequence:</Label>
             <SequenceViewer segments={integratedSegments ?? generateAnnotatedSequence()} />
           </div>
         )}
-
-        {/* 5. Predicted Function / Predicted Cellular Program */}
-        <div className="mt-2 p-4 bg-muted rounded-lg">
-          <h3 className="font-medium mb-2">5. Predicted Function / Predicted Cellular Program</h3>
-          <p className="text-sm mb-2">{generatePredictedFunction()}</p>
-          <p className="text-xs text-muted-foreground">Based on LLM interpretation of input genetic perturbations, correlate with own biologic predictions</p>
-        </div>
       </div>
     </Card>
   )
