@@ -292,6 +292,13 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
             <SequenceViewer segments={integratedSegments ?? generateAnnotatedSequence()} />
           </div>
         )}
+
+        {/* 5. Predicted Function / Predicted Cellular Program */}
+        <div className="mt-2 p-4 bg-muted rounded-lg">
+          <h3 className="font-medium mb-2">5. Predicted Function / Predicted Cellular Program</h3>
+          <p className="text-sm mb-2">{generatePredictedFunction()}</p>
+          <p className="text-xs text-muted-foreground">Based on LLM interpretation of input genetic perturbations, correlate with own biologic predictions</p>
+        </div>
       </div>
     </Card>
   )

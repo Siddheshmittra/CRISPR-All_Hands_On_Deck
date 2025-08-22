@@ -269,7 +269,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="space-y-5">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">2. Syntax: Select Perturbations</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">1. Desired Genetic Perturbation</h2>
         
         {/* Type Selector - Styled to match scan genes dialog */}
         <div className="p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">

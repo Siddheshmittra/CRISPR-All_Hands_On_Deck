@@ -42,7 +42,7 @@ export const ConstructLayout = ({
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">3. Encoding</h2>
+        <h2 className="text-lg font-semibold">2. Syntax</h2>
         <div className="flex gap-2">
 <Button variant="outline" size="sm" onClick={onReset}>
             <RotateCcw className="h-4 w-4 mr-2" />
@@ -72,21 +72,18 @@ export const ConstructLayout = ({
               >
                 {constructModules.length === 0 ? (
                   <div className="w-full text-center text-muted-foreground pointer-events-none select-none">
-                     <p>Arrange modules to define cassette encoding</p>
+                     <p>Arrange OE / KO / KD elements to define cassette syntax</p>
                     <p className="text-sm mt-1">Maximum 5 perturbations</p>
                   </div>
                 ) : (
                   (() => {
+                    const visibleModules = constructModules.filter(item => item.type !== 'linker')
                     let draggableIndex = 0
-                    return constructModules.map((item, displayIndex) => {
-                      const isLast = displayIndex === constructModules.length - 1
+                    return visibleModules.map((item, displayIndex) => {
+                      const isLast = displayIndex === visibleModules.length - 1
                       return (
                         <div key={item.id} className="flex items-center gap-2">
-                          {item.type === 'linker' ? (
-                            <Badge variant="outline" className="text-xs font-mono">
-                              {item.name}
-                            </Badge>
-                          ) : (
+                          {
                             <Draggable draggableId={item.id} index={draggableIndex++}>
                               {(provided, snapshot) => (
                                 <div
@@ -116,7 +113,7 @@ export const ConstructLayout = ({
                                 </div>
                               )}
                             </Draggable>
-                          )}
+                          }
                           {!isLast && (
                             <ArrowRight className="h-4 w-4 text-muted-foreground" />
                           )}
@@ -146,14 +143,7 @@ export const ConstructLayout = ({
         </div>
       </div>
 
-       {constructModules.length > 0 && (
-        <div className="mt-4 p-4 bg-muted rounded-lg">
-          <h3 className="font-medium mb-2">Encoding String:</h3>
-          <p className="text-sm font-mono break-all">
-            {constructModules.map(m => m.name).join(' → ')}
-          </p>
-        </div>
-      )}
+      {/* Encoding string moved to separate card */}
     </Card>
   )
 }
