@@ -122,6 +122,17 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
     }
   }, [modules.length, barcode, requestGenerateBarcode])
 
+  // Auto-integrate barcode into sequence when barcode or modules change
+  useEffect(() => {
+    const segments = generateAnnotatedSequence()
+    if (barcode && /^[ACGT]+$/i.test(barcode)) {
+      const integrated = integrateBarcodeIntoSegments(segments, barcode)
+      setIntegratedSegments(integrated)
+    } else {
+      setIntegratedSegments(null)
+    }
+  }, [barcode, constructModules])
+
   // Generate predicted function
   const generatePredictedFunction = () => {
     if (modules.length === 0) return "No modules selected"
