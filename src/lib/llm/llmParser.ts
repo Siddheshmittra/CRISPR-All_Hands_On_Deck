@@ -1,8 +1,6 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
 
-console.log('OpenAI API Key:', import.meta.env.VITE_OPENAI_API_KEY ? 'Key found' : 'Key missing');
-
 function createOpenAI(): OpenAI | null {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
   if (!apiKey) return null;
@@ -38,12 +36,7 @@ Rules:
 
 export async function parseInstructions(text: string): Promise<EditInstruction[]> {
   try {
-    console.log('Sending request to OpenAI with prompt:', text);
-    console.log('Using prompt ID:', import.meta.env.VITE_OPENAI_PROMPT_ID);
-    console.log('Environment variables:', {
-      VITE_OPENAI_API_KEY: import.meta.env.VITE_OPENAI_API_KEY ? 'Set' : 'Not set',
-      VITE_OPENAI_PROMPT_ID: import.meta.env.VITE_OPENAI_PROMPT_ID || 'Not set'
-    });
+    console.log('Sending request to LLM with prompt:', text);
 
     const messages = [
       { 
@@ -55,9 +48,10 @@ export async function parseInstructions(text: string): Promise<EditInstruction[]
       { role: 'user' as const, content: text }
     ];
 
-    console.log('Sending messages to OpenAI:', messages);
+    console.log('Prepared messages for LLM');
 
-    const proxy = import.meta.env.VITE_LLM_PROXY_URL;
+    const rawProxy = (import.meta.env.VITE_LLM_PROXY_URL || '').trim();
+    const proxy = rawProxy ? (rawProxy.endsWith('/') ? rawProxy.slice(0, -1) : rawProxy) : '';
     let content: string | undefined;
 
     if (proxy) {
@@ -66,7 +60,10 @@ export async function parseInstructions(text: string): Promise<EditInstruction[]
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages }),
       });
-      if (!res.ok) throw new Error('Proxy call failed');
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => '');
+        throw new Error(`Proxy call failed (${res.status}): ${errorText || res.statusText}`);
+      }
       const data = await res.json();
       content = data.content;
     } else {

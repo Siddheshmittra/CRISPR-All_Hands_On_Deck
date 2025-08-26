@@ -789,7 +789,7 @@ const DesignLab = () => {
                     }}
                     disabled={isPredicting || constructWithLinkers.filter((i: any) => i.type !== 'linker').length === 0}
                   >
-                    {isPredicting ? 'Predicting…' : 'Predict via GPT'}
+                    {isPredicting ? 'Predicting…' : 'Predict'}
                   </button>
                 </div>
               </div>
