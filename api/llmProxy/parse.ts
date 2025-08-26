@@ -13,9 +13,9 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response('Bad JSON', { status: 400, headers: corsHeaders() });
   }
 
-  const apiKey = process.env.OAI_API_KEY || process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OAI_API_KEY;
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'Missing OAI_API_KEY/OPENAI_API_KEY' }), {
+    return new Response(JSON.stringify({ error: 'Missing OAI_API_KEY' }), {
       status: 500,
       headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
     });

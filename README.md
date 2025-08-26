@@ -5,7 +5,7 @@
 
 ### Quick proxy (Vercel)
 1. Import this repo into Vercel.
-2. Add an environment variable `OPENAI_API_KEY` in the Vercel project settings.
+2. Add an environment variable `OAI_API_KEY` in the Vercel project settings.
 3. Deploy. Your endpoints will be:
    - `<vercel-url>/api/llmProxy/parse`
    - `<vercel-url>/api/llmProxy/plan`
