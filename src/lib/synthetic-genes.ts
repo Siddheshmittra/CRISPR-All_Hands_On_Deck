@@ -25,14 +25,6 @@ export const syntheticGenes: SyntheticGene[] = [
     sequence: 'ATGGAAGACGCCAAAAACATAAAGAAAGGCCCGGCGCCATTCTATCCTCTAGAGGATGGAACCGCTGGAGAGCAACTGCATAAGGCTATGAAGAGATACGCCCTGGTTCCTGGAACAATTGCTTTTACAGATGCACATATCGAGGTGAACATCACGTACGCGGAATACTTCGAAATGTCCGTTCGGTTGGCAGAAGCTATGAAACGACATAAGGAAAACACTGTCGAGGCAGTTCCATAGGATGGCAAGATCCTGGTATTGGTCTGCGA',
     category: 'reporter',
     tags: ['bioluminescence', 'luciferase', 'reporter']
-  },
-  {
-    id: 'custom',
-    name: 'Custom Synthetic Gene',
-    description: 'Enter your own synthetic gene sequence',
-    sequence: '',
-    category: 'custom',
-    tags: ['custom', 'user-defined']
   }
 ]
 

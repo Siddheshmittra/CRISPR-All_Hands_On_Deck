@@ -37,13 +37,14 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
   const categories = [
     { value: "all", label: "All Categories" },
     { value: "fluorescent", label: "Fluorescent Proteins" },
-    { value: "reporter", label: "Reporter Genes" },
-    { value: "custom", label: "Custom Sequences" }
+    { value: "reporter", label: "Reporter Genes" }
   ]
 
+  const allGenes = searchSyntheticGenes(searchTerm).filter(g => g.category !== 'custom' && g.category !== 'placeholder')
   const filteredGenes = selectedCategory === "all" 
-    ? searchSyntheticGenes(searchTerm)
+    ? allGenes
     : getSyntheticGenesByCategory(selectedCategory).filter(gene => 
+        gene.category !== 'custom' &&
         gene.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         gene.description.toLowerCase().includes(searchTerm.toLowerCase())
       )
