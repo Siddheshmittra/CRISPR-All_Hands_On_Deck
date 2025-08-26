@@ -541,16 +541,22 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             console.error(`Error enriching gene ${geneName}:`, error);
         }
         
-        // Fallback: Add gene even if enrichment completely failed
+        // Fallback/skip behavior when enrichment failed
         if (!moduleAdded) {
-            newModules.push({
-                id: `${geneName}-${moduleType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                name: geneName,
-                type: moduleType,
-                description: `Human gene ${geneName} (sequence not found)`,
-                sequence: '', // Empty sequence but gene is still added
-            });
-            failedGenes.push(geneName);
+            if (moduleType === 'knockdown' || moduleType === 'knockout') {
+                // Strict: do not add KD/KO modules without shRNA/gRNA sequences
+                failedGenes.push(geneName);
+            } else {
+                // For OE/KI, allow adding placeholder and attempt enrichment later if needed
+                newModules.push({
+                    id: `${geneName}-${moduleType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    name: geneName,
+                    type: moduleType,
+                    description: `Human gene ${geneName} (sequence not found)`,
+                    sequence: '',
+                });
+                failedGenes.push(geneName);
+            }
         }
     }
 
@@ -584,14 +590,14 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       }
       
       // Update the loading toast with results
-      const successfulGenes = newModules.length - failedGenes.length;
+      const withSeq = newModules.filter(m => (m.sequence && m.sequence.length > 0)).length;
       if (failedGenes.length === 0) {
-        toast.success(`Successfully added all ${newModules.length} genes to '${folderName}' library with sequences!`, { id: toastId });
-      } else if (successfulGenes > 0) {
-        toast.success(`Added ${newModules.length} genes to '${folderName}' library. ${successfulGenes} with sequences, ${failedGenes.length} without.`, { id: toastId });
+        toast.success(`Successfully added ${withSeq}/${newModules.length} genes to '${folderName}' with sequences.`, { id: toastId });
+      } else if (withSeq > 0) {
+        toast.success(`Added ${withSeq} genes with sequences to '${folderName}'. Skipped ${failedGenes.length} without available sequences.`, { id: toastId });
       } else {
         toast.warning(
-          `Added ${newModules.length} genes to '${folderName}' library, but no sequences were found.`, 
+          `No valid sequences found. Skipped ${failedGenes.length} genes.`, 
           { id: toastId }
         );
       }

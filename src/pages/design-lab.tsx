@@ -128,19 +128,24 @@ const DesignLab = () => {
   ), [cassetteBatch])
 
   const nextBarcode = React.useCallback(() => {
-    if (barcodeMode === 'internal') {
-      try {
-        // Prefer pool selection, fallback to random unique
-        // dynamic require to avoid upfront loading
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { pickNextAvailable } = require('@/lib/barcodes') as any
-        const candidate: string | undefined = pickNextAvailable(barcodePool, usedBarcodes)
-        if (candidate) return candidate
-      } catch {}
-      return generateBarcode(12, Array.from(usedBarcodes))
+    // Always draw deterministically from the first available in the pool provided by the user
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { pickNextAvailable } = require('@/lib/barcodes') as any
+      const candidate: string | undefined = pickNextAvailable(barcodePool, usedBarcodes)
+      if (candidate) return candidate
+    } catch {}
+    // If pool not loaded or exhausted, fall back to general/internal pools deterministically
+    const allPools: string[] = [
+      ...generalPool.map(p => p.sequence),
+      ...internalPool.map(p => p.sequence)
+    ]
+    for (const seq of allPools) {
+      if (!usedBarcodes.has(seq)) return seq
     }
-    return generateBarcode(12)
-  }, [barcodeMode, barcodePool, usedBarcodes])
+    // Hard fallback: generate unique
+    return generateBarcode(12, Array.from(usedBarcodes))
+  }, [barcodePool, usedBarcodes, generalPool, internalPool])
 
   const handleAddLibrary = (libraryId: string, perturbationType?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => {
     const existing = librarySyntax.find(l => l.id === libraryId)

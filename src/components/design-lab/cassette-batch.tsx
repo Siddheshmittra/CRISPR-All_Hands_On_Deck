@@ -213,7 +213,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
         segments.push({ name: 'Adaptor', sequence: ADAPTOR_SEQUENCE, type: 'hardcoded' });
       }
 
-      // Actual library module (make perturbation explicit in name)
+      // Actual library module (single explicit perturbation annotation)
       segments.push({
         name: `${item.name} [${(item.type || 'module').toUpperCase()}]`,
         sequence: correctSequence,
@@ -370,7 +370,8 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
       }
 
       // Build header: base, tokens (in syntax order), and final_sequence last
-      const baseHeader = ['cassette_id', 'barcode', 'modules', 'final_length']
+      // Include a dedicated barcode column (and optional index if available)
+      const baseHeader = ['cassette_id', 'barcode', 'barcode_index', 'modules', 'final_length']
       const header: string[] = [...baseHeader]
       for (const token of orderedTokens) {
         if (token.kind === 'component') header.push(`${token.key}_${token.occurrence}_sequence`)
@@ -392,6 +393,16 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
         const segments = perCassetteSegments[idx]
         const finalSeq = segments.map(s => s.sequence).join('')
         const modulesStr = cassette.modules.map(m => `${m.name} [${m.type}]`).join(' + ')
+        // Parse barcode index when tagged as INDEX|SEQUENCE; keep sequence in barcode column
+        let barcodeValue = cassette.barcode || ''
+        let barcodeIndex = ''
+        if (barcodeValue && barcodeValue.includes('|')) {
+          const parts = barcodeValue.split('|')
+          if (parts.length === 2 && /^[0-9]+$/.test(parts[0])) {
+            barcodeIndex = parts[0]
+            barcodeValue = parts[1]
+          }
+        }
 
         // Buckets for components
         const componentBuckets: Record<string, string[]> = {}
@@ -414,7 +425,8 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
 
         const row: (string | number)[] = [
           esc(cassette.id),
-          esc(cassette.barcode || ''),
+          esc(barcodeValue),
+          esc(barcodeIndex),
           esc(modulesStr),
           String(finalSeq.length)
         ]

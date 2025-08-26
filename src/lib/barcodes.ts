@@ -45,10 +45,11 @@ export async function loadBarcodePool(): Promise<string[]> {
 }
 
 export function pickNextAvailable(pool: string[], used: Set<string>): string | undefined {
-  const candidates = pool.filter(b => !used.has(b));
-  if (candidates.length === 0) return undefined;
-  const idx = Math.floor(Math.random() * candidates.length);
-  return candidates[idx];
+  // Deterministic: pick first available in provided order
+  for (const b of pool) {
+    if (!used.has(b)) return b;
+  }
+  return undefined;
 }
 
 // Load the general barcodes pool (array with index + sequence)

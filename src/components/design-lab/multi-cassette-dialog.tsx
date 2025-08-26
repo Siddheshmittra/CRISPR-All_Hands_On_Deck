@@ -244,20 +244,19 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
         toast.dismiss(loadingToast);
         return;
       }
-      const libraryModules = customModules.filter(m => library.modules.includes(m.id));
+      const libraryModules = customModules.filter(m => library.modules.includes(m.id) && (m.sequence && m.sequence.length > 0));
       if (libraryModules.length === 0) {
-        toast.error(`No modules found for library '${library.name}'.`);
+        toast.error(`No modules with sequences found for library '${library.name}'.`);
         setIsGenerating(false);
         toast.dismiss(loadingToast);
         return;
       }
-      // Map modules to the library's specified type and annotate names with perturbation
+      // Map modules to the library's specified type (keep original display name)
       libraryModuleLists.push(
         libraryModules.map((randomModule) => ({
           ...randomModule,
           id: `${randomModule.id}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
           type: libSyntax.type,
-          name: `${randomModule.name} [${libSyntax.type.toUpperCase()}]`,
           sequence: randomModule.type === libSyntax.type ? randomModule.sequence : '',
           sequenceSource: randomModule.sequenceSource,
           originalType: randomModule.type,

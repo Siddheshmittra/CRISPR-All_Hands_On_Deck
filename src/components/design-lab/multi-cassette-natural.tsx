@@ -57,17 +57,22 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
       const folderId = `lib-${slugify(plan.name)}-${uid()}`;
       const moduleIds: string[] = [];
       for (const gene of plan.geneSymbols) {
-        const moduleId = `${gene}-${uid()}`;
-        const m: Module = {
-          id: moduleId,
-          name: gene,
-          type: plan.type,
-          description: `${plan.type} ${gene} (planned: ${plan.name})`,
-        };
-        newModules.push(m);
-        moduleIds.push(moduleId);
-        // add to total library as well
-        totalLibrary.modules.push(moduleId);
+        try {
+          const base: Module = {
+            id: `${gene}-${uid()}`,
+            name: gene,
+            type: plan.type,
+            description: `${plan.type} ${gene} (planned: ${plan.name})`,
+          }
+          // Enrich immediately with strict source rules for KD/KO
+          const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { enforceTypeSource: true });
+          newModules.push(enriched);
+          moduleIds.push(enriched.id);
+          totalLibrary.modules.push(enriched.id);
+        } catch (e) {
+          // Skip genes without the correct type source
+          console.warn('Skipping planned gene without sequence', gene, e);
+        }
       }
       newFolders.push({ id: folderId, name: plan.name, modules: moduleIds, open: true });
     }
