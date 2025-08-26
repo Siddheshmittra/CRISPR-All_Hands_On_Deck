@@ -1,6 +1,6 @@
 // Use direct REST calls for Edge compatibility
 
-export const config = { runtime: 'edge' } as const;
+export const config = { runtime: 'nodejs' } as const;
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders() });
