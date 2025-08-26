@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+// Use direct REST calls for Edge compatibility
 
 export const config = { runtime: 'edge' } as const;
 
@@ -22,16 +22,29 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const openai = new OpenAI({ apiKey });
     const messages = (body.messages || []) as Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo',
-      temperature: 0.2,
-      response_format: { type: 'json_object' },
-      messages,
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4-turbo',
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+        messages
+      })
     });
-
-    const content = completion.choices?.[0]?.message?.content || '{}';
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = json?.error?.message || res.statusText || 'OpenAI request failed';
+      return new Response(JSON.stringify({ error: msg }), {
+        status: 500,
+        headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
+      });
+    }
+    const content = json?.choices?.[0]?.message?.content || '{}';
     return new Response(JSON.stringify({ content }), {
       headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
     });
