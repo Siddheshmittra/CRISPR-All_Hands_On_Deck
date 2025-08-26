@@ -13,7 +13,7 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response('Bad JSON', { status: 400, headers: corsHeaders() });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY || process.env.OAI_API_KEY;
   if (!apiKey) return new Response('Missing OPENAI_API_KEY', { status: 500, headers: corsHeaders() });
 
   const openai = new OpenAI({ apiKey });
