@@ -22,6 +22,7 @@ import { useConstructManager } from "@/hooks/use-construct-manager"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { toast } from "sonner"
 import { generateBarcode } from "@/lib/barcode-utils"
+import { predictTCellFunction } from "@/lib/llm/predictFunction"
 
 import { Module, LibrarySyntax } from "@/lib/types"
 
@@ -58,6 +59,9 @@ const DesignLab = () => {
   const [cassetteBatch, setCassetteBatch] = useState<Cassette[]>([])
   const [librarySyntax, setLibrarySyntax] = useState<LibrarySyntax[]>([])
   const [selectedFolderId, setSelectedFolderId] = useState<string>('total-library')
+  const [predictedSentence, setPredictedSentence] = useState<string>("")
+  const [predictedSources, setPredictedSources] = useState<Array<{ title: string; url: string }>>([])
+  const [isPredicting, setIsPredicting] = useState(false)
 
   // Barcode system state
   const [barcodeMode, setBarcodeMode] = useState<'internal' | 'general'>('general')
@@ -718,6 +722,7 @@ const DesignLab = () => {
               constructModules={constructWithLinkers}
               barcodeMode={barcodeMode}
               onBarcodeModeChange={setBarcodeMode}
+              showPrediction={inputMode !== 'natural'}
               requestGenerateBarcode={() => {
                 if (barcodeMode === 'internal' && internalPool.length > 0) {
                   // Random unused from internal pool
@@ -739,24 +744,55 @@ const DesignLab = () => {
           )}
 
           {/* 5. Predicted Function / Predicted Cellular Program */}
-          {cassetteMode === 'single' && (
+          {cassetteMode === 'single' && inputMode === 'manual' && (
             <Card className="p-6">
               <h2 className="text-lg font-semibold mb-2">5. Predicted Function / Predicted Cellular Program</h2>
-              <p className="text-sm mb-2">
-                {(() => {
-                  const modules = constructWithLinkers.filter(item => (item as any).type !== 'linker') as any[];
-                  if (modules.length === 0) return 'No modules selected';
-                  const over = modules.filter(m => m.type === 'overexpression');
-                  const ko = modules.filter(m => m.type === 'knockout');
-                  const kd = modules.filter(m => m.type === 'knockdown');
-                  let prediction = 'Modulates epigenetic regulation. Enhances TCR signaling strength';
-                  if (over.length > 0) prediction += ` through overexpression of ${over.map(m => m.name).join(', ')}`;
-                  if (ko.length > 0) prediction += `${over.length > 0 ? ' and' : ''} knockout of ${ko.map(m => m.name).join(', ')}`;
-                  if (kd.length > 0) prediction += `${(over.length > 0 || ko.length > 0) ? ' and' : ''} knockdown of ${kd.map(m => m.name).join(', ')}`;
-                  return prediction + '.';
-                })()}
-              </p>
-              <p className="text-xs text-muted-foreground">Based on LLM interpretation of input genetic perturbations, correlate with own biologic predictions</p>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="text-sm">
+                    {predictedSentence ? (
+                      <span>{predictedSentence}</span>
+                    ) : (
+                      <span className="text-muted-foreground">No prediction yet.</span>
+                    )}
+                  </div>
+                  {predictedSources && predictedSources.length > 0 && (
+                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                      {predictedSources.map((s, i) => (
+                        <li key={i} className="text-sm">
+                          <a href={s.url} target="_blank" rel="noreferrer" className="underline">
+                            {s.title}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-2">Answers come from the same API used by Natural Language mode.</p>
+                </div>
+                <div>
+                  <button
+                    className="px-3 py-2 rounded bg-primary text-primary-foreground disabled:opacity-50"
+                    onClick={async () => {
+                      const modules = constructWithLinkers.filter((item: any) => item.type !== 'linker') as any[]
+                      if (modules.length === 0) { toast.error('No modules selected'); return }
+                      setIsPredicting(true)
+                      try {
+                        const result = await predictTCellFunction(modules as any)
+                        setPredictedSentence(result.sentence)
+                        setPredictedSources(result.sources || [])
+                      } catch (e) {
+                        setPredictedSentence('Prediction failed.')
+                        setPredictedSources([])
+                      } finally {
+                        setIsPredicting(false)
+                      }
+                    }}
+                    disabled={isPredicting || constructWithLinkers.filter((i: any) => i.type !== 'linker').length === 0}
+                  >
+                    {isPredicting ? 'Predicting…' : 'Predict via GPT'}
+                  </button>
+                </div>
+              </div>
             </Card>
           )}
         </div>

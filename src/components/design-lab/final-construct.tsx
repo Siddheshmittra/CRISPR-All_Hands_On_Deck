@@ -9,7 +9,7 @@ import Tippy from '@tippyjs/react';
 import { Download, Eye, EyeOff } from "lucide-react"
 import { generateGenbank } from "@/lib/genbank"
 import { toast } from "sonner"
-import { predictTCellFunction } from "@/lib/llm/predictFunction"
+//
 
 import { ConstructItem, Module, AnnotatedSegment } from "@/lib/types"
 import { SequenceViewer } from "./sequence-viewer"
@@ -36,9 +36,7 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
   const [showSequence, setShowSequence] = useState(true)
   const [barcodeIndex, setBarcodeIndex] = useState<number | null>(null)
   const [integratedSegments, setIntegratedSegments] = useState<AnnotatedSegment[] | null>(null)
-  const [predictedSentence, setPredictedSentence] = useState<string>("")
-  const [predictedSources, setPredictedSources] = useState<Array<{ title: string; url: string }>>([])
-  const [isPredicting, setIsPredicting] = useState(false)
+  // Prediction UI moved to Predicted Function section
 
   const generateAnnotatedSequence = (): AnnotatedSegment[] => {
     const segments: AnnotatedSegment[] = [];
@@ -190,23 +188,7 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
     toast.success("Construct exported successfully!")
   }
 
-  const handlePredict = async () => {
-    if (modules.length === 0) {
-      toast.error("No modules selected")
-      return
-    }
-    setIsPredicting(true)
-    try {
-      const result = await predictTCellFunction(modules)
-      setPredictedSentence(result.sentence)
-      setPredictedSources(result.sources || [])
-    } catch (e) {
-      setPredictedSentence("Prediction failed.")
-      setPredictedSources([])
-    } finally {
-      setIsPredicting(false)
-    }
-  }
+  //
 
   const handleExportGenBank = () => {
     if (modules.length === 0) {
@@ -258,34 +240,6 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label>Predicted function (GPT):</Label>
-            <div className="text-sm mt-1">
-              {predictedSentence ? (
-                <span>{predictedSentence}</span>
-              ) : (
-                <span className="text-muted-foreground">No prediction yet.</span>
-              )}
-            </div>
-            {predictedSources && predictedSources.length > 0 && (
-              <ul className="list-disc pl-5 mt-2 space-y-1">
-                {predictedSources.map((s, i) => (
-                  <li key={i} className="text-sm">
-                    <a href={s.url} target="_blank" rel="noreferrer" className="underline">
-                      {s.title}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <div>
-            <Button size="sm" onClick={handlePredict} disabled={isPredicting || modules.length === 0}>
-              {isPredicting ? 'Predicting…' : 'Predict via GPT'}
-            </Button>
-          </div>
-        </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <Label className="text-sm">Barcode Mode</Label>
