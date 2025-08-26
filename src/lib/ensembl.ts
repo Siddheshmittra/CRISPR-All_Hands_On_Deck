@@ -385,7 +385,7 @@ export interface EnsemblModule extends Module {
 
 export async function enrichModuleWithSequence(
   module: Module,
-  opts?: { base?: string; forceRefresh?: boolean }
+  opts?: { base?: string; forceRefresh?: boolean; enforceTypeSource?: boolean }
 ): Promise<Module> {
   console.log(`[enrichModule] Starting enrichment for:`, module);
   try {
@@ -403,8 +403,12 @@ export async function enrichModuleWithSequence(
           sequenceSource: 'shRNA.json',
         };
       } else {
-        console.warn(`[enrichModule] shRNA sequence not found for knockdown module: ${module.name}. Will fall back to Ensembl.`);
-        // Fallback to Ensembl transcript search if local lookup fails
+        console.warn(`[enrichModule] shRNA sequence not found for knockdown module: ${module.name}.`);
+        if (opts?.enforceTypeSource) {
+          // Enforce source: do not fall back to Ensembl for knockdown if strict mode
+          throw new Error(`shRNA sequence not found for ${module.name}`);
+        }
+        // Otherwise, fall through to Ensembl
       }
     }
 
@@ -420,8 +424,12 @@ export async function enrichModuleWithSequence(
           sequenceSource: 'gRNA.json',
         };
       } else {
-        console.warn(`[enrichModule] gRNA sequence not found for knockout module: ${module.name}. Will fall back to Ensembl.`);
-        // Fallback to Ensembl transcript search if local lookup fails
+        console.warn(`[enrichModule] gRNA sequence not found for knockout module: ${module.name}.`);
+        if (opts?.enforceTypeSource) {
+          // Enforce source: do not fall back to Ensembl for knockout if strict mode
+          throw new Error(`gRNA sequence not found for ${module.name}`);
+        }
+        // Otherwise, fall through to Ensembl
       }
     }
 

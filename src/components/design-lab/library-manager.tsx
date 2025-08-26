@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Upload, Download, Plus, Trash2, Library } from "lucide-react"
+import { z } from 'zod'
+import { toast } from 'sonner'
 
 interface Module {
   id: string
@@ -34,10 +36,51 @@ export const LibraryManager = ({ customModules, onCustomModulesChange, construct
         const reader = new FileReader()
         reader.onload = (e) => {
           try {
-            const imported = JSON.parse(e.target?.result as string)
-            onCustomModulesChange([...customModules, ...imported])
-          } catch (error) {
+            // Accept either an array of modules or an object with { modules: Module[] }
+            const raw = JSON.parse(e.target?.result as string)
+
+            const moduleSchema = z.object({
+              id: z.string().min(1).catch(String),
+              name: z.string().min(1),
+              type: z.enum(["overexpression", "knockout", "knockdown", "knockin", "synthetic"]).catch("overexpression"),
+              description: z.string().optional(),
+              sequence: z.string().optional(),
+              sequenceSource: z.enum(['ensembl_grch38', 'ensembl_grch37', 'shRNA.json', 'gRNA.json']).optional(),
+              isSynthetic: z.boolean().optional(),
+              syntheticSequence: z.string().optional(),
+            })
+
+            const schema = z.union([
+              z.array(moduleSchema),
+              z.object({ modules: z.array(moduleSchema) })
+            ])
+
+            const parsed = schema.parse(raw)
+            const modules = Array.isArray(parsed) ? parsed : parsed.modules
+
+            // Normalize names and ensure unique IDs for conflicts
+            const existingIds = new Set(customModules.map(m => m.id))
+            const normalized = modules.map((m) => {
+              const baseId = String(m.id)
+              let uniqueId = baseId
+              let counter = 1
+              while (existingIds.has(uniqueId)) {
+                uniqueId = `${baseId}-${counter++}`
+              }
+              existingIds.add(uniqueId)
+              return {
+                ...m,
+                id: uniqueId,
+                name: String(m.name).trim(),
+                description: m.description || `Imported module ${m.name}`
+              }
+            })
+
+            onCustomModulesChange([...customModules, ...normalized])
+            toast.success(`Imported ${normalized.length} modules from JSON`)
+          } catch (error: any) {
             console.error('Failed to import library:', error)
+            toast.error(error?.message || 'Failed to import library JSON')
           }
         }
         reader.readAsText(file)

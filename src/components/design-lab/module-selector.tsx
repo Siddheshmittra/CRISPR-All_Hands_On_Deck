@@ -523,7 +523,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                 sequence: '' 
             };
             
-            const enrichedModule = await enrichModuleWithSequence(partialModule);
+            const enrichedModule = await enrichModuleWithSequence(partialModule, { enforceTypeSource: true });
             
             // Add module even if sequence enrichment partially failed
             if (enrichedModule) {
@@ -730,7 +730,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         </div>
       )}
       <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">2. Select Modules</h2>
+        <h2 className="text-lg font-semibold mb-4">1. Desired Genetic Libraries</h2>
       
       {/* Unified Gene Search */}
       <div className="mb-4">

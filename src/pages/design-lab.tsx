@@ -13,6 +13,7 @@ import { NaturalLanguageInput } from "@/components/design-lab/NaturalLanguageInp
 import { LibraryManager } from "@/components/design-lab/library-manager"
 import { Card } from "@/components/ui/card"
 import { CassetteBatch } from "@/components/design-lab/cassette-batch"
+import { ErrorBoundary } from "@/components/error-boundary"
 import { SimpleModuleSelector } from "@/components/design-lab/simple-module-selector"
 import { LibraryViewer } from "@/components/design-lab/library-viewer"
 import { Trash2 } from "lucide-react"
@@ -80,6 +81,47 @@ const DesignLab = () => {
     })
     return () => { mounted = false }
   }, [])
+
+  // Session restore: persist and hydrate key state
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem('design-lab:session')
+      if (!raw) return
+      const data = JSON.parse(raw)
+      if (data.customModules) setCustomModules(data.customModules)
+      if (data.folders) setFolders(data.folders)
+      if (data.librarySyntax) setLibrarySyntax(data.librarySyntax)
+      if (data.cassetteBatch) setCassetteBatch(data.cassetteBatch)
+      if (data.cassetteMode) setCassetteMode(data.cassetteMode)
+      if (data.inputMode) setInputMode(data.inputMode)
+      if (data.barcodeMode) setBarcodeMode(data.barcodeMode)
+    } catch {}
+  }, [])
+
+  React.useEffect(() => {
+    try {
+      const payload = {
+        customModules,
+        folders,
+        librarySyntax,
+        cassetteBatch,
+        cassetteMode,
+        inputMode,
+        barcodeMode,
+      }
+      localStorage.setItem('design-lab:session', JSON.stringify(payload))
+    } catch {}
+  }, [customModules, folders, librarySyntax, cassetteBatch, cassetteMode, inputMode, barcodeMode])
+
+  // Lightweight restore banner with reset option
+  const [showRestoreBanner, setShowRestoreBanner] = useState<boolean>(() => {
+    try { return !!localStorage.getItem('design-lab:session') } catch { return false }
+  })
+
+  const handleClearSession = () => {
+    try { localStorage.removeItem('design-lab:session') } catch {}
+    setShowRestoreBanner(false)
+  }
 
   const usedBarcodes = React.useMemo(() => new Set(
     cassetteBatch.map(c => c.barcode).filter((b): b is string => !!b)
@@ -483,6 +525,29 @@ const DesignLab = () => {
       <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
+          {showRestoreBanner && (
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  A previous session was found. Your workspace will auto-restore on load.
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    className="px-3 py-1 text-sm border rounded"
+                    onClick={() => setShowRestoreBanner(false)}
+                  >
+                    Hide
+                  </button>
+                  <button
+                    className="px-3 py-1 text-sm border rounded"
+                    onClick={handleClearSession}
+                  >
+                    Clear Saved Session
+                  </button>
+                </div>
+              </div>
+            </Card>
+          )}
           <DesignMode
             cassetteMode={cassetteMode}
             onCassetteModeChange={setCassetteMode}
@@ -505,7 +570,7 @@ const DesignLab = () => {
           )}
 
           {inputMode === 'natural' && cassetteMode === 'multi' && (
-            <>
+            <ErrorBoundary>
               <MultiCassetteNatural
                 folders={folders}
                 setFolders={setFolders}
@@ -547,7 +612,7 @@ const DesignLab = () => {
                 }}
                 isBarcodeTaken={(b, selfId) => !!cassetteBatch.find(c => c.barcode === b && c.id !== selfId)}
               />
-            </>
+            </ErrorBoundary>
           )}
           
           <DragDropContext onDragEnd={handleDragEnd}>
@@ -573,16 +638,18 @@ const DesignLab = () => {
                           handleModuleClick={handleModuleClick}
                           hideTypeSelector={cassetteMode === 'multi'}
                         />
-                        <MultiCassetteSetup
-                          onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
-                          folders={folders}
-                          customModules={customModules}
-                          librarySyntax={librarySyntax}
-                          onAddLibrary={handleAddLibrary}
-                          onRemoveLibrary={handleRemoveLibrary}
-                          onLibraryTypeChange={handleLibraryTypeChange}
-                          onReorderLibraries={handleReorderLibraries}
-                        />
+                        <ErrorBoundary>
+                          <MultiCassetteSetup
+                            onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
+                            folders={folders}
+                            customModules={customModules}
+                            librarySyntax={librarySyntax}
+                            onAddLibrary={handleAddLibrary}
+                            onRemoveLibrary={handleRemoveLibrary}
+                            onLibraryTypeChange={handleLibraryTypeChange}
+                            onReorderLibraries={handleReorderLibraries}
+                          />
+                        </ErrorBoundary>
                       </>
                     )}
                   </>

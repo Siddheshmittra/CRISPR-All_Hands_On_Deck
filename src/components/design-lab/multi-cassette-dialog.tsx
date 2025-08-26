@@ -251,12 +251,13 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
         toast.dismiss(loadingToast);
         return;
       }
-      // Map modules to the library's specified type
+      // Map modules to the library's specified type and annotate names with perturbation
       libraryModuleLists.push(
         libraryModules.map((randomModule) => ({
           ...randomModule,
           id: `${randomModule.id}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
           type: libSyntax.type,
+          name: `${randomModule.name} [${libSyntax.type.toUpperCase()}]`,
           sequence: randomModule.type === libSyntax.type ? randomModule.sequence : '',
           sequenceSource: randomModule.sequenceSource,
           originalType: randomModule.type,
@@ -267,13 +268,16 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
 
     // Compute total combinations
     const totalCombos = libraryModuleLists.reduce((acc, list) => acc * list.length, 1);
-    const MAX_COMBINATIONS = 1000;
-    let capNotice = '';
-    const combosToGenerate = Math.min(totalCombos, MAX_COMBINATIONS);
-    if (totalCombos > MAX_COMBINATIONS) {
-      capNotice = ` (capped at ${MAX_COMBINATIONS} of ${totalCombos} total)`;
+    if (!Number.isFinite(totalCombos) || totalCombos <= 0) {
+      toast.error('No combinations possible. Please check your libraries.');
+      setIsGenerating(false);
+      toast.dismiss(loadingToast);
+      return;
     }
-    let successfulCassettes: Module[][] = [];
+    const combosToGenerate = totalCombos; // Generate all combinations, stream in chunks
+    let produced = 0;
+    const CHUNK_SIZE = 50;
+    let pendingChunk: Module[][] = [];
 
     try {
       // Pre-enrich modules if sequence is missing or when library remaps type
@@ -286,7 +290,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
           const missingSequence = !modWithOriginal.sequence || modWithOriginal.sequence.length === 0;
           if (needsTypeRemap || missingSequence) {
             try {
-              const enriched = await enrichModuleWithSequence({ ...mod });
+              const enriched = await enrichModuleWithSequence({ ...mod }, { enforceTypeSource: true });
               enrichedList.push(enriched);
             } catch (err) {
               console.error(`Failed to enrich ${mod.name}`, err);
@@ -303,63 +307,75 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
       if (libraryModuleLists.length === 1) {
         const list = libraryModuleLists[0];
         for (let i = 0; i < Math.min(list.length, combosToGenerate); i++) {
-          const cassette = applyCassetteSyntax([list[i]]);
-          successfulCassettes.push(cassette);
-          if (i % 25 === 0) {
-            toast.loading(`Generated ${i + 1}/${combosToGenerate}${capNotice}...`, { id: loadingToast });
+          let cassette: Module[] = [];
+          try {
+            cassette = applyCassetteSyntax([list[i]]);
+          } catch (e) {
+            console.error('applyCassetteSyntax failed', e);
+            cassette = [list[i]];
+          }
+          pendingChunk.push(cassette);
+          produced++;
+          if (pendingChunk.length >= CHUNK_SIZE) {
+            onAddCassettes?.(pendingChunk);
+            pendingChunk = [];
+          }
+          if (produced % 25 === 0) {
+            toast.loading(`Generated ${produced}/${combosToGenerate}...`, { id: loadingToast });
             await new Promise(r => setTimeout(r, 0));
           }
         }
       } else {
-      // Iterate combinations using mixed-radix counters to avoid huge intermediate arrays
-      const radices = libraryModuleLists.map(list => list.length);
-      const indices = new Array(radices.length).fill(0);
-      let produced = 0;
-      const YIELD_EVERY = 25;
+        // Iterate combinations using mixed-radix counters to avoid huge intermediate arrays
+        const radices = libraryModuleLists.map(list => list.length);
+        const indices = new Array(radices.length).fill(0);
+        const YIELD_EVERY = 25;
 
-      while (produced < combosToGenerate) {
-        // Build the current cassette modules
-        const currentModules = indices.map((idx, i) => libraryModuleLists[i][idx]);
-        let cassette: Module[] = []
-        try {
-          cassette = applyCassetteSyntax(currentModules);
-        } catch (e) {
-          console.error('applyCassetteSyntax failed', e)
-          // Fallback: push raw modules if syntax application fails
-          cassette = currentModules
-        }
-        successfulCassettes.push(cassette);
-        produced++;
+        while (produced < combosToGenerate) {
+          // Build the current cassette modules
+          const currentModules = indices.map((idx, i) => libraryModuleLists[i][idx]);
+          let cassette: Module[] = []
+          try {
+            cassette = applyCassetteSyntax(currentModules);
+          } catch (e) {
+            console.error('applyCassetteSyntax failed', e)
+            // Fallback: push raw modules if syntax application fails
+            cassette = currentModules
+          }
+          pendingChunk.push(cassette);
+          produced++;
 
-        if (produced % YIELD_EVERY === 0) {
-          toast.loading(`Generated ${produced}/${combosToGenerate}${capNotice}...`, { id: loadingToast });
-          await new Promise(r => setTimeout(r, 0));
-        }
+          if (pendingChunk.length >= CHUNK_SIZE) {
+            onAddCassettes?.(pendingChunk);
+            pendingChunk = [];
+          }
 
-        // Increment mixed-radix counter
-        let pos = indices.length - 1;
-        while (pos >= 0) {
-          indices[pos]++;
-          if (indices[pos] < radices[pos]) break;
-          indices[pos] = 0;
-          pos--;
+          if (produced % YIELD_EVERY === 0) {
+            toast.loading(`Generated ${produced}/${combosToGenerate}...`, { id: loadingToast });
+            await new Promise(r => setTimeout(r, 0));
+          }
+
+          // Increment mixed-radix counter
+          let pos = indices.length - 1;
+          while (pos >= 0) {
+            indices[pos]++;
+            if (indices[pos] < radices[pos]) break;
+            indices[pos] = 0;
+            pos--;
+          }
+          if (pos < 0) break; // Completed all combinations
         }
-        if (pos < 0) break; // Completed all combinations
       }
+
+      // Flush any remaining cassettes
+      if (pendingChunk.length > 0) {
+        onAddCassettes?.(pendingChunk);
       }
-    
-    if (successfulCassettes.length > 0) {
-      onAddCassettes(successfulCassettes);
-      toast.success(`Successfully generated ${successfulCassettes.length} cassettes${capNotice}.`, {
+
+      toast.success(`Successfully generated ${produced} cassettes.`, {
         id: loadingToast,
         duration: 5000
       });
-    } else {
-      toast.error('Failed to generate any valid cassettes. Please check your libraries and try again.', {
-        id: loadingToast,
-        duration: 10000
-      });
-    }
   } catch (error) {
     console.error('Error generating cassettes:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
@@ -406,7 +422,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
       <DragDropContext onDragEnd={handleDragEnd}>
         <Card className="p-6 mb-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Multi-Cassette Setup</h3>
+            <h3 className="text-lg font-semibold">2. Syntax</h3>
             {isGenerating && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="inline-block h-2 w-2 rounded-full bg-primary animate-pulse"></span>
@@ -442,7 +458,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
           {/* Library Syntax Section */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">3. Syntax</label>
+              <label className="text-sm font-medium">Arrange libraries to define cassette syntax</label>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" disabled={librarySyntax.length === 0}>
                   <ArrowRight className="h-4 w-4 mr-1" />

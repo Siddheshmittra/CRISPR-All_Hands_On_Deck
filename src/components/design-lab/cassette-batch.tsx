@@ -150,6 +150,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
 
     // Determine index of first KO/KD for STOP-Triplex-Adaptor insertion
     const firstKOIdx = ordered.findIndex(m => m.type === 'knockout' || m.type === 'knockdown');
+    const hasKnockinDomain = ordered.some(m => m.type === 'knockin');
 
     // Process all modules in parallel for better performance
     const processedModules = await Promise.all(ordered.map(async (item, idx) => {
@@ -191,8 +192,8 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
       const item = processedModules[idx];
       const correctSequence = item.sequence;
 
-      // Rule 1: intron before every OE gene
-      if (item.type === 'overexpression') {
+      // Rule 1: intron before every OE gene and also before KI domain modules
+      if (item.type === 'overexpression' || item.type === 'knockin') {
         segments.push({
           name: 'Intron',
           sequence: 'GTAAGTCTTATTTAGTGGAAAGAATAGATCTTCTGTTCTTTCAAAAGCAGAAATGGCAATAACATTTTGTGCCATGAttttttttttCTGCAG',
@@ -207,11 +208,14 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
           sequence: STOP_TAMPLEX_SEQUENCE + 'gaattcgattcgtcagtagggttgtaaaggtttttcttttcctgagaaaacaaccttttgttttctcaggttttgctttttggcctttccctagctttaaaaaaaaaaaagcaaaactcaccgaggcagttccataggatggcaagatcctggtattggtctgcga' + 'GTAA',
           type: 'hardcoded'
         });
+      } else if (firstKOIdx !== -1 && idx > firstKOIdx && (item.type === 'knockout' || item.type === 'knockdown')) {
+        // Adaptor before subsequent KO/KD modules (after the first)
+        segments.push({ name: 'Adaptor', sequence: ADAPTOR_SEQUENCE, type: 'hardcoded' });
       }
 
-      // Actual library module
+      // Actual library module (make perturbation explicit in name)
       segments.push({
-        name: item.name,
+        name: `${item.name} [${(item.type || 'module').toUpperCase()}]`,
         sequence: correctSequence,
         type: 'module',
         action: item.type as any,
@@ -221,19 +225,35 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
       if (item.type === 'overexpression' && idx !== ordered.length - 1) {
         segments.push({ name: 'T2A', sequence: T2A_SEQUENCE, type: 'hardcoded' });
       }
+
+      // KI domain specific: add Internal Stuffer + Barcodes after each KI module
+      if (item.type === 'knockin') {
+        segments.push({
+          name: 'Internal Stuffer',
+          sequence: 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCG',
+          type: 'hardcoded'
+        });
+        segments.push({
+          name: 'Barcodes',
+          sequence: 'NNNNNNNNNNNAGCG',
+          type: 'hardcoded'
+        });
+      }
     }
 
-      // Rule 4: add Internal Stuffer then Barcodes after last module
-      segments.push({
-        name: 'Internal Stuffer',
-        sequence: 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCG',
-        type: 'hardcoded'
-      });
-      segments.push({
-        name: 'Barcodes',
-        sequence: 'NNNNNNNNNNNAGCG',
-        type: 'hardcoded'
-      });
+      // Rule 4 (modified): If no KI domain modules present, add global IS + BCs tail
+      if (!hasKnockinDomain && ordered.length > 0) {
+        segments.push({
+          name: 'Internal Stuffer',
+          sequence: 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCG',
+          type: 'hardcoded'
+        });
+        segments.push({
+          name: 'Barcodes',
+          sequence: 'NNNNNNNNNNNAGCG',
+          type: 'hardcoded'
+        });
+      }
 
     // Rule 5: if last module is KO/KD, add polyA after IS-BCs
     const lastModule = ordered[ordered.length - 1];
@@ -446,7 +466,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
     <Card className="p-6 mt-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-semibold">Cassette Batch</h2>
+          <h2 className="text-lg font-semibold">3. Encoding</h2>
           {cassetteBatch.length > CASSETTES_PER_PAGE && (
             <p className="text-sm text-muted-foreground">
               Showing {startIndex + 1}-{Math.min(endIndex, cassetteBatch.length)} of {cassetteBatch.length} cassettes
@@ -632,7 +652,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
               <div>
                               <div>
                 <Button variant="link" className="p-0 h-auto" onClick={() => setExpandedCassetteId(expandedCassetteId === cassette.id ? null : cassette.id)}>
-                  {expandedCassetteId === cassette.id ? 'Hide' : 'Show'} Sequence
+                  {expandedCassetteId === cassette.id ? 'Hide' : 'Show'} Final Construct Sequence
                 </Button>
                 {expandedCassetteId === cassette.id && (
                   <div className="mt-2">
