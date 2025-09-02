@@ -25,7 +25,6 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
 
     setIsLoading(true);
     setWarnings([]);
-    setPreview([]);
     
     try {
       // First, parse the instructions
@@ -65,7 +64,7 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
       
       if (modules.length > 0) {
         onModulesGenerated(modules);
-        setInput('');
+        // Keep the input but hide preview
         setPreview([]);
         setShowPreview(false);
       }
