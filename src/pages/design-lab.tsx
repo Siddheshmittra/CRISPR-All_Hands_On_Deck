@@ -769,7 +769,7 @@ const DesignLab = () => {
           )}
 
           {/* 5. Predicted Function / Predicted Cellular Program */}
-          {cassetteMode === 'single' && inputMode === 'manual' && (
+          {cassetteMode === 'single' && (
             <Card className="p-6">
               <h2 className="text-lg font-semibold mb-2">5. Predicted Function / Predicted Cellular Program</h2>
               <div className="flex items-start justify-between gap-4">
