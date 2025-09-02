@@ -1,36 +1,42 @@
-export const config = { runtime: 'edge' } as const;
+// Minimal, bulletproof Edge function
+export const config = { runtime: 'edge' };
 
 export default async function handler(req: Request): Promise<Response> {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders() });
-  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: corsHeaders() });
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+    'Content-Type': 'application/json'
+  };
 
-  let body: any;
-  try {
-    body = await req.json();
-  } catch {
-    return new Response('Bad JSON', { status: 400, headers: corsHeaders() });
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers });
   }
 
-  const apiKey = process.env.OAI_API_KEY;
-  if (!apiKey) {
-    console.error('OAI_API_KEY environment variable is missing');
-    return new Response(JSON.stringify({ 
-      error: 'Missing OAI_API_KEY environment variable. Please configure it in Vercel project settings.' 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { 
+      status: 405, 
+      headers 
     });
   }
 
   try {
-    const messages = (body.messages || []) as Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
-    const model =
-      process.env.OPENAI_MODEL ||
-      process.env.OAI_MODEL ||
-      'gpt-4o-mini';
+    const body = await req.json();
+    const messages = body?.messages || [];
     
-    console.log('Plan request:', { messagesCount: messages.length, model, timestamp: new Date().toISOString() });
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const apiKey = process.env.OAI_API_KEY;
+    if (!apiKey) {
+      return new Response(JSON.stringify({ 
+        error: 'Missing OAI_API_KEY environment variable' 
+      }), { 
+        status: 500, 
+        headers 
+      });
+    }
+
+    const model = process.env.OPENAI_MODEL || process.env.OAI_MODEL || 'gpt-4o-mini';
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -43,46 +49,29 @@ export default async function handler(req: Request): Promise<Response> {
         messages
       })
     });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const msg = json?.error?.message || res.statusText || 'OpenAI request failed';
-      console.error('OpenAI API error:', { 
-        status: res.status, 
-        error: msg, 
-        model, 
-        fullError: json?.error 
-      });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      const errorMsg = data?.error?.message || response.statusText || 'OpenAI API error';
       return new Response(JSON.stringify({ 
-        error: `OpenAI API error (${res.status}): ${msg}`,
-        details: json?.error || {}
-      }), {
-        status: 500,
-        headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
+        error: `OpenAI error (${response.status}): ${errorMsg}` 
+      }), { 
+        status: 500, 
+        headers 
       });
     }
-    const content = json?.choices?.[0]?.message?.content || '{}';
-    return new Response(JSON.stringify({ content }), {
-      headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
-    });
-  } catch (err: any) {
-    const message = typeof err?.message === 'string' ? err.message : 'LLM call failed';
-    console.error('Plan handler error:', { error: err, message, stack: err?.stack });
+
+    const content = data?.choices?.[0]?.message?.content || '{}';
+    
+    return new Response(JSON.stringify({ content }), { headers });
+    
+  } catch (error) {
     return new Response(JSON.stringify({ 
-      error: `Plan handler error: ${message}`,
-      type: 'handler_error'
-    }), {
-      status: 500,
-      headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
+      error: 'Plan handler failed: ' + (error instanceof Error ? error.message : 'Unknown error')
+    }), { 
+      status: 500, 
+      headers 
     });
   }
 }
-
-function corsHeaders() {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST,OPTIONS',
-  } as Record<string, string>;
-}
-
-
