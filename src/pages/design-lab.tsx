@@ -172,7 +172,12 @@ const DesignLab = () => {
     if (perturbationType) {
       moduleType = perturbationType;
     } else if (moduleObjs.length > 0) {
-      moduleType = moduleObjs[0].type
+      const t = moduleObjs[0].type
+      if (t === 'overexpression' || t === 'knockout' || t === 'knockdown' || t === 'knockin') {
+        moduleType = t
+      } else {
+        moduleType = 'overexpression'
+      }
     }
 
     const newLibrary: LibrarySyntax = {
@@ -680,7 +685,16 @@ const DesignLab = () => {
                     <h2 className="text-lg font-semibold mb-2">3. Encoding</h2>
                     {constructWithLinkers.length > 0 ? (
                       <p className="text-sm font-mono break-all">
-                        {constructWithLinkers.map(m => (m as any).name).join(' → ')}
+                        {constructWithLinkers.map((item: any) => {
+                          if (item.type === 'linker') return item.name
+                          const type = item.type as Module['type']
+                          const abbrev =
+                            type === 'overexpression' ? 'OE' :
+                            type === 'knockdown' ? 'KD' :
+                            type === 'knockout' ? 'KO' :
+                            type === 'knockin' ? 'KI' : type
+                          return `${item.name} (${abbrev})`
+                        }).join(' → ')}
                       </p>
                     ) : (
                       <p className="text-sm text-muted-foreground">Add elements in Syntax to see the encoding string.</p>
@@ -722,7 +736,6 @@ const DesignLab = () => {
               constructModules={constructWithLinkers}
               barcodeMode={barcodeMode}
               onBarcodeModeChange={setBarcodeMode}
-              showPrediction={inputMode !== 'natural'}
               requestGenerateBarcode={() => {
                 if (barcodeMode === 'internal' && internalPool.length > 0) {
                   // Random unused from internal pool

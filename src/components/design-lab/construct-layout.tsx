@@ -19,7 +19,7 @@ function getTypeArrow(type: string) {
   switch (type) {
     case 'knockdown': return '↓';
     case 'knockout': return '✖';
-    case 'knockin': return '→';
+    case 'knockin': return '↑'; // Treat KI like OE in UI/drag semantics
     case 'overexpression': return '↑';
     default: return '';
   }
@@ -72,7 +72,7 @@ export const ConstructLayout = ({
               >
                 {constructModules.length === 0 ? (
                   <div className="w-full text-center text-muted-foreground pointer-events-none select-none">
-                     <p>Arrange OE / KO / KD elements to define cassette syntax</p>
+                     <p>Arrange OE/KI / KO / KD elements to define cassette syntax</p>
                     <p className="text-sm mt-1">Maximum 5 perturbations</p>
                   </div>
                 ) : (
@@ -102,7 +102,13 @@ export const ConstructLayout = ({
                                     className="cursor-move"
                                     enableContextMenu={true}
                                   >
-                                    {getTypeArrow(item.type)} {item.name || item.gene_id || item.id || item.type || 'Unnamed'}
+                                    {getTypeArrow(item.type)} {(() => {
+                                      const base = item.name || item.gene_id || item.id || item.type || 'Unnamed'
+                                      if (item.type === 'knockin') {
+                                        return `${base}${(item as Module).metadata?.has2ASequence ? ' [2A]' : ''}`
+                                      }
+                                      return base
+                                    })()}
                                   </ModuleButton>
                                   <button
                                     onClick={() => onModuleRemove(item.id)}

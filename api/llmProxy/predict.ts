@@ -1,6 +1,6 @@
-// Use direct REST calls for Edge compatibility
+// Use Edge runtime with Web Fetch API-compatible Request/Response
 
-export const config = { runtime: 'nodejs' } as const;
+export const config = { runtime: 'edge' } as const;
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders() });
@@ -23,6 +23,10 @@ export default async function handler(req: Request): Promise<Response> {
 
   try {
     const messages = (body.messages || []) as Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+    const model =
+      process.env.OPENAI_MODEL ||
+      process.env.OAI_MODEL ||
+      'gpt-4o-mini';
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -30,7 +34,7 @@ export default async function handler(req: Request): Promise<Response> {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4-turbo',
+        model,
         temperature: 0.2,
         response_format: { type: 'json_object' },
         messages
