@@ -1,6 +1,6 @@
 import { EditInstruction } from './llmParser';
 import { validateGenes } from './geneValidator';
-import { resolveGene } from '@/lib/ensembl';
+import { resolveGene, enrichModuleWithSequence } from '@/lib/ensembl';
 import type { Module } from '@/lib/types';
 
 // Map actions to module types
