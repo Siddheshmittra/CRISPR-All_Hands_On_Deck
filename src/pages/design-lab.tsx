@@ -489,10 +489,29 @@ const DesignLab = () => {
       const sourceLibraryIndex = result.source.index - HARDCODED_COUNT
       const destLibraryIndex = result.destination.index - HARDCODED_COUNT
       
-      const items = Array.from(librarySyntax)
-      const [reorderedItem] = items.splice(sourceLibraryIndex, 1)
-      items.splice(destLibraryIndex, 0, reorderedItem)
-      setLibrarySyntax(items)
+      // Get the items being moved
+      const sourceItem = librarySyntax[sourceLibraryIndex]
+      const destItem = librarySyntax[destLibraryIndex]
+      
+      if (!sourceItem || !destItem) return
+      
+      // Check if we're trying to reorder within the same type group
+      const isSourceGeneLike = sourceItem.type === 'overexpression' || sourceItem.type === 'knockin'
+      const isDestGeneLike = destItem.type === 'overexpression' || destItem.type === 'knockin'
+      const isSourceKoKd = sourceItem.type === 'knockout' || sourceItem.type === 'knockdown'
+      const isDestKoKd = destItem.type === 'knockout' || destItem.type === 'knockdown'
+      
+      // Allow reordering within the same type group (gene-like with gene-like, KO/KD with KO/KD)
+      if ((isSourceGeneLike && isDestGeneLike) || (isSourceKoKd && isDestKoKd)) {
+        const items = Array.from(librarySyntax)
+        const [reorderedItem] = items.splice(sourceLibraryIndex, 1)
+        items.splice(destLibraryIndex, 0, reorderedItem)
+        setLibrarySyntax(items)
+        return
+      }
+      
+      // Don't allow reordering between different type groups (gene-like vs KO/KD)
+      // This maintains the rule that OE/KI always come before KO/KD
       return
     }
 

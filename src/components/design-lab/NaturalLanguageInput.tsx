@@ -2,11 +2,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Card } from '@/components/ui/card';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { parseInstructions } from '@/lib/llm/llmParser';
 import { dispatchEdits } from '@/lib/llm/dispatcher';
-import { predictTCellFunction } from '@/lib/llm/predictFunction';
 import { Module } from '@/lib/types';
 
 interface NaturalLanguageInputProps {
@@ -20,10 +18,6 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
   const [warnings, setWarnings] = useState<string[]>([]);
   const [preview, setPreview] = useState<{action: string, target: string}[]>([]);
   const [showPreview, setShowPreview] = useState(false);
-  const [generatedModules, setGeneratedModules] = useState<Module[]>([]);
-  const [predictedSentence, setPredictedSentence] = useState<string>('');
-  const [predictedSources, setPredictedSources] = useState<Array<{ title: string; url: string }>>([]);
-  const [isPredicting, setIsPredicting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,13 +64,9 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
       
       if (modules.length > 0) {
         onModulesGenerated(modules);
-        setGeneratedModules(modules);
         // Keep the input but hide preview
         setPreview([]);
         setShowPreview(false);
-        // Clear previous predictions when new modules are generated
-        setPredictedSentence('');
-        setPredictedSources([]);
       }
       
     } catch (error) {
@@ -84,24 +74,6 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
       onError?.('Failed to generate modules. Please try again.');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handlePredict = async () => {
-    if (generatedModules.length === 0) return;
-    
-    setIsPredicting(true);
-    try {
-      const result = await predictTCellFunction(generatedModules);
-      setPredictedSentence(result.sentence);
-      setPredictedSources(result.sources || []);
-    } catch (error) {
-      console.error('Prediction error:', error);
-      setPredictedSentence('Prediction failed.');
-      setPredictedSources([]);
-      onError?.('Failed to generate prediction. Please try again.');
-    } finally {
-      setIsPredicting(false);
     }
   };
 
@@ -191,53 +163,6 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
             ))}
           </AlertDescription>
         </Alert>
-      )}
-
-      {generatedModules.length > 0 && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-2">Predicted Function / Predicted Cellular Program</h3>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="text-sm">
-                {predictedSentence ? (
-                  <span>{predictedSentence}</span>
-                ) : (
-                  <span className="text-muted-foreground">No prediction yet.</span>
-                )}
-              </div>
-              {predictedSources && predictedSources.length > 0 && (
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  {predictedSources.map((source, i) => (
-                    <li key={i} className="text-sm">
-                      <a href={source.url} target="_blank" rel="noreferrer" className="underline">
-                        {source.title}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <p className="text-xs text-muted-foreground mt-2">
-                Prediction based on the generated modules: {generatedModules.map(m => m.name).join(', ')}
-              </p>
-            </div>
-            <div>
-              <Button
-                onClick={handlePredict}
-                disabled={isPredicting || generatedModules.length === 0}
-                className="px-3 py-2"
-              >
-                {isPredicting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Predicting...
-                  </>
-                ) : (
-                  'Predict'
-                )}
-              </Button>
-            </div>
-          </div>
-        </Card>
       )}
     </div>
   );
