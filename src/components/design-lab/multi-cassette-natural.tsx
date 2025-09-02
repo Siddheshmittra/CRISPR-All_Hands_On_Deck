@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, Upload } from 'lucide-react';
 import type { Module } from '@/lib/types';
 import { planLibrariesFromPrompt, type PlannedLibrary } from '@/lib/llm/libraryPlanner';
 import { predictTCellFunction } from '@/lib/llm/predictFunction';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { SyntheticDomainImporter } from './synthetic-domain-importer';
+import type { SyntheticGene } from '@/lib/types';
 
 interface MultiCassetteNaturalProps {
   folders: Array<{ id: string; name: string; modules: string[]; open?: boolean }>;
@@ -26,6 +29,13 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
   const [predictedSentence, setPredictedSentence] = useState<string>('');
   const [predictedSources, setPredictedSources] = useState<Array<{ title: string; url: string }>>([]);
   const [isPredicting, setIsPredicting] = useState(false);
+  const [showImporter, setShowImporter] = useState(false);
+  const [syntheticDomains, setSyntheticDomains] = useState<SyntheticGene[]>([]);
+  const handleDomainsImported = (domains: SyntheticGene[]) => {
+    setSyntheticDomains(prev => [...prev, ...domains]);
+    setShowImporter(false);
+    toast.success(`Imported ${domains.length} synthetic domain${domains.length !== 1 ? 's' : ''}`);
+  };
 
   const handlePlan = async () => {
     if (!prompt.trim()) return;
@@ -68,8 +78,33 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
       const folderId = `lib-${slugify(plan.name)}-${uid()}`;
       const moduleIds: string[] = [];
       
+      // If this is a knockin plan and synthetic domains exist, try matching by name/tag first
+      const knockinDomains: SyntheticGene[] = plan.type === 'knockin' ? syntheticDomains : [];
+
       for (const gene of plan.geneSymbols) {
         try {
+          if (plan.type === 'knockin' && knockinDomains.length > 0) {
+            const match = knockinDomains.find(domain => 
+              domain.name.toLowerCase().includes(gene.toLowerCase()) ||
+              domain.tags.some(t => t.toLowerCase().includes(gene.toLowerCase()))
+            );
+            if (match) {
+              const syntheticModule: Module = {
+                id: `${match.name}-${uid()}`,
+                name: match.name,
+                type: 'knockin',
+                description: match.description,
+                sequence: match.sequence,
+                isSynthetic: true,
+                color: 'bg-green-100 text-green-800'
+              };
+              newModules.push(syntheticModule);
+              moduleIds.push(syntheticModule.id);
+              totalLibrary.modules.push(syntheticModule.id);
+              continue;
+            }
+          }
+
           const base: Module = {
             id: `${gene}-${uid()}`,
             name: gene,
@@ -190,7 +225,23 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
 
   return (
     <Card className="p-6">
-      <h2 className="text-lg font-semibold mb-4">2. Natural language libraries</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">2. Natural language libraries</h2>
+        <Dialog open={showImporter} onOpenChange={setShowImporter}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Upload className="h-4 w-4 mr-2" />
+              Import domains
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <SyntheticDomainImporter 
+              onDomainsImported={handleDomainsImported}
+              onClose={() => setShowImporter(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
       <div className="space-y-4">
         <div>
           <label className="text-sm font-medium text-muted-foreground mb-2 block">Describe the experiment</label>

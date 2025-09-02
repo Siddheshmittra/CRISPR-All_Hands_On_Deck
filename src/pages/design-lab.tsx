@@ -614,15 +614,7 @@ const DesignLab = () => {
                 setSelectedFolderId={setSelectedFolderId}
               />
               
-              <MultiCassetteSynthetic
-                folders={folders}
-                setFolders={setFolders}
-                customModules={customModules}
-                setCustomModules={setCustomModules}
-                onAddLibrary={handleAddLibrary}
-                setSelectedFolderId={setSelectedFolderId}
-                maxPerLibrary={30}
-              />
+              {/* Synthetic domains are now accessible via a lightweight button inside Natural Language libraries */}
               
               <LibraryViewer folders={folders} customModules={customModules} />
               <MultiCassetteSetup
