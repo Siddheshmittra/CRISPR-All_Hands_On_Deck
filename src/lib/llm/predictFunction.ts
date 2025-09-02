@@ -88,21 +88,22 @@ Ground your answer in the provided sources when possible and do not hallucinate 
     } catch {
       parsed = {};
     }
+    
+    const sentence = (parsed?.sentence || '').toString().trim();
+    const llmSources = Array.isArray(parsed?.sources) ? parsed.sources : [];
+    const mergedSources: PredictionSource[] = (llmSources.length > 0 ? llmSources : sources)
+      .filter((s: any) => s && s.title && s.url)
+      .slice(0, 5);
+
+    return {
+      sentence: sentence || 'No clear prediction available.',
+      sources: mergedSources,
+    };
+    
   } catch (error) {
     console.error('Predict error:', error);
     return { sentence: 'Prediction failed.', sources };
   }
-
-  const sentence = (parsed?.sentence || '').toString().trim();
-  const llmSources = Array.isArray(parsed?.sources) ? parsed.sources : [];
-  const mergedSources: PredictionSource[] = (llmSources.length > 0 ? llmSources : sources)
-    .filter((s: any) => s && s.title && s.url)
-    .slice(0, 5);
-
-  return {
-    sentence: sentence || 'No clear prediction available.',
-    sources: mergedSources,
-  };
 }
 
 
