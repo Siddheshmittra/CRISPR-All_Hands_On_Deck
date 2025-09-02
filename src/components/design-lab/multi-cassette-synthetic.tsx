@@ -109,13 +109,27 @@ export function MultiCassetteSynthetic(props: MultiCassetteSyntheticProps) {
             description: `${plan.type} ${gene} (planned: ${plan.name})`,
           };
 
-          const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { 
-            enforceTypeSource: true 
-          });
-          
-          newModules.push(enriched);
-          moduleIds.push(enriched.id);
-          totalLibrary.modules.push(enriched.id);
+          // Try strict enforcement first, then fallback
+          try {
+            const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { 
+              enforceTypeSource: true 
+            });
+            newModules.push(enriched);
+            moduleIds.push(enriched.id);
+            totalLibrary.modules.push(enriched.id);
+          } catch (strictError) {
+            // Fallback to Ensembl if specific database doesn't have the gene
+            try {
+              const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { 
+                enforceTypeSource: false 
+              });
+              newModules.push(enriched);
+              moduleIds.push(enriched.id);
+              totalLibrary.modules.push(enriched.id);
+            } catch (fallbackError) {
+              console.warn('Skipping gene without sequence', gene, fallbackError);
+            }
+          }
         } catch (e) {
           console.warn('Skipping gene without sequence', gene, e);
         }

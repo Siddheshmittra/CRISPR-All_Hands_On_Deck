@@ -53,9 +53,13 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
     const totalLibraryIndex = folders.findIndex(f => f.id === 'total-library');
     const totalLibrary = totalLibraryIndex >= 0 ? { ...folders[totalLibraryIndex] } : { id: 'total-library', name: 'Total Library', modules: [], open: true };
 
+    const skippedGenes: string[] = [];
+    const warnings: string[] = [];
+
     for (const plan of plans) {
       const folderId = `lib-${slugify(plan.name)}-${uid()}`;
       const moduleIds: string[] = [];
+      
       for (const gene of plan.geneSymbols) {
         try {
           const base: Module = {
@@ -64,17 +68,44 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
             type: plan.type,
             description: `${plan.type} ${gene} (planned: ${plan.name})`,
           }
-          // Enrich immediately with strict source rules for KD/KO
-          const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { enforceTypeSource: true });
-          newModules.push(enriched);
-          moduleIds.push(enriched.id);
-          totalLibrary.modules.push(enriched.id);
+          
+          // Try with strict source enforcement first
+          try {
+            const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { enforceTypeSource: true });
+            newModules.push(enriched);
+            moduleIds.push(enriched.id);
+            totalLibrary.modules.push(enriched.id);
+          } catch (strictError) {
+            // If strict enforcement fails, try with fallback to Ensembl
+            console.warn(`Strict source failed for ${gene}, trying fallback:`, strictError);
+            
+            try {
+              const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { enforceTypeSource: false });
+              newModules.push(enriched);
+              moduleIds.push(enriched.id);
+              totalLibrary.modules.push(enriched.id);
+              
+              // Track that this gene used fallback sequence
+              if (plan.type === 'knockdown') {
+                warnings.push(`${gene}: Using cDNA sequence (shRNA not available)`);
+              } else if (plan.type === 'knockout') {
+                warnings.push(`${gene}: Using cDNA sequence (gRNA not available)`);
+              }
+            } catch (fallbackError) {
+              console.error(`Both strict and fallback failed for ${gene}:`, fallbackError);
+              skippedGenes.push(`${gene} (${plan.type})`);
+            }
+          }
         } catch (e) {
-          // Skip genes without the correct type source
-          console.warn('Skipping planned gene without sequence', gene, e);
+          console.error(`Failed to process gene ${gene}:`, e);
+          skippedGenes.push(`${gene} (${plan.type})`);
         }
       }
-      newFolders.push({ id: folderId, name: plan.name, modules: moduleIds, open: true });
+      
+      // Only create folder if it has modules
+      if (moduleIds.length > 0) {
+        newFolders.push({ id: folderId, name: plan.name, modules: moduleIds, open: true });
+      }
     }
 
     // Commit to state
@@ -88,13 +119,34 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
     });
 
     // Add to library syntax with correct types
-    for (let i = 0; i < plans.length; i++) {
+    for (let i = 0; i < Math.min(plans.length, newFolders.length); i++) {
       const plan = plans[i];
-      const folderId = newFolders[i].id;
-      onAddLibrary(folderId, plan.type);
+      const folderId = newFolders[i]?.id;
+      if (folderId) {
+        onAddLibrary(folderId, plan.type);
+      }
     }
 
-    toast.success(`Added ${plans.length} libraries from plan`);
+    // Show comprehensive feedback
+    let message = `Added ${newFolders.length} libraries with ${newModules.length} modules`;
+    
+    if (warnings.length > 0) {
+      message += `\n⚠️ Using fallback sequences: ${warnings.length} genes`;
+      console.warn('Fallback sequences used:', warnings);
+    }
+    
+    if (skippedGenes.length > 0) {
+      message += `\n❌ Skipped: ${skippedGenes.join(', ')}`;
+      console.error('Skipped genes:', skippedGenes);
+    }
+    
+    if (skippedGenes.length > 0) {
+      toast.error(message);
+    } else if (warnings.length > 0) {
+      toast.warning(message);
+    } else {
+      toast.success(message);
+    }
   };
 
   return (

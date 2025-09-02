@@ -497,35 +497,6 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                           <Draggable key={library.id} draggableId={library.id} index={index}>
                             {(provided, snapshot) => (
                               <div className="flex items-center gap-2" ref={provided.innerRef} {...provided.draggableProps}>
-                                {/* Pre-decoration according to rules */}
-                                {(['overexpression','knockin'] as const).includes(library.type as any) && (
-                                  <>
-                                    <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">Intron</div>
-                                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                  </>
-                                )}
-                                {(['knockout','knockdown'] as const).includes(library.type as any) && (() => {
-                                  const firstKoKdIndex = orderedSyntax.findIndex(l => l.type === 'knockout' || l.type === 'knockdown');
-                                  const isFirstKoKd = index === firstKoKdIndex;
-                                  if (isFirstKoKd) {
-                                    return (
-                                      <>
-                                        <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">STOP</div>
-                                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                        <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">Triplex</div>
-                                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                        <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">Adaptor</div>
-                                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                      </>
-                                    );
-                                  }
-                                  return (
-                                    <>
-                                      <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">Adaptor</div>
-                                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                    </>
-                                  );
-                                })()}
                                 <div
                                   {...provided.dragHandleProps}
                                   className={`px-3 py-2 rounded-md text-sm font-medium cursor-move transition-all ${
@@ -553,13 +524,6 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                                     <X className="h-3 w-3" />
                                   </Button>
                                 </div>
-                                {/* Post-decoration according to rules */}
-                                {(['overexpression','knockin'] as const).includes(library.type as any) && (
-                                  <>
-                                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                    <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">T2A</div>
-                                  </>
-                                )}
                                 {/* Draw arrows between libraries */}
                                 {index < orderedSyntax.length - 1 && (
                                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -568,24 +532,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                             )}
                           </Draggable>
                         ))}
-                        {/* Global tail per rules 4 & 5 (suppressed if KI domains present) */}
-                        {orderedSyntax.length > 0 && (!orderedSyntax.some(l => l.type === 'knockin')) && (
-                          <>
-                            <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">IS-BCs</div>
-                            {(() => {
-                              const last = orderedSyntax[orderedSyntax.length - 1];
-                              if (last.type === 'knockout' || last.type === 'knockdown') {
-                                return (
-                                  <>
-                                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                    <div className="px-3 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium">polyA</div>
-                                  </>
-                                );
-                              }
-                              return null;
-                            })()}
-                          </>
-                        )}
+                        
                       </>
                     )}
                     {provided.placeholder}
