@@ -626,7 +626,13 @@ const DesignLab = () => {
               
               <LibraryViewer folders={folders} customModules={customModules} />
               <MultiCassetteSetup
-                onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
+                onAddCassettes={(cassettes) => {
+                  // Generate unique barcodes for each cassette in the batch
+                  cassettes.forEach(c => {
+                    const uniqueBarcode = nextBarcode()
+                    handleAddCassette(c, uniqueBarcode)
+                  })
+                }}
                 folders={folders}
                 customModules={customModules}
                 librarySyntax={librarySyntax}
@@ -685,7 +691,13 @@ const DesignLab = () => {
                         />
                         <ErrorBoundary>
                           <MultiCassetteSetup
-                            onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}
+                            onAddCassettes={(cassettes) => {
+                              // Generate unique barcodes for each cassette in the batch
+                              cassettes.forEach(c => {
+                                const uniqueBarcode = nextBarcode()
+                                handleAddCassette(c, uniqueBarcode)
+                              })
+                            }}
                             folders={folders}
                             customModules={customModules}
                             librarySyntax={librarySyntax}
