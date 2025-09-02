@@ -9,6 +9,7 @@ import { FinalConstruct } from "@/components/design-lab/final-construct"
 import { MultiCassetteSetup } from "@/components/design-lab/multi-cassette-dialog"
 import { NaturalLanguageMode } from "@/components/design-lab/natural-language-mode"
 import { MultiCassetteNatural } from "@/components/design-lab/multi-cassette-natural"
+import { MultiCassetteSynthetic } from "@/components/design-lab/multi-cassette-synthetic"
 import { NaturalLanguageInput } from "@/components/design-lab/NaturalLanguageInput"
 import { LibraryManager } from "@/components/design-lab/library-manager"
 import { Card } from "@/components/ui/card"
@@ -593,6 +594,17 @@ const DesignLab = () => {
                 onAddLibrary={handleAddLibrary}
                 setSelectedFolderId={setSelectedFolderId}
               />
+              
+              <MultiCassetteSynthetic
+                folders={folders}
+                setFolders={setFolders}
+                customModules={customModules}
+                setCustomModules={setCustomModules}
+                onAddLibrary={handleAddLibrary}
+                setSelectedFolderId={setSelectedFolderId}
+                maxPerLibrary={30}
+              />
+              
               <LibraryViewer folders={folders} customModules={customModules} />
               <MultiCassetteSetup
                 onAddCassettes={(cassettes) => cassettes.forEach(c => handleAddCassette(c))}

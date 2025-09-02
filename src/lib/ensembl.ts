@@ -388,6 +388,16 @@ export async function enrichModuleWithSequence(
   opts?: { base?: string; forceRefresh?: boolean; enforceTypeSource?: boolean }
 ): Promise<Module> {
   console.log(`[enrichModule] Starting enrichment for:`, module);
+  
+  // Handle synthetic modules - they already have sequences
+  if (module.isSynthetic && module.sequence) {
+    console.log(`[enrichModule] Synthetic module detected with existing sequence: ${module.name}`);
+    return {
+      ...module,
+      sequenceSource: undefined, // Mark as custom synthetic
+    };
+  }
+  
   try {
     if (module.type === 'knockdown') {
       console.log(`[enrichModule] Knockdown detected. Searching shRNA data for symbol: ${module.name}`);
