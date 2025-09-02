@@ -48,7 +48,10 @@ function getColorForType(type: string): string {
   return colors[type] || 'bg-gray-100 text-gray-800';
 }
 
-export async function dispatchEdits(edits: EditInstruction[]): Promise<{
+export async function dispatchEdits(
+  edits: EditInstruction[],
+  opts?: { enforceTypeSource?: boolean }
+): Promise<{
   modules: Module[];
   warnings: string[];
 }> {
@@ -59,9 +62,21 @@ export async function dispatchEdits(edits: EditInstruction[]): Promise<{
     warnings.push(`Skipped invalid gene symbols: ${invalid.join(', ')}`);
   }
 
-  // Sensitive warnings disabled per user preference
-
-  const modules = await Promise.all(valid.map(createModule));
+  // Create modules with sequence validation
+  const modules: Module[] = [];
+  for (const edit of valid) {
+    try {
+      const module = await createModule(edit);
+      const enriched = await enrichModuleWithSequence(module, { 
+        enforceTypeSource: opts?.enforceTypeSource 
+      });
+      modules.push(enriched);
+    } catch (error) {
+      if (error instanceof Error) {
+        warnings.push(`Failed to create module for ${edit.target}: ${error.message}`);
+      }
+    }
+  }
   
   return { modules, warnings };
 }

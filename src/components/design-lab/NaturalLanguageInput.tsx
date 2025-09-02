@@ -55,8 +55,8 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
         description: `${action} ${target}`
       }));
       
-      // Dispatch the edits to create modules
-      const { modules, warnings: editWarnings } = await dispatchEdits(instructions);
+      // Dispatch the edits to create modules with strict source validation
+      const { modules, warnings: editWarnings } = await dispatchEdits(instructions, { enforceTypeSource: true });
       
       if (editWarnings.length > 0) {
         setWarnings(editWarnings);
