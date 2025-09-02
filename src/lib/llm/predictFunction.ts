@@ -50,7 +50,9 @@ Ground your answer in the provided sources when possible and do not hallucinate 
     { role: 'user' as const, content: userContent },
   ];
 
-  const proxy = import.meta.env.VITE_LLM_PROXY_URL;
+  const rawProxy = (import.meta.env.VITE_LLM_PROXY_URL || '').trim();
+  const proxy = rawProxy ? (rawProxy.endsWith('/') ? rawProxy.slice(0, -1) : rawProxy) : '';
+  
   if (!proxy) {
     // Fallback: return minimal result with sources only
     return {
@@ -59,20 +61,36 @@ Ground your answer in the provided sources when possible and do not hallucinate 
     };
   }
 
-  const res = await fetch(`${proxy}/predict`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages }),
-  });
-  if (!res.ok) {
-    return { sentence: 'Prediction failed.', sources };
-  }
-  const data = await res.json();
-  let parsed: any = {};
   try {
-    parsed = JSON.parse(data?.content || '{}');
-  } catch {
-    parsed = {};
+    // Handle both absolute URLs and relative paths
+    const proxyUrl = proxy.startsWith('http') ? proxy : `${window.location.origin}${proxy}`;
+    console.log('Making predict request to:', `${proxyUrl}/predict`);
+    
+    const res = await fetch(`${proxyUrl}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
+    });
+    
+    if (!res.ok) {
+      let errorText = '';
+      try {
+        errorText = await res.text();
+      } catch {}
+      console.error('Predict proxy error:', { status: res.status, error: errorText });
+      return { sentence: 'Prediction failed.', sources };
+    }
+    
+    const data = await res.json();
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(data?.content || '{}');
+    } catch {
+      parsed = {};
+    }
+  } catch (error) {
+    console.error('Predict error:', error);
+    return { sentence: 'Prediction failed.', sources };
   }
 
   const sentence = (parsed?.sentence || '').toString().trim();

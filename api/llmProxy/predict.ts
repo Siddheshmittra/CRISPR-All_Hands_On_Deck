@@ -13,7 +13,10 @@ export default async function handler(req: Request): Promise<Response> {
 
   const apiKey = process.env.OAI_API_KEY;
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'Missing OAI_API_KEY' }), {
+    console.error('OAI_API_KEY environment variable is missing');
+    return new Response(JSON.stringify({ 
+      error: 'Missing OAI_API_KEY environment variable. Please configure it in Vercel project settings.' 
+    }), {
       status: 500,
       headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
     });
@@ -25,6 +28,8 @@ export default async function handler(req: Request): Promise<Response> {
       process.env.OPENAI_MODEL ||
       process.env.OAI_MODEL ||
       'gpt-4o-mini';
+    
+    console.log('Predict request:', { messagesCount: messages.length, model, timestamp: new Date().toISOString() });
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -41,7 +46,16 @@ export default async function handler(req: Request): Promise<Response> {
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
       const msg = json?.error?.message || res.statusText || 'OpenAI request failed';
-      return new Response(JSON.stringify({ error: msg }), {
+      console.error('OpenAI API error:', { 
+        status: res.status, 
+        error: msg, 
+        model, 
+        fullError: json?.error 
+      });
+      return new Response(JSON.stringify({ 
+        error: `OpenAI API error (${res.status}): ${msg}`,
+        details: json?.error || {}
+      }), {
         status: 500,
         headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
       });
@@ -52,7 +66,11 @@ export default async function handler(req: Request): Promise<Response> {
     });
   } catch (err: any) {
     const message = typeof err?.message === 'string' ? err.message : 'LLM call failed';
-    return new Response(JSON.stringify({ error: message }), {
+    console.error('Predict handler error:', { error: err, message, stack: err?.stack });
+    return new Response(JSON.stringify({ 
+      error: `Predict handler error: ${message}`,
+      type: 'handler_error'
+    }), {
       status: 500,
       headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
     });

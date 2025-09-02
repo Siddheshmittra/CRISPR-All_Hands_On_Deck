@@ -55,15 +55,33 @@ export async function parseInstructions(text: string): Promise<EditInstruction[]
     let content: string | undefined;
 
     if (proxy) {
-      const res = await fetch(`${proxy}/parse`, {
+      // Handle both absolute URLs and relative paths
+      const proxyUrl = proxy.startsWith('http') ? proxy : `${window.location.origin}${proxy}`;
+      console.log('Making request to:', `${proxyUrl}/parse`);
+      
+      const res = await fetch(`${proxyUrl}/parse`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages }),
       });
+      
       if (!res.ok) {
-        const errorText = await res.text().catch(() => '');
-        throw new Error(`Proxy call failed (${res.status}): ${errorText || res.statusText}`);
+        let errorText = '';
+        let errorData: any = {};
+        try {
+          const text = await res.text();
+          errorText = text;
+          // Try to parse as JSON for structured error
+          try {
+            errorData = JSON.parse(text);
+          } catch {}
+        } catch {}
+        
+        const errorMsg = errorData.error || errorText || res.statusText || 'Proxy call failed';
+        console.error('Proxy error:', { status: res.status, error: errorMsg, data: errorData });
+        throw new Error(`Proxy call failed (${res.status}): ${errorMsg}`);
       }
+      
       const data = await res.json();
       content = data.content;
     } else {

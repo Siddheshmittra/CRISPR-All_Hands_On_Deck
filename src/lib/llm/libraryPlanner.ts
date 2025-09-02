@@ -51,16 +51,37 @@ export async function planLibrariesFromPrompt(prompt: string, maxPerLibrary = 30
     },
   ];
 
-  const proxy = import.meta.env.VITE_LLM_PROXY_URL;
+  const rawProxy = (import.meta.env.VITE_LLM_PROXY_URL || '').trim();
+  const proxy = rawProxy ? (rawProxy.endsWith('/') ? rawProxy.slice(0, -1) : rawProxy) : '';
   let contentStr: string | undefined;
 
   if (proxy) {
-    const res = await fetch(`${proxy}/plan`, {
+    // Handle both absolute URLs and relative paths
+    const proxyUrl = proxy.startsWith('http') ? proxy : `${window.location.origin}${proxy}`;
+    console.log('Making plan request to:', `${proxyUrl}/plan`);
+    
+    const res = await fetch(`${proxyUrl}/plan`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages }),
     });
-    if (!res.ok) throw new Error('Proxy call failed');
+    
+    if (!res.ok) {
+      let errorText = '';
+      let errorData: any = {};
+      try {
+        const text = await res.text();
+        errorText = text;
+        try {
+          errorData = JSON.parse(text);
+        } catch {}
+      } catch {}
+      
+      const errorMsg = errorData.error || errorText || res.statusText || 'Plan proxy call failed';
+      console.error('Plan proxy error:', { status: res.status, error: errorMsg, data: errorData });
+      throw new Error(`Proxy call failed (${res.status}): ${errorMsg}`);
+    }
+    
     const data = await res.json();
     contentStr = data.content || '{}';
   } else {

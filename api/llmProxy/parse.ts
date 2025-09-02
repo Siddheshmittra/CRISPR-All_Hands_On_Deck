@@ -14,7 +14,10 @@ export default async function handler(req: Request): Promise<Response> {
 
   const apiKey = process.env.OAI_API_KEY;
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'Missing OAI_API_KEY' }), {
+    console.error('OAI_API_KEY environment variable is missing');
+    return new Response(JSON.stringify({ 
+      error: 'Missing OAI_API_KEY environment variable. Please configure it in Vercel project settings.' 
+    }), {
       status: 500,
       headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
     });
@@ -26,6 +29,8 @@ export default async function handler(req: Request): Promise<Response> {
       process.env.OPENAI_MODEL ||
       process.env.OAI_MODEL ||
       'gpt-4o-mini';
+    
+    console.log('Parse request:', { messagesCount: messages.length, model, timestamp: new Date().toISOString() });
     const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -42,7 +47,16 @@ export default async function handler(req: Request): Promise<Response> {
     const json = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
       const msg = json?.error?.message || upstream.statusText || 'OpenAI request failed';
-      const payload = JSON.stringify({ error: msg });
+      console.error('OpenAI API error:', { 
+        status: upstream.status, 
+        error: msg, 
+        model, 
+        fullError: json?.error 
+      });
+      const payload = JSON.stringify({ 
+        error: `OpenAI API error (${upstream.status}): ${msg}`,
+        details: json?.error || {}
+      });
       return new Response(payload, { status: 500, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
     }
     const content = json?.choices?.[0]?.message?.content || '{}';
@@ -50,7 +64,11 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(payload, { headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
   } catch (err: any) {
     const message = typeof err?.message === 'string' ? err.message : 'LLM call failed';
-    const payload = JSON.stringify({ error: message });
+    console.error('Parse handler error:', { error: err, message, stack: err?.stack });
+    const payload = JSON.stringify({ 
+      error: `Parse handler error: ${message}`,
+      type: 'handler_error'
+    });
     return new Response(payload, { status: 500, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
   }
 }
