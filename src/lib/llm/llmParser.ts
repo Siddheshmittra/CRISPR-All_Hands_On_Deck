@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 
 function createOpenAI(): OpenAI | null {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY || import.meta.env.VITE_OAI_API_KEY;
   if (!apiKey) return null;
   return new OpenAI({
     apiKey,

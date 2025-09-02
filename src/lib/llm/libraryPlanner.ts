@@ -12,7 +12,7 @@ export interface PlannedLibrary {
 }
 
 function createOpenAI(): OpenAI | null {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY || import.meta.env.VITE_OAI_API_KEY;
   if (!apiKey) return null;
   return new OpenAI({
     apiKey,
@@ -59,6 +59,7 @@ export async function planLibrariesFromPrompt(prompt: string, maxPerLibrary = 30
     // Handle both absolute URLs and relative paths
     const proxyUrl = proxy.startsWith('http') ? proxy : `${window.location.origin}${proxy}`;
     console.log('Making plan request to:', `${proxyUrl}/plan`);
+    console.log('Request payload:', { messages });
     
     const res = await fetch(`${proxyUrl}/plan`, {
       method: 'POST',
@@ -83,6 +84,7 @@ export async function planLibrariesFromPrompt(prompt: string, maxPerLibrary = 30
     }
     
     const data = await res.json();
+    console.log('Proxy response:', data);
     contentStr = data.content || '{}';
   } else {
     const client = createOpenAI();
@@ -96,10 +98,13 @@ export async function planLibrariesFromPrompt(prompt: string, maxPerLibrary = 30
     contentStr = completion.choices?.[0]?.message?.content || '{}';
   }
   const content = contentStr || '{}';
+  console.log('Raw LLM response content:', content);
   let parsed: any;
   try {
     parsed = JSON.parse(content);
+    console.log('Parsed LLM response:', parsed);
   } catch (e) {
+    console.error('Failed to parse LLM response as JSON:', content);
     throw new Error('Invalid JSON from LLM when planning libraries');
   }
 
@@ -117,6 +122,7 @@ export async function planLibrariesFromPrompt(prompt: string, maxPerLibrary = 30
   });
 
   const safe = schema.parse(parsed);
+  console.log('Schema validation passed:', safe);
 
   // Normalize, validate symbols, enforce cap, ensure uniqueness within each library
   const plans: PlannedLibrary[] = safe.libraries.map((lib: any) => {
@@ -144,7 +150,9 @@ export async function planLibrariesFromPrompt(prompt: string, maxPerLibrary = 30
     } as PlannedLibrary;
   });
 
-  return plans.filter((p) => p.geneSymbols.length > 0);
+  const finalPlans = plans.filter((p) => p.geneSymbols.length > 0);
+  console.log('Final library plans:', finalPlans);
+  return finalPlans;
 }
 
 

@@ -28,14 +28,18 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
     setIsThinking(true);
     setPlans(null);
     try {
+      console.log('Planning libraries for prompt:', prompt);
       const result = await planLibrariesFromPrompt(prompt, maxPerLibrary);
+      console.log('Library planning result:', result);
       setPlans(result);
       if (result.length === 0) {
-        toast.message('No actionable libraries found from the prompt');
+        toast.message('No actionable libraries found from the prompt. Try being more specific about gene types or functions.');
+      } else {
+        toast.success(`Found ${result.length} library plan(s)`);
       }
     } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || 'Failed to plan libraries');
+      console.error('Library planning error:', e);
+      toast.error(e?.message || 'Failed to plan libraries. Check your API configuration.');
     } finally {
       setIsThinking(false);
     }
@@ -67,6 +71,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
             name: gene,
             type: plan.type,
             description: `${plan.type} ${gene} (planned: ${plan.name})`,
+            sequence: '',
           }
           
           // Try with strict source enforcement first
