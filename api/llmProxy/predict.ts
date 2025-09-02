@@ -1,5 +1,3 @@
-// Use Edge runtime with Web Fetch API-compatible Request/Response
-
 export const config = { runtime: 'edge' } as const;
 
 export default async function handler(req: Request): Promise<Response> {

@@ -1,12 +1,11 @@
-// Use Edge runtime with Web Fetch API-compatible Request/Response
-
+// Edge runtime only to avoid Node-specific response handling
 export const config = { runtime: 'edge' } as const;
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders() });
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: corsHeaders() });
 
-  let body: any;
+  let body: any = undefined;
   try {
     body = await req.json();
   } catch {
@@ -27,7 +26,7 @@ export default async function handler(req: Request): Promise<Response> {
       process.env.OPENAI_MODEL ||
       process.env.OAI_MODEL ||
       'gpt-4o-mini';
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -40,24 +39,19 @@ export default async function handler(req: Request): Promise<Response> {
         messages
       })
     });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const msg = json?.error?.message || res.statusText || 'OpenAI request failed';
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 500,
-        headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
-      });
+    const json = await upstream.json().catch(() => ({}));
+    if (!upstream.ok) {
+      const msg = json?.error?.message || upstream.statusText || 'OpenAI request failed';
+      const payload = JSON.stringify({ error: msg });
+      return new Response(payload, { status: 500, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
     }
     const content = json?.choices?.[0]?.message?.content || '{}';
-    return new Response(JSON.stringify({ content }), {
-      headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
-    });
+    const payload = JSON.stringify({ content });
+    return new Response(payload, { headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
   } catch (err: any) {
     const message = typeof err?.message === 'string' ? err.message : 'LLM call failed';
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
-    });
+    const payload = JSON.stringify({ error: message });
+    return new Response(payload, { status: 500, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
   }
 }
 
