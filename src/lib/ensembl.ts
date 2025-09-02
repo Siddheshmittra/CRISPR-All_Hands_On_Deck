@@ -404,9 +404,13 @@ export async function enrichModuleWithSequence(
         };
       } else {
         console.warn(`[enrichModule] shRNA sequence not found for knockdown module: ${module.name}.`);
-        if (opts?.enforceTypeSource) {
-          // Enforce source: do not fall back to Ensembl for knockdown if strict mode
-          throw new Error(`shRNA sequence not found for ${module.name}`);
+        
+        // Check if gene is available for knockout instead
+        const gRNARecord = gRNAData.find(record => record.geneSymbol?.trim().toUpperCase() === module.name?.trim().toUpperCase());
+        if (gRNARecord && opts?.enforceTypeSource) {
+          throw new Error(`shRNA sequence not found for ${module.name}. However, ${module.name} is available for knockout. Try "knockout ${module.name}" instead.`);
+        } else if (opts?.enforceTypeSource) {
+          throw new Error(`shRNA sequence not found for ${module.name}. This gene is not available for knockdown.`);
         }
         // Otherwise, fall through to Ensembl
       }
@@ -425,9 +429,13 @@ export async function enrichModuleWithSequence(
         };
       } else {
         console.warn(`[enrichModule] gRNA sequence not found for knockout module: ${module.name}.`);
-        if (opts?.enforceTypeSource) {
-          // Enforce source: do not fall back to Ensembl for knockout if strict mode
-          throw new Error(`gRNA sequence not found for ${module.name}`);
+        
+        // Check if gene is available for knockdown instead
+        const shRNARecord = shRNAData.find(record => record['Symbol']?.trim().toUpperCase() === module.name?.trim().toUpperCase());
+        if (shRNARecord && opts?.enforceTypeSource) {
+          throw new Error(`gRNA sequence not found for ${module.name}. However, ${module.name} is available for knockdown. Try "knockdown ${module.name}" instead.`);
+        } else if (opts?.enforceTypeSource) {
+          throw new Error(`gRNA sequence not found for ${module.name}. This gene is not available for knockout.`);
         }
         // Otherwise, fall through to Ensembl
       }
