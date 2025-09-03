@@ -9,6 +9,7 @@ export interface PlannedLibrary {
   type: LibraryPlanType;
   criteria?: string;
   geneSymbols: string[];
+  sources?: Array<{ title: string; url: string }>;
 }
 
 function createOpenAI(): OpenAI | null {
@@ -29,6 +30,7 @@ Output: A JSON object with key "libraries" that is an array. Each element descri
 - type: one of [overexpression, knockdown, knockout, knockin]
 - criteria: a one-line description of how genes were selected
 - gene_symbols: up to MAX_PER_LIBRARY unique human gene symbols (HGNC approved uppercase) best matching the intent, avoid duplicates, avoid non-gene tokens.
+ - sources: array of 1-3 reputable scientific sources (objects with title and url) that support the selection criteria; prefer reviews or foundational papers.
 
 Rules:
 - Stay strictly within human genes (HGNC symbols). Uppercase preferred.
@@ -116,6 +118,12 @@ export async function planLibrariesFromPrompt(prompt: string, maxPerLibrary = 30
           type: z.enum(['overexpression', 'knockdown', 'knockout', 'knockin']),
           criteria: z.string().optional(),
           gene_symbols: z.array(z.string()).default([]),
+          sources: z
+            .array(z.object({
+              title: z.string().min(1),
+              url: z.string().url(),
+            }))
+            .default([]),
         })
       )
       .default([]),
@@ -147,6 +155,7 @@ export async function planLibrariesFromPrompt(prompt: string, maxPerLibrary = 30
       type: lib.type,
       criteria: lib.criteria,
       geneSymbols: cleaned.slice(0, maxPerLibrary),
+      sources: lib.sources?.slice(0, 5) || [],
     } as PlannedLibrary;
   });
 

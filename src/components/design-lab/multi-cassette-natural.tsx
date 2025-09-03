@@ -279,8 +279,21 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
               <ul className="list-disc pl-5 space-y-1">
                 {plans.map((p) => (
                   <li key={p.name}>
-                    <span className="font-medium">{p.name}</span> — {p.type} — {p.geneSymbols.length} genes
-                    {p.criteria ? <span className="ml-1 italic">({p.criteria})</span> : null}
+                    <div>
+                      <span className="font-medium">{p.name}</span> — {p.type} — {p.geneSymbols.length} genes
+                      {p.criteria ? <span className="ml-1 italic">({p.criteria})</span> : null}
+                    </div>
+                    {p.sources && p.sources.length > 0 && (
+                      <ul className="list-disc pl-5 space-y-0.5 mt-1">
+                        {p.sources.map((s, i) => (
+                          <li key={i}>
+                            <a href={s.url} target="_blank" rel="noreferrer" className="underline">
+                              {s.title}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 ))}
               </ul>
