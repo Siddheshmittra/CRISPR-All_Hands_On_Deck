@@ -164,19 +164,16 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
     }
   }
 
-  // 2A self-cleaving peptide sequences
+  // 2A self-cleaving peptide coding DNA sequences
+  // Standard codon choices; aligns with other T2A usages in the app
   const TWO_A_SEQUENCES = {
-    P2A: 'ATNFSLLKQAGDVEENPGP',
-    T2A: 'EGRGSLLTCGDVEENPGP',
-    E2A: 'QCTNYALLKLAGDVESNPGP',
-    F2A: 'VKQTLNFDLLKLAGDVESNPGP'
+    P2A: 'GCCACCAACTTCTCCCTGCTGAAGCAGGCTGGTGACGTCGAGGAGAACCCTGGGCCC',
+    T2A: 'GAAGGAAGAGGAAGCCTTCTCACATGCGGAGATGTGGAAGAGAATCCTGGACCA',
+    E2A: 'CAGTGCAACTACGCCCTGCTGAAGCTGGCGGACGTCGAGTCCAACCCTGGGCCT',
+    F2A: 'GTTAAGCAGACCCTGAACTTCGACCTGCTGAAGCTGGCGGACGTCGAGTCCAACCCTGGGCCT'
   }
 
-  const dnaToAminoAcid = (dna: string): string => {
-    // Simple DNA to AA translation (simplified - in a real app, use a proper translation function)
-    // This is just a placeholder
-    return dna
-  }
+  // Note: sequences above are already DNA; no translation required
 
   const handleSyntheticGeneSelect = (gene: SyntheticGene, options?: { add2ASequence?: boolean, twoAType?: string }) => {
     if (constructModules.length >= 5) {
