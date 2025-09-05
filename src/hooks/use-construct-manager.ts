@@ -7,7 +7,7 @@ export type ConstructItem = Module | { id: string; type: 'linker'; name: string,
 export function useConstructManager(initialModules: Module[] = []) {
   const [constructModules, setConstructModules] = useState<Module[]>(initialModules)
   const [autoLink, setAutoLink] = useState(true)
-  const [selectedLinkerId, setSelectedLinkerId] = useState('p2a')
+  // Linker selection removed; default to T2A
 
   const constructWithLinkers = useMemo((): ConstructItem[] => {
     // If auto-linking is disabled or there are no modules, just return the raw list
@@ -28,7 +28,7 @@ export function useConstructManager(initialModules: Module[] = []) {
       sequence,
     })
 
-    // Pre-fetch T2A sequence (if available)
+    // Default to T2A; other 2A options removed from UI
     const t2aSeq = linkerOptions.find(l => l.id === 't2a')?.sequence ?? ""
 
     const result: ConstructItem[] = []
@@ -77,8 +77,6 @@ export function useConstructManager(initialModules: Module[] = []) {
     setConstructModules,
     autoLink,
     setAutoLink,
-    selectedLinkerId,
-    setSelectedLinkerId,
     constructWithLinkers,
   }
 } 

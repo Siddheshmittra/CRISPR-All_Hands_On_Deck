@@ -13,6 +13,7 @@ import { toast } from "sonner"
 
 import { ConstructItem, Module, AnnotatedSegment } from "@/lib/types"
 import { SequenceViewer } from "./sequence-viewer"
+import { validateBarcode } from "@/lib/barcode-utils"
 
 interface FinalConstructProps {
   constructModules: ConstructItem[]
@@ -293,6 +294,13 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
               onChange={(e) => {
                 const v = e.target.value.trim().toUpperCase()
                 setBarcode(v)
+                // Validate format first
+                const { isValid, message } = validateBarcode(v)
+                if (!isValid) {
+                  setBarcodeError(message)
+                  return
+                }
+                // Then check duplicates if in internal mode
                 if (barcodeMode === 'internal' && isBarcodeTaken && v) {
                   if (isBarcodeTaken(v)) setBarcodeError('Barcode already in use (Internal mode)')
                   else setBarcodeError('')
@@ -308,10 +316,17 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
               variant="outline"
               size="sm"
               onClick={() => {
+                const { isValid, message } = validateBarcode(barcode)
+                if (!isValid) {
+                  setBarcodeError(message)
+                  toast.error(message)
+                  return
+                }
                 const integrated = integrateBarcodeIntoSegments(generateAnnotatedSequence(), barcode)
                 setIntegratedSegments(integrated)
                 toast.success('Integrated barcode into sequence preview')
               }}
+              disabled={!!barcodeError}
             >
               Integrate
             </Button>

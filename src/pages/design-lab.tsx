@@ -42,8 +42,6 @@ const DesignLab = () => {
     setConstructModules,
     autoLink,
     setAutoLink,
-    selectedLinkerId,
-    setSelectedLinkerId,
     constructWithLinkers,
   } = useConstructManager([])
   // Removed explicit cassette count; all combinations will be generated

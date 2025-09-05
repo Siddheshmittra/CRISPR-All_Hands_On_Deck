@@ -127,19 +127,26 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
         <div className="space-y-4">
           <div className="rounded-md border p-4">
             <h4 className="mb-3 text-sm font-medium">Preview</h4>
-            <ul className="space-y-2">
-              {preview.map((item, index) => (
-                <li key={index} className="flex items-center justify-between">
-                  <span className="capitalize">
-                    <span className="font-medium">{item.action}</span> <code>{item.target}</code>
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {preview.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No directly actionable edits were detected from this prompt. If you want to try
+                more complex or multi‑gene requests, try the Multi‑Cassette natural language mode.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {preview.map((item, index) => (
+                  <li key={index} className="flex items-center justify-between">
+                    <span className="capitalize">
+                      <span className="font-medium">{item.action}</span> <code>{item.target}</code>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           
           <div className="flex justify-end">
-            <Button onClick={handleConfirm} disabled={isLoading}>
+            <Button onClick={handleConfirm} disabled={isLoading || preview.length === 0}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
