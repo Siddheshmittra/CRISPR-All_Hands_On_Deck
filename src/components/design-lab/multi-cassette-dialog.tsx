@@ -421,7 +421,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
       <DragDropContext onDragEnd={handleDragEnd}>
         <Card className="p-6 mb-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">2. Syntax</h3>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">3. Syntax</h3>
             {isGenerating && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="inline-block h-2 w-2 rounded-full bg-primary animate-pulse"></span>

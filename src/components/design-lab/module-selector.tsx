@@ -751,7 +751,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         </div>
       )}
       <Card className="p-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">1. Desired Genetic Libraries</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">1. Desired Genetic Perturbations (Libraries)</h2>
       
       {/* Unified Gene Search */}
       <div className="mb-4">

@@ -716,7 +716,7 @@ const DesignLab = () => {
                 {/* 3. Encoding box */}
                 {cassetteMode !== 'multi' && (
                   <Card className="p-6">
-                    <h2 className="text-lg font-semibold mb-2">3. Encoding</h2>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">3. Encoding</h2>
                     {constructWithLinkers.length > 0 ? (
                       <p className="text-sm font-mono break-all">
                         {constructWithLinkers.map((item: any) => {
