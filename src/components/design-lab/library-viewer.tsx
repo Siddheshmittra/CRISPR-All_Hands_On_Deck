@@ -25,7 +25,7 @@ export function LibraryViewer({ folders, customModules, showTotal = false }: Lib
 
   return (
     <Card className="p-6">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">2. Planned Libraries</h2>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Planned Libraries</h2>
       <div className="space-y-2">
         {visibleFolders.map((folder) => {
           const isOpen = openIds[folder.id] ?? true
