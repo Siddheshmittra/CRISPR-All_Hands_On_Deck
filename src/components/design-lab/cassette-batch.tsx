@@ -478,7 +478,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
     <Card className="p-6 mt-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-semibold">3. Encoding</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">3. Encoding</h2>
           {cassetteBatch.length > CASSETTES_PER_PAGE && (
             <p className="text-sm text-muted-foreground">
               Showing {startIndex + 1}-{Math.min(endIndex, cassetteBatch.length)} of {cassetteBatch.length} cassettes

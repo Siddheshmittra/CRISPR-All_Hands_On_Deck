@@ -179,7 +179,7 @@ export function MultiCassetteSynthetic(props: MultiCassetteSyntheticProps) {
 
   return (
     <Card className="p-6">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">3. Natural Language + Synthetic Domains</h2>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">1. Desired Genetic Perturbations (Libraries)</h2>
       
       <div className="space-y-4">
         {/* Synthetic Domains Management */}

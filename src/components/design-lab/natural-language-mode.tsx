@@ -74,7 +74,7 @@ export const NaturalLanguageMode = ({ onSuggestedConstruct }: NaturalLanguageMod
 
   return (
     <Card className="p-6">
-      <h2 className="text-lg font-semibold mb-4">2. Natural Language Design</h2>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">2. Natural Language Design</h2>
       
       <div className="space-y-4">
         <div>

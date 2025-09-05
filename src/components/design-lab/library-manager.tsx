@@ -124,7 +124,7 @@ export const LibraryManager = ({ customModules, onCustomModulesChange, construct
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Library Manager</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Library Manager</h2>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleImportLibrary}>
             <Upload className="h-4 w-4 mr-2" />
