@@ -92,9 +92,6 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
             disabled={isLoading}
             className="min-h-[100px]"
           />
-          <p className="text-xs text-muted-foreground">
-            Describe the genetic modifications you want to make using natural language.
-          </p>
         </div>
         
         <div className="flex justify-end space-x-2">
