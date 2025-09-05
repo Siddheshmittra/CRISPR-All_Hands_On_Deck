@@ -111,6 +111,21 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     setActiveFolderId(id)
   }
 
+  const getSelectedTypeColorClass = (type: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => {
+    switch (type) {
+      case 'overexpression':
+        return 'bg-[hsl(66,70%,47%)] text-white border-transparent';
+      case 'knockout':
+        return 'bg-[hsl(13,95%,59%)] text-white border-transparent';
+      case 'knockdown':
+        return 'bg-[hsl(32,75%,49%)] text-white border-transparent';
+      case 'knockin':
+        return 'bg-[hsl(220,35%,65%)] text-foreground border-transparent';
+      default:
+        return '';
+    }
+  }
+
   const handleBenchlingLink = async () => {
     const baseUrl = window.prompt('Benchling API base URL (e.g., https://your-tenant.benchling.com/api)') || ''
     const token = window.prompt('Benchling API token (X-Benchling-API-Token)') || ''
@@ -736,7 +751,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         </div>
       )}
       <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">1. Desired Genetic Libraries</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">1. Desired Genetic Libraries</h2>
       
       {/* Unified Gene Search */}
       <div className="mb-4">
@@ -753,14 +768,14 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             ))}
           </select>
         </div>
-        <div className="relative">
+        <div className={`relative rounded-md border ${getSelectedTypeColorClass(selectedType) ? 'border-transparent' : 'border-border'} overflow-hidden`}>
           <UnifiedGeneSearch
             onModuleAdd={handleUnifiedModuleAdd}
             placeholder="Search or enter gene symbol..."
             showSelectedModules={false}
             showTypeButtons={false}
             defaultType={selectedType}
-            className=""
+            className={`transition-colors ${getSelectedTypeColorClass(selectedType)}`}
             disabled={addingModule}
           />
           {addingModule && (

@@ -226,7 +226,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">2. Natural language libraries</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">2. Natural language libraries</h2>
         <Dialog open={showImporter} onOpenChange={setShowImporter}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">

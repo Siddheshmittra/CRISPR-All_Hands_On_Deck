@@ -42,7 +42,7 @@ export const ConstructLayout = ({
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">2. Syntax</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">2. Syntax</h2>
         <div className="flex gap-2">
 <Button variant="outline" size="sm" onClick={onReset}>
             <RotateCcw className="h-4 w-4 mr-2" />
