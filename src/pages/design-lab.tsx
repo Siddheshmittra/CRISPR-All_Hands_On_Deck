@@ -793,7 +793,7 @@ const DesignLab = () => {
             
             {/* 4. Predicted Function / Predicted Cellular Program */}
             <Card className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">4. Predicted Function / Predicted Cellular Program</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">5. Predicted Function / Predicted Cellular Program</h2>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="text-sm">
