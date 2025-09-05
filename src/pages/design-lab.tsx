@@ -736,7 +736,7 @@ const DesignLab = () => {
                   </Card>
                 )}
                 
-                {inputMode === 'manual' && (
+                {inputMode === 'manual' && cassetteMode === 'multi' && (
                   <>
                     {/* Linker selector removed per request */}
                     <CassetteBatch 
