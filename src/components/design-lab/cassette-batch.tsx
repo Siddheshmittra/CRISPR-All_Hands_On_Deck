@@ -85,7 +85,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
 
   const handleCopySequence = async (cassette: Cassette) => {
     try {
-      const segments = await generateAnnotatedSequence(cassette.modules)
+      const segments = await generateAnnotatedSequence(cassette.modules, extractBarcodeSequence(cassette.barcode))
       const sequence = segments.map(s => s.sequence).join('')
       await navigator.clipboard.writeText(sequence)
       toast.success('Nucleotide sequence copied to clipboard')
@@ -97,7 +97,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
 
   const handleExportGenbankCassette = async (cassette: Cassette) => {
     try {
-      const segments = await generateAnnotatedSequence(cassette.modules)
+      const segments = await generateAnnotatedSequence(cassette.modules, extractBarcodeSequence(cassette.barcode))
       const nameBase = cassette.modules.length > 0 ? cassette.modules.map(m => `${m.name || 'Unnamed'}[${m.type}]`).join('_') : cassette.id
       const gb = generateGenbank((nameBase || 'CASSETTE').toUpperCase(), segments, {})
       const blob = new Blob([gb], { type: 'text/plain' })
@@ -139,7 +139,27 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
     setBarcodeError('')
   }
 
-  const generateAnnotatedSequence = async (rawModules: Module[]): Promise<AnnotatedSegment[]> => {
+  const extractBarcodeSequence = (value?: string): string | undefined => {
+    if (!value) return undefined
+    if (value.includes('|')) {
+      const parts = value.split('|')
+      if (parts.length === 2 && /^[0-9]+$/.test(parts[0])) return parts[1]
+    }
+    return value
+  }
+
+  const integrateBarcode = (placeholder: string, bc?: string): string => {
+    if (!bc || !/^[ACGT]+$/i.test(bc)) return placeholder
+    const bcUpper = bc.toUpperCase()
+    const nMatch = placeholder.match(/^N+/i)
+    const tail = placeholder.slice(nMatch ? nMatch[0].length : 0)
+    const tailUpper = tail.toUpperCase()
+    const endsWithAGCG = bcUpper.endsWith('AGCG')
+    const adjustedTail = endsWithAGCG && tailUpper.startsWith('AGCG') ? tail.slice(4) : tail
+    return bcUpper + adjustedTail
+  }
+
+  const generateAnnotatedSequence = async (rawModules: Module[], barcode?: string): Promise<AnnotatedSegment[]> => {
     // Apply library‐specific cassette syntax rules.
     // 1. Re-order so all OE/KI come before KO/KD
     const early = rawModules.filter(m => m.type === 'overexpression' || m.type === 'knockin');
@@ -235,7 +255,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
         });
         segments.push({
           name: 'Barcodes',
-          sequence: 'NNNNNNNNNNNAGCG',
+          sequence: integrateBarcode('NNNNNNNNNNNAGCG', barcode),
           type: 'hardcoded'
         });
       }
@@ -250,7 +270,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
         });
         segments.push({
           name: 'Barcodes',
-          sequence: 'NNNNNNNNNNNAGCG',
+          sequence: integrateBarcode('NNNNNNNNNNNAGCG', barcode),
           type: 'hardcoded'
         });
       }
@@ -669,7 +689,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
                 {expandedCassetteId === cassette.id && (
                   <div className="mt-2">
                     {cassetteSegments[cassette.id] ? (
-                      <SequenceViewer segments={cassetteSegments[cassette.id]} />
+                      <SequenceViewer segments={cassetteSegments[cassette.id].map(seg => seg.name === 'Barcodes' ? { ...seg, sequence: integrateBarcode(seg.sequence, extractBarcodeSequence(cassette.barcode)) } : seg)} />
                     ) : (
                       <div className="text-sm text-muted-foreground">Loading sequence with correct perturbation types...</div>
                     )}

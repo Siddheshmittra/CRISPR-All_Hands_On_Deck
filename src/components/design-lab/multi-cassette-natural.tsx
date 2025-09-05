@@ -31,6 +31,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
   const [isPredicting, setIsPredicting] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
   const [syntheticDomains, setSyntheticDomains] = useState<SyntheticGene[]>([]);
+  const [isApplying, setIsApplying] = useState(false);
   const handleDomainsImported = (domains: SyntheticGene[]) => {
     setSyntheticDomains(prev => [...prev, ...domains]);
     setShowImporter(false);
@@ -63,7 +64,8 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
   const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
   const applyPlans = async () => {
-    if (!plans || plans.length === 0) return;
+    if (!plans || plans.length === 0 || isApplying) return;
+    setIsApplying(true);
 
     // Build new modules and folders; also add to Total Library
     const newModules: Module[] = [];
@@ -191,6 +193,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
     } else {
       toast.success(message);
     }
+    setIsApplying(false);
   };
 
   const handlePredict = async () => {
@@ -266,8 +269,15 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
               </>
             )}
           </Button>
-          <Button variant="outline" disabled={!plans || plans.length === 0} onClick={applyPlans}>
-            Apply to Workspace
+          <Button variant="outline" disabled={!plans || plans.length === 0 || isApplying} onClick={applyPlans} className="min-w-[180px]">
+            {isApplying ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Adding...
+              </>
+            ) : (
+              'Apply to Workspace'
+            )}
           </Button>
         </div>
 
