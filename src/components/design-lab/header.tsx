@@ -1,4 +1,4 @@
-import { FlaskConical, Dna } from "lucide-react"
+import { Dna } from "lucide-react"
 
 export const Header = () => {
   return (
@@ -30,7 +30,6 @@ export const Header = () => {
                 </p>
               </div>
               <div className="flex items-center gap-2 text-gray-400">
-                <FlaskConical className="h-8 w-8" />
                 <Dna className="h-8 w-8" />
               </div>
             </div>
