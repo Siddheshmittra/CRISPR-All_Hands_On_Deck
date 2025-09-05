@@ -403,13 +403,18 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
       return;
     }
 
-    // Reorder the libraries
-    const newLibrarySyntax = Array.from(librarySyntax);
-    const [removed] = newLibrarySyntax.splice(source.index, 1);
-    newLibrarySyntax.splice(destination.index, 0, removed);
-    
-    // Update the parent component with the new order
-    onReorderLibraries(newLibrarySyntax);
+    // Reorder using the displayed order (orderedSyntax) to avoid index mismatches
+    const displayList = Array.from(orderedSyntax);
+    const moving = displayList[source.index];
+    if (!moving) return;
+    displayList.splice(source.index, 1);
+    displayList.splice(destination.index, 0, moving);
+
+    // Map back to original items by id, preserving updated display order
+    const byId = new Map(librarySyntax.map(it => [it.id, it] as const));
+    const reordered = displayList.map(d => byId.get(d.id)).filter(Boolean) as LibrarySyntax[];
+
+    onReorderLibraries(reordered);
   };
 
   // Natural language input removed for multi-cassette manual section
