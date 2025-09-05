@@ -768,14 +768,14 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             ))}
           </select>
         </div>
-        <div className={`relative rounded-md border ${getSelectedTypeColorClass(selectedType) ? 'border-transparent' : 'border-border'} overflow-hidden`}>
+        <div className="relative">
           <UnifiedGeneSearch
             onModuleAdd={handleUnifiedModuleAdd}
             placeholder="Search or enter gene symbol..."
             showSelectedModules={false}
             showTypeButtons={false}
             defaultType={selectedType}
-            className={`transition-colors ${getSelectedTypeColorClass(selectedType)}`}
+            className=""
             disabled={addingModule}
           />
           {addingModule && (
@@ -797,7 +797,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                     setShowSyntheticSelector(true)
                   }
                 }}
-                className="h-9 px-2 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+                className={`h-9 px-3 rounded-md text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary border ${getSelectedTypeColorClass(selectedType) || 'border-border bg-background'}`}
                 style={{ minWidth: 70 }}
               >
                 {typeOptions.map(opt => (
