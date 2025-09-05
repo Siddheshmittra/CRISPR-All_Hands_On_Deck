@@ -659,6 +659,7 @@ const DesignLab = () => {
           <DragDropContext onDragEnd={handleDragEnd}>
             <div className="flex flex-row gap-4 items-start">
               <div className="flex-1">
+                <div className="space-y-6">
                 {inputMode === 'manual' && (
                   <>
                     {cassetteMode === 'single' ? (
@@ -714,7 +715,7 @@ const DesignLab = () => {
 
                 {/* 3. Encoding box */}
                 {cassetteMode !== 'multi' && (
-                  <Card className="p-6 mt-4">
+                  <Card className="p-6">
                     <h2 className="text-lg font-semibold mb-2">3. Encoding</h2>
                     {constructWithLinkers.length > 0 ? (
                       <p className="text-sm font-mono break-all">
@@ -760,11 +761,13 @@ const DesignLab = () => {
                     />
                   </>
                 )}
+                </div>
               </div>
             </div>
           </DragDropContext>
           
           {cassetteMode === 'single' && (
+            <div className="space-y-6">
             <FinalConstruct 
               constructModules={constructWithLinkers}
               barcodeMode={barcodeMode}
@@ -787,10 +790,8 @@ const DesignLab = () => {
               }}
               isBarcodeTaken={(b) => !!cassetteBatch.find(c => c.barcode === b)}
             />
-          )}
-
-          {/* 5. Predicted Function / Predicted Cellular Program */}
-          {cassetteMode === 'single' && (
+            
+            {/* 5. Predicted Function / Predicted Cellular Program */}
             <Card className="p-6">
               <h2 className="text-lg font-semibold mb-2">5. Predicted Function / Predicted Cellular Program</h2>
               <div className="flex items-start justify-between gap-4">
@@ -840,6 +841,7 @@ const DesignLab = () => {
                 </div>
               </div>
             </Card>
+            </div>
           )}
         </div>
       </div>
