@@ -18,6 +18,7 @@ interface UnifiedGeneSearchProps {
   defaultType?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin'
   className?: string
   disabled?: boolean
+  hideInlineTypeToggle?: boolean
 }
 
 const typeOptions = [
@@ -37,13 +38,19 @@ export const UnifiedGeneSearch = ({
   showTypeButtons = true,
   defaultType = 'overexpression',
   className = "",
-  disabled = false
+  disabled = false,
+  hideInlineTypeToggle = false
 }: UnifiedGeneSearchProps) => {
   const [searchTerm, setSearchTerm] = useState("")
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedType, setSelectedType] = useState(defaultType)
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
+
+  // Keep internal selectedType in sync with parent-provided defaultType
+  useEffect(() => {
+    setSelectedType(defaultType)
+  }, [defaultType])
 
   // Gene search functionality using Ensembl (consistent with multi-cassette)
   const handleSearch = async (query: string) => {
@@ -112,7 +119,7 @@ export const UnifiedGeneSearch = ({
     <div className={`space-y-2 ${className} ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       {/* Search Interface */}
       <div className="flex gap-2">
-        {!showTypeButtons && (
+        {!showTypeButtons && !hideInlineTypeToggle && (
           <select
             value={selectedType}
             onChange={e => setSelectedType(e.target.value as any)}

@@ -789,6 +789,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             showSelectedModules={false}
             showTypeButtons={false}
             defaultType={selectedType}
+            hideInlineTypeToggle={true}
             className=""
             disabled={addingModule}
           />
@@ -824,8 +825,48 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           placeholder="New library name..."
           value={newFolderName}
           onChange={e => setNewFolderName(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              const name = newFolderName.trim()
+              if (!name) return
+              if (folders.some(f => f.name.toLowerCase() === name.toLowerCase())) {
+                toast.error('A library with this name already exists')
+                return
+              }
+              const newId = Date.now() + '-' + Math.random()
+              setFolders([
+                ...folders,
+                { id: newId, name, modules: [], open: true }
+              ])
+              setNewFolderName('')
+              setSelectedFolderId(newId)
+              toast.success(`Created library '${name}'`)
+            }
+          }}
           className="border border-border rounded px-2 py-1 text-sm"
         />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            const name = newFolderName.trim()
+            if (!name) return
+            if (folders.some(f => f.name.toLowerCase() === name.toLowerCase())) {
+              toast.error('A library with this name already exists')
+              return
+            }
+            const newId = Date.now() + '-' + Math.random()
+            setFolders([
+              ...folders,
+              { id: newId, name, modules: [], open: true }
+            ])
+            setNewFolderName('')
+            setSelectedFolderId(newId)
+            toast.success(`Created library '${name}'`)
+          }}
+        >
+          Create
+        </Button>
       </div>
       {/* Folder/Library display */}
       <div className="mb-4 relative">
