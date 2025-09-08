@@ -72,8 +72,8 @@ export const ConstructLayout = ({
               >
                 {constructModules.length === 0 ? (
                   <div className="w-full text-center text-muted-foreground pointer-events-none select-none">
-                     <p>Arrange OE/KI / KO / KD elements to define cassette syntax</p>
-                    <p className="text-sm mt-1">Maximum 5 perturbations</p>
+                     <p>Arrange OE / KI / KO / KD perturbation modules to define cassette syntax</p>
+                    <p className="text-sm mt-1">Maximum 5 perturbations!</p>
                   </div>
                 ) : (
                   (() => {

@@ -8,9 +8,10 @@ interface LibraryViewerProps {
   folders: Array<{ id: string; name: string; modules: string[]; open?: boolean }>
   customModules: Module[]
   showTotal?: boolean
+  embedded?: boolean
 }
 
-export function LibraryViewer({ folders, customModules, showTotal = false }: LibraryViewerProps) {
+export function LibraryViewer({ folders, customModules, showTotal = false, embedded = false }: LibraryViewerProps) {
   const [openIds, setOpenIds] = useState<Record<string, boolean>>({})
 
   const visibleFolders = useMemo(() => {
@@ -23,9 +24,7 @@ export function LibraryViewer({ folders, customModules, showTotal = false }: Lib
     return folder.modules.map(id => customModules.find(m => m.id === id)).filter(Boolean) as Module[]
   }
 
-  return (
-    <Card className="p-6">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Planned Libraries</h2>
+  const content = (
       <div className="space-y-2">
         {visibleFolders.map((folder) => {
           const isOpen = openIds[folder.id] ?? true
@@ -67,6 +66,21 @@ export function LibraryViewer({ folders, customModules, showTotal = false }: Lib
           )
         })}
       </div>
+  )
+
+  if (embedded) {
+    return (
+      <div className="mt-6">
+        <h3 className="text-lg font-semibold mb-2">Planned Libraries</h3>
+        {content}
+      </div>
+    )
+  }
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Planned Libraries</h2>
+      {content}
     </Card>
   )
 }

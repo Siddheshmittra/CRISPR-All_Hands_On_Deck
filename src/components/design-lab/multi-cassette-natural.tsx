@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { SyntheticDomainImporter } from './synthetic-domain-importer';
 import type { SyntheticGene } from '@/lib/types';
+import { LibraryViewer } from '@/components/design-lab/library-viewer';
 
 interface MultiCassetteNaturalProps {
   folders: Array<{ id: string; name: string; modules: string[]; open?: boolean }>;
@@ -359,6 +360,8 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
           </div>
         </div>
       )}
+      {/* Embedded Planned Libraries inside the same block */}
+      <LibraryViewer folders={folders} customModules={customModules} embedded />
     </Card>
   );
 }

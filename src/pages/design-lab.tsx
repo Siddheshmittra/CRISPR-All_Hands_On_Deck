@@ -16,7 +16,7 @@ import { Card } from "@/components/ui/card"
 import { CassetteBatch } from "@/components/design-lab/cassette-batch"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { SimpleModuleSelector } from "@/components/design-lab/simple-module-selector"
-import { LibraryViewer } from "@/components/design-lab/library-viewer"
+// Removed standalone LibraryViewer import; now embedded inside MultiCassetteNatural
 import { Trash2 } from "lucide-react"
 import React from "react"
 import { useConstructManager } from "@/hooks/use-construct-manager"
@@ -614,7 +614,7 @@ const DesignLab = () => {
               
               {/* Synthetic domains are now accessible via a lightweight button inside Natural Language libraries */}
               
-              <LibraryViewer folders={folders} customModules={customModules} />
+              {/* Planned Libraries is now shown inside the natural language card */}
               <MultiCassetteSetup
                 onAddCassettes={(cassettes) => {
                   // Generate unique barcodes for each cassette in the batch

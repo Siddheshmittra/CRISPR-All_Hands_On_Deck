@@ -72,7 +72,7 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
 
   return (
     <>
-      <Card className="p-6 max-w-2xl">
+      <Card className="p-6 w-full max-w-[90vw] sm:max-w-[820px] h-[85vh] overflow-hidden">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Select Synthetic Gene for Knock-in</h3>
         <Button variant="ghost" size="sm" onClick={onClose}>
@@ -80,7 +80,7 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
         </Button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 flex flex-col h-full">
         {/* YES/NO (2A) toggle */}
         <div className="flex gap-4">
           <RadioGroup value={add2ASequence ? 'yes' : 'no'} onValueChange={(v) => setAdd2ASequence(v === 'yes')} className="flex gap-6">
@@ -146,7 +146,7 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
         </div>
 
         {/* Gene List */}
-        <div className="max-h-96 overflow-y-auto space-y-2">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-2">
           {filteredGenes.map(gene => (
             <Card key={gene.id} className="p-4 hover:bg-muted/50 cursor-pointer" onClick={() => handleGeneSelect(gene)}>
               <div className="flex items-start justify-between">

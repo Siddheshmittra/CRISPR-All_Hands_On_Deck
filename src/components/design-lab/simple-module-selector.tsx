@@ -293,7 +293,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
         </div>
 
         {showSyntheticSelector && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 sm:p-6 z-50">
             <SyntheticGeneSelector
               onGeneSelect={handleSyntheticGeneSelect}
               onCustomSequence={handleCustomSequence}
