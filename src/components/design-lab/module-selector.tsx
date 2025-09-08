@@ -767,20 +767,81 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         <p className="mt-3 text-sm text-gray-700 dark:text-gray-300 font-medium">*indicates knock-ins of synthetic genes</p>
       </div>
 
-      {/* Unified Gene Search */}
+      {/* Toolbar: Folder select + import/export + create library */}
       <div className="mb-4">
-        <div className="flex gap-2 mb-2 items-center">
-          <span className="text-sm font-medium">Add to folder:</span>
-          <select
-            value={selectedFolderId || (folders[0] && folders[0].id) || ''}
-            onChange={e => setSelectedFolderId(e.target.value)}
-            className="h-9 px-2 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
-            style={{ minWidth: 120 }}
-          >
-            {folders.map((folder, index) => (
-              <option key={folder.id} value={folder.id}>{folder.name}</option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex gap-2 items-center">
+            <span className="text-sm font-medium">Add to folder:</span>
+            <select
+              value={selectedFolderId || (folders[0] && folders[0].id) || ''}
+              onChange={e => setSelectedFolderId(e.target.value)}
+              className="h-9 px-2 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+              style={{ minWidth: 120 }}
+            >
+              {folders.map((folder, index) => (
+                <option key={folder.id} value={folder.id}>{folder.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowScanGenesDialog(true)}>Import</Button>
+            <Button variant="outline" size="sm" onClick={handleExportLibrary}>Export</Button>
+            <input
+              type="file"
+              accept=".csv,.xlsx"
+              ref={geneFileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleGeneFileChange}
+            />
+            <input
+              type="text"
+              placeholder="New library name..."
+              value={newFolderName}
+              onChange={e => setNewFolderName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  const name = newFolderName.trim()
+                  if (!name) return
+                  if (folders.some(f => f.name.toLowerCase() === name.toLowerCase())) {
+                    toast.error('A library with this name already exists')
+                    return
+                  }
+                  const newId = Date.now() + '-' + Math.random()
+                  setFolders([
+                    ...folders,
+                    { id: newId, name, modules: [], open: true }
+                  ])
+                  setNewFolderName('')
+                  setSelectedFolderId(newId)
+                  toast.success(`Created library '${name}'`)
+                }
+              }}
+              className="border border-border rounded px-2 py-1 text-sm"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const name = newFolderName.trim()
+                if (!name) return
+                if (folders.some(f => f.name.toLowerCase() === name.toLowerCase())) {
+                  toast.error('A library with this name already exists')
+                  return
+                }
+                const newId = Date.now() + '-' + Math.random()
+                setFolders([
+                  ...folders,
+                  { id: newId, name, modules: [], open: true }
+                ])
+                setNewFolderName('')
+                setSelectedFolderId(newId)
+                toast.success(`Created library '${name}'`)
+              }}
+            >
+              Create
+            </Button>
+          </div>
         </div>
         <div className="relative">
           <UnifiedGeneSearch
@@ -801,73 +862,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         </div>
         {/* Type dropdown removed in favor of button selector above */}
       </div>
-      {/* Divider */}
-      <div className="border-t border-border my-4" />
-      {/* Import/Export and Folder/Library creation below search */}
-      <div className="flex gap-2 mb-2">
-        <Button variant="outline" size="sm" onClick={() => setShowScanGenesDialog(true)}>
-          Import
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleExportLibrary}>
-          Export
-        </Button>
-        <input
-          type="file"
-          accept=".csv,.xlsx"
-          ref={geneFileInputRef}
-          style={{ display: 'none' }}
-          onChange={handleGeneFileChange}
-        />
-      </div>
-      <div className="flex gap-2 mb-4 items-center">
-        <input
-          type="text"
-          placeholder="New library name..."
-          value={newFolderName}
-          onChange={e => setNewFolderName(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') {
-              const name = newFolderName.trim()
-              if (!name) return
-              if (folders.some(f => f.name.toLowerCase() === name.toLowerCase())) {
-                toast.error('A library with this name already exists')
-                return
-              }
-              const newId = Date.now() + '-' + Math.random()
-              setFolders([
-                ...folders,
-                { id: newId, name, modules: [], open: true }
-              ])
-              setNewFolderName('')
-              setSelectedFolderId(newId)
-              toast.success(`Created library '${name}'`)
-            }
-          }}
-          className="border border-border rounded px-2 py-1 text-sm"
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            const name = newFolderName.trim()
-            if (!name) return
-            if (folders.some(f => f.name.toLowerCase() === name.toLowerCase())) {
-              toast.error('A library with this name already exists')
-              return
-            }
-            const newId = Date.now() + '-' + Math.random()
-            setFolders([
-              ...folders,
-              { id: newId, name, modules: [], open: true }
-            ])
-            setNewFolderName('')
-            setSelectedFolderId(newId)
-            toast.success(`Created library '${name}'`)
-          }}
-        >
-          Create
-        </Button>
-      </div>
+      {/* Search */}
       {/* Folder/Library display */}
       <div className="mb-4 relative">
         {isLibraryLoading && (
