@@ -736,10 +736,10 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         </div>
       )}
       <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">1. Desired Genetic Perturbation</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">1. Desired Genetic Perturbation (Libraries)</h2>
 
       {/* Perturbation Type - button selector */}
-      <div className="mb-4 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="mb-5 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Perturbation Type</div>
         <div className="flex gap-2 flex-wrap">
           {typeOptions.map(option => (
@@ -768,9 +768,9 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       </div>
 
       {/* Toolbar: Folder select + import/export + create library */}
-      <div className="mb-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex gap-2 items-center">
+      <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex gap-3 items-center">
             <span className="text-sm font-medium">Add to folder:</span>
             <select
               value={selectedFolderId || (folders[0] && folders[0].id) || ''}
@@ -799,6 +799,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
               placeholder="New library name..."
               value={newFolderName}
               onChange={e => setNewFolderName(e.target.value)}
+              className="h-9 w-48 md:w-56 border border-border rounded px-2 py-1 text-sm"
               onKeyDown={e => {
                 if (e.key === 'Enter') {
                   const name = newFolderName.trim()
@@ -817,7 +818,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                   toast.success(`Created library '${name}'`)
                 }
               }}
-              className="border border-border rounded px-2 py-1 text-sm"
             />
             <Button
               size="sm"
@@ -843,7 +843,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             </Button>
           </div>
         </div>
-        <div className="relative">
+        <div className="relative mt-3">
           <UnifiedGeneSearch
             onModuleAdd={handleUnifiedModuleAdd}
             placeholder="Search or enter gene symbol..."
