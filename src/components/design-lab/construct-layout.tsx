@@ -40,7 +40,7 @@ export const ConstructLayout = ({
   }
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">2. Syntax</h2>
         <div className="flex gap-2">
@@ -56,7 +56,7 @@ export const ConstructLayout = ({
         </div>
       </div>
 
-      <div className="border-2 border-dashed border-border rounded-lg p-6 min-h-[120px] bg-gradient-surface">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 min-h-[120px] bg-gradient-surface">
         <div className="flex flex-row items-center w-full gap-4">
           <Droppable droppableId="construct" direction="horizontal">
             {(provided, snapshot) => (
@@ -65,7 +65,7 @@ export const ConstructLayout = ({
                 ref={provided.innerRef}
                 className={`flex items-center gap-3 flex-wrap min-h-[48px] flex-1 transition-all duration-200 ${
                   snapshot.isDraggingOver 
-                    ? 'bg-primary/10 border-2 border-dashed border-primary rounded-lg' 
+                    ? 'bg-primary/10 border border-primary rounded-lg' 
                     : ''
                 }`}
                 style={{ minHeight: 48 }}
@@ -138,7 +138,7 @@ export const ConstructLayout = ({
               <div
                 ref={provided.innerRef}
                 {...provided.droppableProps}
-                className={`flex flex-col items-center justify-center w-14 h-16 rounded-lg border border-border bg-muted transition-colors select-none shadow-sm ml-2 ${snapshot.isDraggingOver ? 'bg-destructive/20 border-destructive' : ''}`}
+                className={`flex flex-col items-center justify-center w-14 h-16 rounded-lg border border-gray-200 dark:border-gray-700 bg-muted transition-colors select-none shadow-sm ml-2 ${snapshot.isDraggingOver ? 'bg-destructive/20 border-destructive' : ''}`}
               >
                 <Trash2 className={`h-5 w-5 mb-1 ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
                 <span className="text-xs text-muted-foreground">Trash</span>

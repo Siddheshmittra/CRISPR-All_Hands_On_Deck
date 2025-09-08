@@ -424,7 +424,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
       {/* Natural language input intentionally omitted in multi-cassette manual section */}
       
       <DragDropContext onDragEnd={handleDragEnd}>
-        <Card className="p-6 mb-4">
+        <Card className="p-6 mb-4 border border-gray-200 dark:border-gray-700 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">2. Syntax</h3>
             {isGenerating && (
@@ -481,14 +481,14 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                 </Button>
               </div>
             </div>
-            <div className="border-2 border-dashed border-border rounded-lg p-4 bg-background">
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-background">
               <Droppable droppableId="library-syntax" direction="horizontal">
                 {(provided, snapshot) => (
                   <div
                     {...provided.droppableProps}
                     ref={provided.innerRef}
                     className={`flex items-center gap-2 flex-wrap min-h-[80px] p-4 rounded transition-all ${
-                      snapshot.isDraggingOver ? 'bg-primary/10 border-2 border-dashed border-primary' : ''
+                      snapshot.isDraggingOver ? 'bg-primary/10 border border-primary' : ''
                     }`}
                   >
                     {librarySyntax.length === 0 ? (

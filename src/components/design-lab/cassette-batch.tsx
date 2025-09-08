@@ -644,7 +644,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
             </div>
             
             {editingCassetteId === cassette.id ? (
-              <div className="border-2 border-dashed border-border rounded-lg p-4 bg-background">
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-background">
                 <p className="text-sm text-muted-foreground mb-3">Drag modules to reorder the cassette syntax:</p>
                 <DragDropContext onDragEnd={handleDragEnd}>
                   <Droppable droppableId={`cassette-${cassette.id}`} direction="horizontal">
@@ -653,7 +653,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
                         {...provided.droppableProps}
                         ref={provided.innerRef}
                         className={`flex items-center gap-2 flex-wrap min-h-[48px] p-2 rounded transition-all ${
-                          snapshot.isDraggingOver ? 'bg-primary/10 border-2 border-dashed border-primary' : ''
+                          snapshot.isDraggingOver ? 'bg-primary/10 border border-primary' : ''
                         }`}
                       >
                         {editingModules.map((module, moduleIndex) => (
