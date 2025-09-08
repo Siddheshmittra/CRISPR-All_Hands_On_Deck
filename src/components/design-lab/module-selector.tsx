@@ -54,32 +54,36 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const [scanGenesLibraryName, setScanGenesLibraryName] = useState('')
   const [scanGenesPerturbationType, setScanGenesPerturbationType] = useState<'overexpression' | 'knockout' | 'knockdown' | 'knockin'>('overexpression')
   
-  // Type selector state
+  // Type selector state (styled to match single-cassette manual DGP)
   const [selectedType, setSelectedType] = useState<'overexpression' | 'knockout' | 'knockdown' | 'knockin'>('overexpression')
   const typeOptions = [
     { 
       value: 'overexpression', 
       label: 'OE',
-      className: 'bg-[hsl(66,70%,47%)] hover:bg-[hsl(66,70%,40%)] text-foreground',
-      outlineClassName: 'text-[hsl(66,70%,47%)] border-[hsl(66,70%,47%)] hover:bg-[hsl(66,70%,47%)]/10'
+      icon: '↑',
+      className: 'bg-[hsl(66,70%,47%)] hover:bg-[hsl(66,70%,40%)] text-white font-semibold',
+      outlineClassName: 'text-[hsl(66,70%,47%)] border-[hsl(66,70%,47%)] hover:bg-[hsl(66,70%,47%)]/20 hover:text-[hsl(66,70%,47%)] font-medium'
     },
     { 
       value: 'knockout', 
       label: 'KO',
-      className: 'bg-[hsl(13,95%,59%)] hover:bg-[hsl(13,95%,50%)] text-white',
-      outlineClassName: 'text-[hsl(13,95%,59%)] border-[hsl(13,95%,59%)] hover:bg-[hsl(13,95%,59%)]/10'
+      icon: '✖',
+      className: 'bg-[hsl(13,95%,59%)] hover:bg-[hsl(13,95%,50%)] text-white font-semibold',
+      outlineClassName: 'text-[hsl(13,95%,59%)] border-[hsl(13,95%,59%)] hover:bg-[hsl(13,95%,59%)]/20 hover:text-[hsl(13,95%,59%)] font-medium'
     },
     { 
       value: 'knockdown', 
       label: 'KD',
-      className: 'bg-[hsl(32,75%,49%)] hover:bg-[hsl(32,75%,40%)] text-white',
-      outlineClassName: 'text-[hsl(32,75%,49%)] border-[hsl(32,75%,49%)] hover:bg-[hsl(32,75%,49%)]/10'
+      icon: '↓',
+      className: 'bg-[hsl(32,75%,49%)] hover:bg-[hsl(32,75%,40%)] text-white font-semibold',
+      outlineClassName: 'text-[hsl(32,75%,49%)] border-[hsl(32,75%,49%)] hover:bg-[hsl(32,75%,49%)]/20 hover:text-[hsl(32,75%,49%)] font-medium'
     },
     { 
       value: 'knockin', 
       label: 'KI*',
-      className: 'bg-[hsl(220,35%,65%)] hover:bg-[hsl(220,35%,55%)] text-foreground',
-      outlineClassName: 'text-[hsl(220,35%,65%)] border-[hsl(220,35%,65%)] hover:bg-[hsl(220,35%,65%)]/10'
+      icon: '→',
+      className: 'bg-[hsl(220,35%,65%)] hover:bg-[hsl(220,35%,55%)] text-white font-semibold',
+      outlineClassName: 'text-[hsl(220,35%,65%)] border-[hsl(220,35%,65%)] hover:bg-[hsl(220,35%,65%)]/20 hover:text-[hsl(220,35%,65%)] font-medium'
     },
   ]
 
@@ -732,8 +736,37 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         </div>
       )}
       <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">1. Desired Genetic Perturbations (Libraries)</h2>
-      
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">1. Desired Genetic Perturbation</h2>
+
+      {/* Perturbation Type - button selector */}
+      <div className="mb-4 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Perturbation Type</div>
+        <div className="flex gap-2 flex-wrap">
+          {typeOptions.map(option => (
+            <Button
+              key={option.value}
+              type="button"
+              variant="outline"
+              size="sm"
+              className={`flex-1 min-w-[80px] transition-all duration-200 ${
+                selectedType === option.value 
+                  ? option.className + ' shadow-md scale-[1.02]'
+                  : option.outlineClassName + ' hover:shadow-md hover:scale-[1.02] hover:font-semibold'
+              }`}
+              onClick={() => {
+                setSelectedType(option.value as any)
+                if (option.value === 'knockin') {
+                  setShowSyntheticSelector(true)
+                }
+              }}
+            >
+              <span className="drop-shadow-sm">{option.icon} {option.label}</span>
+            </Button>
+          ))}
+        </div>
+        <p className="mt-3 text-sm text-gray-700 dark:text-gray-300 font-medium">*indicates knock-ins of synthetic genes</p>
+      </div>
+
       {/* Unified Gene Search */}
       <div className="mb-4">
         <div className="flex gap-2 mb-2 items-center">
@@ -765,32 +798,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             </div>
           )}
         </div>
-        <div className="flex gap-2 mt-2 items-center">
-          {!hideTypeSelector && (
-            <div className="relative">
-              <select
-                value={selectedType}
-                onChange={e => {
-                  const newType = e.target.value as any
-                  setSelectedType(newType)
-                  // If knockin is selected, immediately show synthetic gene selector
-                  if (newType === 'knockin') {
-                    setShowSyntheticSelector(true)
-                  }
-                }}
-                className={`h-9 px-3 rounded-md text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary border ${getSelectedTypeColorClass(selectedType) || 'border-border bg-background'}`}
-                style={{ minWidth: 70 }}
-              >
-                {typeOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-        <p className="text-sm text-muted-foreground mb-4">
-          Powered by Ensembl REST API
-        </p>
+        {/* Type dropdown removed in favor of button selector above */}
       </div>
       {/* Divider */}
       <div className="border-t border-border my-4" />
