@@ -78,7 +78,7 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
   };
 
   return (
-    <div className="space-y-4 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm">
+    <div className="space-y-4 p-6">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">

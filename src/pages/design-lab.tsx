@@ -19,6 +19,7 @@ import { SimpleModuleSelector } from "@/components/design-lab/simple-module-sele
 // Removed standalone LibraryViewer import; now embedded inside MultiCassetteNatural
 import { Trash2 } from "lucide-react"
 import React from "react"
+import { designLabSession, type DesignLabSession } from "@/lib/session"
 import { useConstructManager } from "@/hooks/use-construct-manager"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { toast } from "sonner"
@@ -85,44 +86,56 @@ const DesignLab = () => {
     return () => { mounted = false }
   }, [])
 
-  // Session restore: persist and hydrate key state
+  // Session restore: persist and hydrate key state (validated, versioned)
   React.useEffect(() => {
-    try {
-      const raw = localStorage.getItem('design-lab:session')
-      if (!raw) return
-      const data = JSON.parse(raw)
-      if (data.customModules) setCustomModules(data.customModules)
-      if (data.folders) setFolders(data.folders)
-      if (data.librarySyntax) setLibrarySyntax(data.librarySyntax)
-      if (data.cassetteBatch) setCassetteBatch(data.cassetteBatch)
-      if (data.cassetteMode) setCassetteMode(data.cassetteMode)
-      if (data.inputMode) setInputMode(data.inputMode)
-      if (data.barcodeMode) setBarcodeMode(data.barcodeMode)
-    } catch {}
+    const loaded = designLabSession.load()
+    if (loaded) {
+      setCustomModules((loaded.customModules as unknown as Module[]) || [])
+      setFolders((loaded.folders as unknown as any[]) || [{ id: 'total-library', name: 'Total Library', modules: [], open: true }])
+      setLibrarySyntax((loaded.librarySyntax as unknown as LibrarySyntax[]) || [])
+      setCassetteBatch((loaded.cassetteBatch as unknown as Cassette[]) || [])
+      setCassetteMode(loaded.cassetteMode || 'single')
+      setInputMode(loaded.inputMode || 'manual')
+      setBarcodeMode(loaded.barcodeMode || 'general')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   React.useEffect(() => {
-    try {
-      const payload = {
-        customModules,
-        folders,
-        librarySyntax,
-        cassetteBatch,
-        cassetteMode,
-        inputMode,
-        barcodeMode,
-      }
-      localStorage.setItem('design-lab:session', JSON.stringify(payload))
-    } catch {}
+    const payload: DesignLabSession = {
+      customModules,
+      folders,
+      librarySyntax,
+      cassetteBatch,
+      cassetteMode,
+      inputMode,
+      barcodeMode,
+    }
+    designLabSession.scheduleSave(payload as unknown as any)
   }, [customModules, folders, librarySyntax, cassetteBatch, cassetteMode, inputMode, barcodeMode])
 
-  // Lightweight restore banner with reset option
+  // Flush session on page hide/unload (non-invasive)
+  React.useEffect(() => {
+    const onBeforeUnload = () => { try { designLabSession.flush() } catch {} }
+    const onVisibility = () => { if (document.visibilityState === 'hidden') { try { designLabSession.flush() } catch {} } }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [])
+
+  // Lightweight restore indicator (less invasive)
   const [showRestoreBanner, setShowRestoreBanner] = useState<boolean>(() => {
-    try { return !!localStorage.getItem('design-lab:session') } catch { return false }
+    try { return !!localStorage.getItem('design-lab:session:v2') || !!localStorage.getItem('design-lab:session') } catch { return false }
   })
 
   const handleClearSession = () => {
-    try { localStorage.removeItem('design-lab:session') } catch {}
+    try {
+      localStorage.removeItem('design-lab:session')
+    } catch {}
+    designLabSession.clear()
     setShowRestoreBanner(false)
   }
 
@@ -588,17 +601,15 @@ const DesignLab = () => {
           />
           
           {inputMode === 'natural' && cassetteMode === 'single' && (
-            <Card className="p-4">
-              <NaturalLanguageInput
-                onModulesGenerated={async (modules) => {
-                  // Enrich and add each module similarly to manual selection
-                  for (const m of modules) {
-                    await handleModuleSelect(m)
-                  }
-                }}
-                onError={(err) => toast.error(err)}
-              />
-            </Card>
+            <NaturalLanguageInput
+              onModulesGenerated={async (modules) => {
+                // Enrich and add each module similarly to manual selection
+                for (const m of modules) {
+                  await handleModuleSelect(m)
+                }
+              }}
+              onError={(err) => toast.error(err)}
+            />
           )}
 
           {inputMode === 'natural' && cassetteMode === 'multi' && (
