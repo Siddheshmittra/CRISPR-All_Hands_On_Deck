@@ -785,7 +785,10 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setShowScanGenesDialog(true)}>Import</Button>
+            <Button size="sm" onClick={() => setShowScanGenesDialog(true)} className="font-semibold shadow-sm">
+              <Upload className="h-4 w-4 mr-2" />
+              Import
+            </Button>
             <Button variant="outline" size="sm" onClick={handleExportLibrary}>Export</Button>
             <input
               type="file"
