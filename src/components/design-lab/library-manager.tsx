@@ -128,11 +128,11 @@ export const LibraryManager = ({ customModules, onCustomModulesChange, construct
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleImportLibrary}>
             <Upload className="h-4 w-4 mr-2" />
-            Import
+            Import Library
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportLibrary}>
             <Download className="h-4 w-4 mr-2" />
-            Export
+            Export Library
           </Button>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>

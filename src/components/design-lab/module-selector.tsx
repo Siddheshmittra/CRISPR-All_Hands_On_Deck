@@ -736,7 +736,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         </div>
       )}
       <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">1. Desired Genetic Perturbation (Libraries)</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">1. Desired Genetic Perturbations (Libraries)</h2>
 
       {/* Perturbation Type - button selector */}
       <div className="mb-5 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -771,7 +771,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex gap-3 items-center">
-            <span className="text-sm font-medium">Add to folder:</span>
+            <span className="text-sm font-medium">Add to library:</span>
             <select
               value={selectedFolderId || (folders[0] && folders[0].id) || ''}
               onChange={e => setSelectedFolderId(e.target.value)}
@@ -787,9 +787,9 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={() => setShowScanGenesDialog(true)} className="font-semibold shadow-sm">
               <Upload className="h-4 w-4 mr-2" />
-              Import
+              Import Library
             </Button>
-            <Button variant="outline" size="sm" onClick={handleExportLibrary}>Export</Button>
+            <Button variant="outline" size="sm" onClick={handleExportLibrary}>Export Library</Button>
             <input
               type="file"
               accept=".csv,.xlsx"
@@ -1032,7 +1032,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       {showScanGenesDialog && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={handleCloseImportDialog}>
           <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Import</h3>
+            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Import Library</h3>
             
             {/* Perturbation Type Selector - Moved to top */}
             <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
