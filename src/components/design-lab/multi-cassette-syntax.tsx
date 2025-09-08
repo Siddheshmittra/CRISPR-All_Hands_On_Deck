@@ -118,7 +118,7 @@ export const MultiCassetteSyntax = ({
   return (
     <Card className="p-6 mt-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Multi-Cassette Library Syntax</h2>
+        <h2 className="text-lg font-semibold">Multi-Construct Library Syntax</h2>
         <Button variant="outline" size="sm" onClick={addNewLibrary}>
           <Plus className="h-4 w-4 mr-2" />
           Add Library
@@ -126,7 +126,7 @@ export const MultiCassetteSyntax = ({
       </div>
 
       <div className="text-sm text-muted-foreground mb-4">
-        Drag modules from the module selector into libraries below. Each library represents a collection of modules that will be used to generate cassettes.
+        Drag modules from the module selector into libraries below. Each library represents a collection of modules that will be used to generate constructs.
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
@@ -236,7 +236,7 @@ export const MultiCassetteSyntax = ({
           {libraries.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               <p className="mb-2">No libraries created yet</p>
-              <p className="text-sm">Click "Add Library" to create your first library for multi-cassette generation</p>
+              <p className="text-sm">Click "Add Library" to create your first library for multi-construct generation</p>
             </div>
           )}
         </div>

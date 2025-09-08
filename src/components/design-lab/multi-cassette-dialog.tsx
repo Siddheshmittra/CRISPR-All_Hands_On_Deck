@@ -462,7 +462,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
           {/* Library Syntax Section */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">Arrange libraries to define cassette syntax</label>
+              <label className="text-sm font-medium">Arrange libraries to define construct syntax</label>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" disabled={librarySyntax.length === 0}>
                   <ArrowRight className="h-4 w-4 mr-1" />
@@ -493,7 +493,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                   >
                     {librarySyntax.length === 0 ? (
                       <span className="text-sm text-muted-foreground">
-                        Add libraries above or drag them from the module selector to build your cassette syntax
+                        Add libraries above or drag them from the module selector to build your construct syntax
                       </span>
                     ) : (
                       <>

@@ -315,7 +315,7 @@ const DesignLab = () => {
     
     // Create a filename with timestamp
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const filename = `cassette-batch_${timestamp}.json`
+    const filename = `construct-batch_${timestamp}.json`
     
     // Create and trigger download
     const dataStr = JSON.stringify(exportData, null, 2)
@@ -330,7 +330,7 @@ const DesignLab = () => {
     URL.revokeObjectURL(url)
     
     // Show success message
-    toast.success(`Exported ${cassetteBatch.length} cassettes`)
+    toast.success(`Exported ${cassetteBatch.length} constructs`)
   }
 
   const handleDragEnd = (result: DropResult) => {

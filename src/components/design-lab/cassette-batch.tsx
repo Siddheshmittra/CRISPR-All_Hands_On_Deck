@@ -62,7 +62,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
     }
     if (barcodeMode === 'internal' && editingBarcode) {
       if (isBarcodeTaken && isBarcodeTaken(editingBarcode, editingCassetteId || undefined)) {
-        setBarcodeError('Barcode already assigned to another cassette (Internal mode)')
+        setBarcodeError('Barcode already assigned to another construct (Internal mode)')
         return
       }
     }
@@ -99,7 +99,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
     try {
       const segments = await generateAnnotatedSequence(cassette.modules, extractBarcodeSequence(cassette.barcode))
       const nameBase = cassette.modules.length > 0 ? cassette.modules.map(m => `${m.name || 'Unnamed'}[${m.type}]`).join('_') : cassette.id
-      const gb = generateGenbank((nameBase || 'CASSETTE').toUpperCase(), segments, {})
+      const gb = generateGenbank((nameBase || 'CONSTRUCT').toUpperCase(), segments, {})
       const blob = new Blob([gb], { type: 'text/plain' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -501,7 +501,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">3. Encoding</h2>
           {cassetteBatch.length > CASSETTES_PER_PAGE && (
             <p className="text-sm text-muted-foreground">
-              Showing {startIndex + 1}-{Math.min(endIndex, cassetteBatch.length)} of {cassetteBatch.length} cassettes
+              Showing {startIndex + 1}-{Math.min(endIndex, cassetteBatch.length)} of {cassetteBatch.length} constructs
             </p>
           )}
         </div>
@@ -559,7 +559,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
                 <div className="font-semibold">
                   {cassette.modules.length > 0 
                     ? cassette.modules.map(m => m.name || 'Unnamed').join(' + ')
-                    : `Cassette ${index + 1}`
+                    : `Construct ${index + 1}`
                   }
                 </div>
                 <div className="flex gap-2">
@@ -645,7 +645,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
             
             {editingCassetteId === cassette.id ? (
               <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-background">
-                <p className="text-sm text-muted-foreground mb-3">Drag modules to reorder the cassette syntax:</p>
+                <p className="text-sm text-muted-foreground mb-3">Drag modules to reorder the construct syntax:</p>
                 <DragDropContext onDragEnd={handleDragEnd}>
                   <Droppable droppableId={`cassette-${cassette.id}`} direction="horizontal">
                     {(provided, snapshot) => (

@@ -52,7 +52,7 @@ export const UnifiedGeneSearch = ({
     setSelectedType(defaultType)
   }, [defaultType])
 
-  // Gene search functionality using Ensembl (consistent with multi-cassette)
+  // Gene search functionality using Ensembl (consistent with multi-construct)
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
       setSuggestions([])

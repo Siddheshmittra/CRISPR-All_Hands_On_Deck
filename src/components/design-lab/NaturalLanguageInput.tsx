@@ -127,7 +127,7 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
             {preview.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No directly actionable edits were detected from this prompt. If you want to try
-                more complex or multi‑gene requests, try the Multi‑Cassette natural language mode.
+                more complex or multi‑gene requests, try the Multi‑Construct natural language mode.
               </p>
             ) : (
               <ul className="space-y-2">

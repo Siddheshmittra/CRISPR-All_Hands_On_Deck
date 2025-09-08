@@ -313,7 +313,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
         )}
       </div>
 
-      {/* Predict function section for multi-cassette natural mode */}
+      {/* Predict function section for multi-construct natural mode */}
       {customModules.length > 0 && (
         <div className="mt-6 border-t pt-6">
           <h3 className="text-lg font-semibold mb-2">Predicted Function / Predicted Cellular Program</h3>

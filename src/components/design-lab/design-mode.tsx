@@ -14,21 +14,21 @@ export const DesignMode = ({ cassetteMode, onCassetteModeChange, inputMode, onIn
       <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Mode Selector</h2>
       <div className="flex flex-col gap-4">
         <div>
-          <span className="block text-sm font-semibold mb-2">Cassette Mode</span>
+          <span className="block text-sm font-semibold mb-2">Construct Mode</span>
           <div className="flex gap-3">
             <Button
               variant={cassetteMode === "single" ? "default" : "outline"}
               onClick={() => onCassetteModeChange("single")}
               className="flex-1"
             >
-              Single Cassette
+              Single Construct
             </Button>
             <Button
               variant={cassetteMode === "multi" ? "default" : "outline"}
               onClick={() => onCassetteModeChange("multi")}
               className="flex-1"
             >
-              Multi-Cassette
+              Multi-Construct
             </Button>
           </div>
         </div>
