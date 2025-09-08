@@ -81,9 +81,9 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
     <div className="space-y-4">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <label htmlFor="natural-language" className="block text-xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             1. Desired Genetic Perturbation
-          </label>
+          </h2>
           <Textarea
             id="natural-language"
             placeholder="Describe your genetic modifications (e.g., 'overexpress BATF, knockdown IRF4')"
