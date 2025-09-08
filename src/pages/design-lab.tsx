@@ -715,7 +715,7 @@ const DesignLab = () => {
 
                 {/* 3. Encoding box */}
                 {cassetteMode !== 'multi' && (
-                  <Card className="p-6">
+                  <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">3. Encoding</h2>
                     {constructWithLinkers.length > 0 ? (
                       <p className="text-sm font-mono break-all">
@@ -792,7 +792,7 @@ const DesignLab = () => {
             />
             
             {/* 4. Predicted Function / Predicted Cellular Program */}
-            <Card className="p-6">
+            <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">5. Predicted Function / Predicted Cellular Program</h2>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">

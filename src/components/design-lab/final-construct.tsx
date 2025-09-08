@@ -217,7 +217,7 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
   }
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">4. DNA Sequence</h2>
         <div className="flex gap-2">
