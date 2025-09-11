@@ -292,21 +292,17 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     let pendingChunk: Module[][] = [];
 
     try {
-      // Pre-enrich modules (only those missing sequences or remapped types) using batched, concurrent enrichment
+      // Pre-enrich modules using batched, best-effort enrichment for speed
       for (let i = 0; i < libraryModuleLists.length; i++) {
         const list = libraryModuleLists[i];
-        const candidates = list.filter(m => {
-          const originalType = (m as any).originalType as Module['type'] | undefined
-          const needsTypeRemap = !!(originalType && originalType !== m.type)
-          const missingSequence = !m.sequence || m.sequence.length === 0
-          return needsTypeRemap || missingSequence
-        })
-        if (candidates.length > 0) {
-          const { batchEnrichModulesBestEffort } = await import('@/lib/ensembl')
-          const enriched = await batchEnrichModulesBestEffort(candidates, { concurrency: 8 })
-          // Merge back by id
-          const byId = new Map(enriched.map(e => [e.id, e] as const))
-          libraryModuleLists[i] = list.map(m => byId.get(m.id) ?? m)
+        try {
+          const { batchEnrichModulesBestEffort } = await import('@/lib/ensembl');
+          const enriched = await batchEnrichModulesBestEffort(list, { enforceTypeSource: true, concurrency: 8 });
+          libraryModuleLists[i] = enriched;
+        } catch (err) {
+          // Fallback: keep originals if batch fails
+          console.error('Batch enrichment failed, using original list', err);
+          libraryModuleLists[i] = list;
         }
       }
 
