@@ -292,27 +292,22 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     let pendingChunk: Module[][] = [];
 
     try {
-      // Pre-enrich modules if sequence is missing or when library remaps type
+      // Pre-enrich modules (only those missing sequences or remapped types) using batched, concurrent enrichment
       for (let i = 0; i < libraryModuleLists.length; i++) {
         const list = libraryModuleLists[i];
-        const enrichedList: Module[] = [];
-        for (const mod of list) {
-          const modWithOriginal = mod as Module & { originalType?: Module['type'] };
-          const needsTypeRemap = !!(modWithOriginal.originalType && modWithOriginal.originalType !== modWithOriginal.type);
-          const missingSequence = !modWithOriginal.sequence || modWithOriginal.sequence.length === 0;
-          if (needsTypeRemap || missingSequence) {
-            try {
-              const enriched = await enrichModuleWithSequence({ ...mod }, { enforceTypeSource: true });
-              enrichedList.push(enriched);
-            } catch (err) {
-              console.error(`Failed to enrich ${mod.name}`, err);
-              enrichedList.push(mod);
-            }
-          } else {
-            enrichedList.push(mod);
-          }
+        const candidates = list.filter(m => {
+          const originalType = (m as any).originalType as Module['type'] | undefined
+          const needsTypeRemap = !!(originalType && originalType !== m.type)
+          const missingSequence = !m.sequence || m.sequence.length === 0
+          return needsTypeRemap || missingSequence
+        })
+        if (candidates.length > 0) {
+          const { batchEnrichModulesBestEffort } = await import('@/lib/ensembl')
+          const enriched = await batchEnrichModulesBestEffort(candidates, { concurrency: 8 })
+          // Merge back by id
+          const byId = new Map(enriched.map(e => [e.id, e] as const))
+          libraryModuleLists[i] = list.map(m => byId.get(m.id) ?? m)
         }
-        libraryModuleLists[i] = enrichedList;
       }
 
       // Fast path: single-library case; just iterate that list

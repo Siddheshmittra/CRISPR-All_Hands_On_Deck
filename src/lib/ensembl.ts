@@ -20,6 +20,27 @@ const gRNAData: GrnaRecord[] = (rawGrnaDb as any[]).map(r => ({
   gRNASequence: (r['Final gRNA Seq for\nCRISPR-All Syntax'] as string).trim(),
 }));
 
+// Pre-index local shRNA/gRNA data for O(1) lookup
+const shRNAIndex: Map<string, string> = (() => {
+  const m = new Map<string, string>();
+  for (const rec of shRNAData) {
+    const key = (rec['Symbol'] || '').trim().toUpperCase();
+    const seq = (rec['Final shRNA Seq for\nCRISPR-All Syntax'] || '').trim();
+    if (key && seq) m.set(key, seq);
+  }
+  return m;
+})();
+
+const gRNAIndex: Map<string, string> = (() => {
+  const m = new Map<string, string>();
+  for (const rec of gRNAData) {
+    const key = (rec.geneSymbol || '').trim().toUpperCase();
+    const seq = (rec.gRNASequence || '').trim();
+    if (key && seq) m.set(key, seq);
+  }
+  return m;
+})();
+
 const ENSEMBL = 'https://rest.ensembl.org';
 const GRCH37 = 'https://grch37.rest.ensembl.org';
 
@@ -401,11 +422,9 @@ export async function enrichModuleWithSequence(
   try {
     if (module.type === 'knockdown') {
       console.log(`[enrichModule] Knockdown detected. Searching shRNA data for symbol: ${module.name}`);
-      const shRNARecord = shRNAData.find(record => 
-        record['Symbol']?.trim().toUpperCase() === module.name?.trim().toUpperCase()
-      );
-      if (shRNARecord && shRNARecord['Final shRNA Seq for\nCRISPR-All Syntax']) {
-        const sequence = shRNARecord['Final shRNA Seq for\nCRISPR-All Syntax'].trim();
+      const seq = shRNAIndex.get(module.name?.trim().toUpperCase() || '');
+      if (seq) {
+        const sequence = seq;
         console.log(`[enrichModule] Found shRNA sequence for ${module.name}`);
         return {
           ...module,
@@ -416,8 +435,8 @@ export async function enrichModuleWithSequence(
         console.warn(`[enrichModule] shRNA sequence not found for knockdown module: ${module.name}.`);
         
         // Check if gene is available for knockout instead
-        const gRNARecord = gRNAData.find(record => record.geneSymbol?.trim().toUpperCase() === module.name?.trim().toUpperCase());
-        if (gRNARecord && opts?.enforceTypeSource) {
+        const hasKO = gRNAIndex.has(module.name?.trim().toUpperCase() || '');
+        if (hasKO && opts?.enforceTypeSource) {
           throw new Error(`shRNA sequence not found for ${module.name}. However, ${module.name} is available for knockout. Try "knockout ${module.name}" instead.`);
         } else if (opts?.enforceTypeSource) {
           throw new Error(`shRNA sequence not found for ${module.name}. This gene is not available for knockdown.`);
@@ -428,9 +447,9 @@ export async function enrichModuleWithSequence(
 
     if (module.type === 'knockout') {
       console.log(`[enrichModule] Knockout detected. Searching gRNA data for symbol: ${module.name}`);
-      const gRNARecord = gRNAData.find(record => record.geneSymbol?.trim().toUpperCase() === module.name?.trim().toUpperCase());
-      if (gRNARecord && gRNARecord.gRNASequence) {
-        const sequence = gRNARecord.gRNASequence;
+      const seq = gRNAIndex.get(module.name?.trim().toUpperCase() || '');
+      if (seq) {
+        const sequence = seq;
         console.log(`[enrichModule] Found gRNA sequence for ${module.name}`);
         return {
           ...module,
@@ -441,8 +460,8 @@ export async function enrichModuleWithSequence(
         console.warn(`[enrichModule] gRNA sequence not found for knockout module: ${module.name}.`);
         
         // Check if gene is available for knockdown instead
-        const shRNARecord = shRNAData.find(record => record['Symbol']?.trim().toUpperCase() === module.name?.trim().toUpperCase());
-        if (shRNARecord && opts?.enforceTypeSource) {
+        const hasKD = shRNAIndex.has(module.name?.trim().toUpperCase() || '');
+        if (hasKD && opts?.enforceTypeSource) {
           throw new Error(`gRNA sequence not found for ${module.name}. However, ${module.name} is available for knockdown. Try "knockdown ${module.name}" instead.`);
         } else if (opts?.enforceTypeSource) {
           throw new Error(`gRNA sequence not found for ${module.name}. This gene is not available for knockout.`);
@@ -480,4 +499,143 @@ export async function enrichModuleWithSequence(
     // Re-throw the error to be handled by the calling component
     throw error;
   }
+}
+
+// Limit concurrency helper
+function limitConcurrency<T, R>(items: T[], limit: number, fn: (item: T, idx: number) => Promise<R>): Promise<R[]> {
+  let i = 0;
+  const results: R[] = new Array(items.length);
+  let active = 0;
+  return new Promise((resolve, reject) => {
+    const next = () => {
+      if (i >= items.length && active === 0) return resolve(results);
+      while (active < limit && i < items.length) {
+        const idx = i++;
+        active++;
+        fn(items[idx], idx)
+          .then(res => { results[idx] = res; })
+          .catch(err => { reject(err); })
+          .finally(() => { active--; next(); });
+      }
+    };
+    next();
+  });
+}
+
+// Batch enrichment: uses local KD/KO indexes, caches, and batched cDNA fetching
+export async function batchEnrichModules(
+  modules: Module[],
+  opts?: { base?: string; forceRefresh?: boolean; enforceTypeSource?: boolean; concurrency?: number }
+): Promise<Module[]> {
+  const base = opts?.base;
+  const enforce = opts?.enforceTypeSource === true;
+  const concurrency = Math.max(2, Math.min(12, opts?.concurrency ?? 8));
+
+  const outputs: (Module | null)[] = new Array(modules.length).fill(null);
+  const needEnsembl: Array<{ index: number; module: Module }> = [];
+
+  // First pass: resolve KD/KO from local indexes synchronously
+  for (let idx = 0; idx < modules.length; idx++) {
+    const mod = modules[idx];
+    const key = mod.name?.trim().toUpperCase() || '';
+    if (mod.type === 'knockdown') {
+      const seq = shRNAIndex.get(key);
+      if (seq) {
+        outputs[idx] = { ...mod, sequence: seq, sequenceSource: 'shRNA.json' };
+        continue;
+      }
+      if (enforce) {
+        if (gRNAIndex.has(key)) throw new Error(`shRNA sequence not found for ${mod.name}. However, ${mod.name} is available for knockout. Try "knockout ${mod.name}" instead.`);
+        throw new Error(`shRNA sequence not found for ${mod.name}. This gene is not available for knockdown.`);
+      }
+    } else if (mod.type === 'knockout') {
+      const seq = gRNAIndex.get(key);
+      if (seq) {
+        outputs[idx] = { ...mod, sequence: seq, sequenceSource: 'gRNA.json' };
+        continue;
+      }
+      if (enforce) {
+        if (shRNAIndex.has(key)) throw new Error(`gRNA sequence not found for ${mod.name}. However, ${mod.name} is available for knockdown. Try "knockdown ${mod.name}" instead.`);
+        throw new Error(`gRNA sequence not found for ${mod.name}. This gene is not available for knockout.`);
+      }
+    }
+    // Synthetic with sequence can pass-through
+    if (mod.isSynthetic && mod.sequence) {
+      outputs[idx] = { ...mod, sequenceSource: undefined };
+      continue;
+    }
+    needEnsembl.push({ index: idx, module: mod });
+  }
+
+  if (needEnsembl.length === 0) return outputs as Module[];
+
+  // Resolve genes concurrently with limit
+  const resolvedGenes = await limitConcurrency(needEnsembl, concurrency, async (item) => {
+    const gene = await resolveGene(item.module.name, 'homo_sapiens', { base, forceRefresh: opts?.forceRefresh });
+    const transcriptId = pickTranscript(gene);
+    if (!transcriptId) throw new Error(`No suitable transcript found for ${item.module.name}`);
+    return { ...item, gene, transcriptId } as { index: number; module: Module; gene: LookupGene; transcriptId: string };
+  });
+
+  // Unique transcript IDs for batch fetch
+  const uniqueIds = Array.from(new Set(resolvedGenes.map(r => r.transcriptId)));
+  const seqMap = await fetchCdnaBatch(uniqueIds, { base });
+
+  // Assemble outputs
+  for (const r of resolvedGenes) {
+    const seq = seqMap[r.transcriptId];
+    outputs[r.index] = {
+      ...r.module,
+      name: r.module.name || r.gene.display_name || 'Unnamed',
+      sequence: seq,
+      sequenceSource: 'ensembl_grch38',
+      ensemblGeneId: r.gene.id,
+      gene_id: r.gene.id,
+      description: r.module.description || `Gene: ${r.gene.display_name || r.module.name}`,
+    };
+  }
+
+  return outputs as Module[];
+}
+
+// Best-effort batch enrichment: continues on per-item errors and optionally falls back without enforceTypeSource
+export async function batchEnrichModulesBestEffort(
+  modules: Module[],
+  opts?: { base?: string; forceRefresh?: boolean; concurrency?: number }
+): Promise<Module[]> {
+  const concurrency = Math.max(2, Math.min(12, opts?.concurrency ?? 8));
+
+  // First pass: try strict type-source enforcement where applicable
+  const firstPass = await (async () => {
+    const results: Array<Module | Error> = new Array(modules.length);
+    await limitConcurrency(modules.map((m, i) => ({ m, i })), concurrency, async ({ m, i }) => {
+      try {
+        const enriched = await enrichModuleWithSequence(m, { base: opts?.base, forceRefresh: opts?.forceRefresh, enforceTypeSource: true });
+        results[i] = enriched;
+      } catch (e) {
+        results[i] = e as Error;
+      }
+      return undefined as unknown as Module; // unused
+    });
+    return results;
+  })();
+
+  // Second pass: for failures, retry with relaxed enforcement
+  const finalResults: Module[] = new Array(modules.length) as Module[];
+  await limitConcurrency(firstPass.map((r, i) => ({ r, i })), concurrency, async ({ r, i }) => {
+    if (r instanceof Error) {
+      try {
+        const enriched = await enrichModuleWithSequence(modules[i], { base: opts?.base, forceRefresh: opts?.forceRefresh, enforceTypeSource: false });
+        finalResults[i] = enriched;
+      } catch (_e) {
+        // Last resort: return original module unchanged
+        finalResults[i] = modules[i];
+      }
+    } else {
+      finalResults[i] = r as Module;
+    }
+    return undefined as unknown as Module; // unused
+  });
+
+  return finalResults;
 }

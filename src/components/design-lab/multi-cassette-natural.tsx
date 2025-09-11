@@ -84,68 +84,80 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
       // If this is a knockin plan and synthetic domains exist, try matching by name/tag first
       const knockinDomains: SyntheticGene[] = plan.type === 'knockin' ? syntheticDomains : [];
 
+      const baseModules: Module[] = [];
       for (const gene of plan.geneSymbols) {
-        try {
-          if (plan.type === 'knockin' && knockinDomains.length > 0) {
-            const match = knockinDomains.find(domain => 
-              domain.name.toLowerCase().includes(gene.toLowerCase()) ||
-              domain.tags.some(t => t.toLowerCase().includes(gene.toLowerCase()))
-            );
-            if (match) {
-              const syntheticModule: Module = {
-                id: `${match.name}-${uid()}`,
-                name: match.name,
-                type: 'knockin',
-                description: match.description,
-                sequence: match.sequence,
-                isSynthetic: true,
-                color: 'bg-green-100 text-green-800'
-              };
-              newModules.push(syntheticModule);
-              moduleIds.push(syntheticModule.id);
-              totalLibrary.modules.push(syntheticModule.id);
-              continue;
-            }
+        // Prefer synthetic domain matches when KI
+        if (plan.type === 'knockin' && knockinDomains.length > 0) {
+          const match = knockinDomains.find(domain => 
+            domain.name.toLowerCase().includes(gene.toLowerCase()) ||
+            domain.tags.some(t => t.toLowerCase().includes(gene.toLowerCase()))
+          );
+          if (match) {
+            const syntheticModule: Module = {
+              id: `${match.name}-${uid()}`,
+              name: match.name,
+              type: 'knockin',
+              description: match.description,
+              sequence: match.sequence,
+              isSynthetic: true,
+              color: 'bg-green-100 text-green-800'
+            };
+            newModules.push(syntheticModule);
+            moduleIds.push(syntheticModule.id);
+            totalLibrary.modules.push(syntheticModule.id);
+            continue;
           }
+        }
 
-          const base: Module = {
-            id: `${gene}-${uid()}`,
-            name: gene,
-            type: plan.type,
-            description: `${plan.type} ${gene} (planned: ${plan.name})`,
-            sequence: '',
-          }
-          
-          // Try with strict source enforcement first
-          try {
-            const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { enforceTypeSource: true });
-            newModules.push(enriched);
-            moduleIds.push(enriched.id);
-            totalLibrary.modules.push(enriched.id);
-          } catch (strictError) {
-            // If strict enforcement fails, try with fallback to Ensembl
-            console.warn(`Strict source failed for ${gene}, trying fallback:`, strictError);
-            
-            try {
-              const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { enforceTypeSource: false });
-              newModules.push(enriched);
-              moduleIds.push(enriched.id);
-              totalLibrary.modules.push(enriched.id);
-              
-              // Track that this gene used fallback sequence
-              if (plan.type === 'knockdown') {
-                warnings.push(`${gene}: Using cDNA sequence (shRNA not available)`);
-              } else if (plan.type === 'knockout') {
-                warnings.push(`${gene}: Using cDNA sequence (gRNA not available)`);
+        baseModules.push({
+          id: `${gene}-${uid()}`,
+          name: gene,
+          type: plan.type,
+          description: `${plan.type} ${gene} (planned: ${plan.name})`,
+          sequence: '',
+        });
+      }
+
+      // Enrich all remaining base modules in parallel with best-effort fallback
+      if (baseModules.length > 0) {
+        try {
+          const { batchEnrichModulesBestEffort } = await import('@/lib/ensembl');
+          const enriched = await batchEnrichModulesBestEffort(baseModules, { concurrency: 8 });
+          for (let i = 0; i < enriched.length; i++) {
+            const em = enriched[i];
+            newModules.push(em);
+            moduleIds.push(em.id);
+            totalLibrary.modules.push(em.id);
+            // Heuristic warnings if enrichment fell back to cDNA
+            if (!em.sequenceSource || em.sequenceSource === 'ensembl_grch38') {
+              if (plan.type === 'knockdown' && !em.sequenceSource?.includes('shRNA')) {
+                warnings.push(`${em.name}: Using cDNA sequence (shRNA not available)`);
+              } else if (plan.type === 'knockout' && !em.sequenceSource?.includes('gRNA')) {
+                warnings.push(`${em.name}: Using cDNA sequence (gRNA not available)`);
               }
-            } catch (fallbackError) {
-              console.error(`Both strict and fallback failed for ${gene}:`, fallbackError);
-              skippedGenes.push(`${gene} (${plan.type})`);
             }
           }
         } catch (e) {
-          console.error(`Failed to process gene ${gene}:`, e);
-          skippedGenes.push(`${gene} (${plan.type})`);
+          console.error('Batch enrichment failed, falling back per-gene:', e);
+          // Fallback: sequential strict then relaxed (previous behavior)
+          for (const base of baseModules) {
+            try {
+              const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { enforceTypeSource: true });
+              newModules.push(enriched);
+              moduleIds.push(enriched.id);
+              totalLibrary.modules.push(enriched.id);
+            } catch (strictError) {
+              try {
+                const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { enforceTypeSource: false });
+                newModules.push(enriched);
+                moduleIds.push(enriched.id);
+                totalLibrary.modules.push(enriched.id);
+              } catch (fallbackError) {
+                console.error(`Both strict and fallback failed for ${base.name}:`, fallbackError);
+                skippedGenes.push(`${base.name} (${plan.type})`);
+              }
+            }
+          }
         }
       }
       
