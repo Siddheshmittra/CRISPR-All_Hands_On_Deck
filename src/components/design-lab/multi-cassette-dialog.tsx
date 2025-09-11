@@ -142,6 +142,19 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     return [...geneLike, ...koKd]
   }, [librarySyntax])
 
+  // Group counts for UI separators
+  const geneLikeCount = useMemo(
+    () => orderedSyntax.filter(l => l.type === 'overexpression' || l.type === 'knockin').length,
+    [orderedSyntax]
+  )
+  const koKdCount = orderedSyntax.length - geneLikeCount
+
+  // Quick lookup for module counts per library (folder)
+  const getFolderCount = (libraryId: string) => {
+    const folder = folders.find(f => f.id === libraryId)
+    return folder?.modules?.length || 0
+  }
+
   // Initialize libraries from props
   useEffect(() => {
     if (props.librarySyntax) {
@@ -464,7 +477,26 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium">Arrange libraries to define construct syntax</label>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={librarySyntax.length === 0}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={librarySyntax.length === 0}
+                  onClick={() => {
+                    // Shuffle within groups while preserving OE/KI before KO/KD
+                    const geneLike = librarySyntax.filter(l => l.type === 'overexpression' || l.type === 'knockin')
+                    const koKd = librarySyntax.filter(l => l.type === 'knockout' || l.type === 'knockdown')
+                    const shuffle = <T,>(arr: T[]) => {
+                      const copy = [...arr]
+                      for (let i = copy.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1))
+                        ;[copy[i], copy[j]] = [copy[j], copy[i]]
+                      }
+                      return copy
+                    }
+                    const randomized = [...shuffle(geneLike), ...shuffle(koKd)]
+                    onReorderLibraries(randomized)
+                  }}
+                >
                   <ArrowRight className="h-4 w-4 mr-1" />
                   Randomize
                 </Button>
@@ -472,8 +504,8 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                   variant="outline" 
                   size="sm" 
                   onClick={() => {
-                    // TODO: Implement reset functionality
-                    console.log('Reset syntax');
+                    // Clear syntax
+                    onReorderLibraries([])
                   }}
                   disabled={librarySyntax.length === 0}
                 >
@@ -499,43 +531,86 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                       <>
                         {/* Draggable libraries with rule-aware decorations */}
                         {orderedSyntax.map((library, index) => (
-                          <Draggable key={library.id} draggableId={library.id} index={index}>
-                            {(provided, snapshot) => (
-                              <div className="flex items-center gap-2" ref={provided.innerRef} {...provided.draggableProps}>
-                                <div
-                                  {...provided.dragHandleProps}
-                                  className={`px-3 py-2 rounded-md text-sm font-medium cursor-move transition-all ${
-                                    snapshot.isDragging ? 'shadow-lg rotate-2' : 'hover:shadow-md'
-                                  } ${
-                                    library.type === 'overexpression' ? 'bg-overexpression text-overexpression-foreground' :
-                                    library.type === 'knockout' ? 'bg-knockout text-knockout-foreground' :
-                                    library.type === 'knockdown' ? 'bg-knockdown text-knockdown-foreground' :
-                                    'bg-card text-card-foreground'
-                                  }`}
-                                >
-                                  {(() => {
-                                    const getTypeArrow = (t: string) => t === 'knockdown' ? '↓' : t === 'knockout' ? '✖' : t === 'knockin' ? '→' : '↑';
-                                    return `${getTypeArrow(library.type)} ${library.name}`;
-                                  })()}
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onRemoveLibrary(library.id);
-                                    }}
-                                    className="ml-2 h-4 w-4 p-0 opacity-60 hover:opacity-100"
+                          <div key={`${library.id}-wrap`} className="flex items-center gap-2">
+                            <Draggable key={library.id} draggableId={library.id} index={index}>
+                              {(provided, snapshot) => (
+                                <div className="flex items-center gap-2" ref={provided.innerRef} {...provided.draggableProps}>
+                                  <div
+                                    {...provided.dragHandleProps}
+                                    className="h-6 w-6 flex items-center justify-center rounded bg-muted/60 text-muted-foreground"
+                                    title="Drag to reorder"
                                   >
-                                    <X className="h-3 w-3" />
-                                  </Button>
+                                    <GripVertical className="h-3.5 w-3.5" />
+                                  </div>
+                                  <div
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all border ${
+                                      snapshot.isDragging ? 'shadow-lg rotate-1' : 'hover:shadow-md'
+                                    } ${
+                                      library.type === 'overexpression' ? 'bg-overexpression text-overexpression-foreground border-overexpression/30' :
+                                      library.type === 'knockout' ? 'bg-knockout text-knockout-foreground border-knockout/30' :
+                                      library.type === 'knockdown' ? 'bg-knockdown text-knockdown-foreground border-knockdown/30' :
+                                      'bg-card text-card-foreground border-border'
+                                    }`}
+                                  >
+                                    <span className="opacity-80">
+                                      {library.type === 'knockdown' ? '↓' : library.type === 'knockout' ? '✖' : library.type === 'knockin' ? '→' : '↑'}
+                                    </span>
+                                    <span className="truncate max-w-[180px]">{library.name}</span>
+                                    <span className="text-xs opacity-80 ml-1">
+                                      ({getFolderCount(library.id)})
+                                    </span>
+                                    <Select
+                                      value={library.type}
+                                      onValueChange={(v) =>
+                                        onLibraryTypeChange(
+                                          library.id,
+                                          v as 'overexpression' | 'knockout' | 'knockdown' | 'knockin'
+                                        )
+                                      }
+                                    >
+                                      <SelectTrigger className="h-7 w-[9rem] bg-background/60 text-foreground border-border">
+                                        <SelectValue placeholder="Type" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="overexpression">Overexpression</SelectItem>
+                                        <SelectItem value="knockin">Knockin</SelectItem>
+                                        <SelectItem value="knockout">Knockout</SelectItem>
+                                        <SelectItem value="knockdown">Knockdown</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onRemoveLibrary(library.id);
+                                      }}
+                                      className="ml-1 h-6 w-6 p-0 opacity-80 hover:opacity-100"
+                                      title="Remove from syntax"
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                  {/* Draw arrows between libraries */}
+                                  {index < orderedSyntax.length - 1 && (
+                                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                  )}
                                 </div>
-                                {/* Draw arrows between libraries */}
-                                {index < orderedSyntax.length - 1 && (
-                                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                )}
+                              )}
+                            </Draggable>
+
+                            {/* Insert a visual separator between gene-like and KO/KD groups */}
+                            {index === geneLikeCount - 1 && koKdCount > 0 && (
+                              <div className="flex items-center gap-2 px-2">
+                                <span className="text-xs text-muted-foreground">STOP</span>
+                                <span className="text-xs text-muted-foreground">▸</span>
+                                <span className="text-xs text-muted-foreground">Triplex</span>
+                                <span className="text-xs text-muted-foreground">▸</span>
+                                <span className="text-xs text-muted-foreground">Adaptor</span>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
                               </div>
                             )}
-                          </Draggable>
+                          </div>
                         ))}
                         
                       </>
