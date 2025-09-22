@@ -153,6 +153,7 @@ export const DesignLabSessionSchema = z.object({
   cassetteMode: z.enum(["single", "multi"]).default("single"),
   inputMode: z.enum(["manual", "natural"]).default("manual"),
   barcodeMode: z.enum(["internal", "general"]).default("general"),
+  globalModule: ModuleSchema.nullable().optional(),
 });
 
 export interface DesignLabSession {
@@ -167,6 +168,7 @@ export interface DesignLabSession {
   cassetteMode: 'single' | 'multi';
   inputMode: 'manual' | 'natural';
   barcodeMode: 'internal' | 'general';
+  globalModule?: Module | null;
 }
 
 export const designLabSession = createSessionStorage<DesignLabSession>({
