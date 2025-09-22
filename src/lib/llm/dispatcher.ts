@@ -19,6 +19,15 @@ export function mapActionToModuleType(action: string): 'overexpression' | 'knock
 export async function createModule(edit: EditInstruction): Promise<Module> {
   let moduleType = mapActionToModuleType(edit.action);
 
+  // 2A peptide DNA sequences (same codon choices as manual mode)
+  const TWO_A_SEQUENCES: Record<string, string> = {
+    P2A: 'GCCACCAACTTCTCCCTGCTGAAGCAGGCTGGTGACGTCGAGGAGAACCCTGGGCCC',
+    T2A: 'GAAGGAAGAGGAAGCCTTCTCACATGCGGAGATGTGGAAGAGAATCCTGGACCA',
+    E2A: 'CAGTGCAACTACGCCCTGCTGAAGCTGGCGGACGTCGAGTCCAACCCTGGGCCT',
+    F2A: 'GTTAAGCAGACCCTGAACTTCGACCTGCTGAAGCTGGCGGACGTCGAGTCCAACCCTGGGCCT',
+  };
+  const DEFAULT_2A_TYPE = 'T2A';
+
   // First, check if the target corresponds to a known synthetic gene
   const normalizedTarget = (edit.target || '').trim();
   const upper = normalizedTarget.toUpperCase();
@@ -30,13 +39,20 @@ export async function createModule(edit: EditInstruction): Promise<Module> {
 
   if (syntheticHit) {
     // Always represent synthetic targets as knock-ins with embedded sequence
+    const twoASeq = TWO_A_SEQUENCES[DEFAULT_2A_TYPE] || '';
+    const finalSequence = syntheticHit.sequence + twoASeq; // default add 2A like manual mode
     return {
       id: `generated-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: syntheticHit.name,
       type: 'knockin',
       description: edit.description || `${moduleType} ${syntheticHit.name}`,
-      sequence: syntheticHit.sequence,
+      sequence: finalSequence,
       isSynthetic: true,
+      syntheticSequence: syntheticHit.sequence,
+      metadata: {
+        has2ASequence: true,
+        twoAType: DEFAULT_2A_TYPE,
+      },
       color: getColorForType('knockin'),
     } as Module;
   }
@@ -56,13 +72,20 @@ export async function createModule(edit: EditInstruction): Promise<Module> {
       }
     } else {
       // Build a synthetic knock-in module with an embedded sequence
+      const twoASeq = TWO_A_SEQUENCES[DEFAULT_2A_TYPE] || '';
+      const finalSeq = syntheticHitForKnockin.sequence + twoASeq;
       return {
         id: `generated-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: syntheticHitForKnockin.name,
         type: 'knockin',
         description: edit.description || `knockin ${syntheticHitForKnockin.name}`,
-        sequence: syntheticHitForKnockin.sequence,
+        sequence: finalSeq,
         isSynthetic: true,
+        syntheticSequence: syntheticHitForKnockin.sequence,
+        metadata: {
+          has2ASequence: true,
+          twoAType: DEFAULT_2A_TYPE,
+        },
         color: getColorForType('knockin'),
       } as Module;
     }
