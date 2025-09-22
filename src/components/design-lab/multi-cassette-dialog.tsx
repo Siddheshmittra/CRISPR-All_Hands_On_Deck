@@ -96,6 +96,7 @@ interface MultiCassetteSetupProps {
   onLibraryTypeChange: (libraryId: string, type: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => void;
   onReorderLibraries: (newOrder: LibrarySyntax[]) => void;
   onLibrariesChange?: (libraries: LibrarySyntax[]) => void;
+  globalModule?: Module | null;
 }
 
 
@@ -111,7 +112,8 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     onRemoveLibrary,
     onLibraryTypeChange,
     onReorderLibraries,
-    onLibrariesChange
+    onLibrariesChange,
+    globalModule
   } = props;
   const [selectedLibrary, setSelectedLibrary] = useState<string>('total-library')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -317,6 +319,27 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
             console.error('applyCassetteSyntax failed', e);
             cassette = [list[i]];
           }
+          if (globalModule) {
+            const exists = cassette.some(m => m.id === globalModule.id)
+            if (!exists) {
+              if (globalModule.type === 'knockin') {
+                cassette = [
+                  { ...HARDCODED_COMPONENTS.intron, id: `intron-${randomUUID()}` } as any,
+                  { ...globalModule, id: `${globalModule.id}-${randomUUID()}`, name: globalModule.name },
+                  { ...HARDCODED_COMPONENTS.internalStuffer, id: `is-domain-${randomUUID()}` } as any,
+                  { ...HARDCODED_COMPONENTS.barcodes, id: `bc-domain-${randomUUID()}` } as any,
+                  ...cassette,
+                ]
+              } else {
+                cassette = [
+                  { ...HARDCODED_COMPONENTS.intron, id: `intron-${randomUUID()}` } as any,
+                  { ...globalModule, id: `${globalModule.id}-${randomUUID()}` },
+                  { ...HARDCODED_COMPONENTS.t2a, id: `t2a-${randomUUID()}` } as any,
+                  ...cassette,
+                ]
+              }
+            }
+          }
           pendingChunk.push(cassette);
           produced++;
           if (pendingChunk.length >= CHUNK_SIZE) {
@@ -344,6 +367,27 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
             console.error('applyCassetteSyntax failed', e)
             // Fallback: push raw modules if syntax application fails
             cassette = currentModules
+          }
+          if (globalModule) {
+            const exists = cassette.some(m => m.id === globalModule.id)
+            if (!exists) {
+              if (globalModule.type === 'knockin') {
+                cassette = [
+                  { ...HARDCODED_COMPONENTS.intron, id: `intron-${randomUUID()}` } as any,
+                  { ...globalModule, id: `${globalModule.id}-${randomUUID()}`, name: globalModule.name },
+                  { ...HARDCODED_COMPONENTS.internalStuffer, id: `is-domain-${randomUUID()}` } as any,
+                  { ...HARDCODED_COMPONENTS.barcodes, id: `bc-domain-${randomUUID()}` } as any,
+                  ...cassette,
+                ]
+              } else {
+                cassette = [
+                  { ...HARDCODED_COMPONENTS.intron, id: `intron-${randomUUID()}` } as any,
+                  { ...globalModule, id: `${globalModule.id}-${randomUUID()}` },
+                  { ...HARDCODED_COMPONENTS.t2a, id: `t2a-${randomUUID()}` } as any,
+                  ...cassette,
+                ]
+              }
+            }
           }
           pendingChunk.push(cassette);
           produced++;
