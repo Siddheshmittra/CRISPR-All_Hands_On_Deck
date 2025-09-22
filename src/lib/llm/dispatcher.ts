@@ -19,11 +19,33 @@ export function mapActionToModuleType(action: string): 'overexpression' | 'knock
 export async function createModule(edit: EditInstruction): Promise<Module> {
   let moduleType = mapActionToModuleType(edit.action);
 
+  // First, check if the target corresponds to a known synthetic gene
+  const normalizedTarget = (edit.target || '').trim();
+  const upper = normalizedTarget.toUpperCase();
+  const syntheticHit = syntheticGenes.find(g => {
+    const idMatch = g.id?.toUpperCase() === upper;
+    const nameMatch = g.name?.toUpperCase() === upper;
+    return idMatch || nameMatch;
+  });
+
+  if (syntheticHit) {
+    // Always represent synthetic targets as knock-ins with embedded sequence
+    return {
+      id: `generated-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: syntheticHit.name,
+      type: 'knockin',
+      description: edit.description || `${moduleType} ${syntheticHit.name}`,
+      sequence: syntheticHit.sequence,
+      isSynthetic: true,
+      color: getColorForType('knockin'),
+    } as Module;
+  }
+
   // If LLM suggested knockin, decide between synthetic knock-in vs natural OE.
   if (moduleType === 'knockin') {
     const targetUpper = (edit.target || '').trim().toUpperCase();
-    const syntheticHit = syntheticGenes.find(g => g.name.toUpperCase() === targetUpper);
-    if (!syntheticHit) {
+    const syntheticHitForKnockin = syntheticGenes.find(g => g.name.toUpperCase() === targetUpper);
+    if (!syntheticHitForKnockin) {
       // Natural gene → treat as overexpression (KI used colloquially)
       try {
         await resolveGene(edit.target, 'homo_sapiens');
@@ -36,10 +58,10 @@ export async function createModule(edit: EditInstruction): Promise<Module> {
       // Build a synthetic knock-in module with an embedded sequence
       return {
         id: `generated-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: syntheticHit.name,
+        name: syntheticHitForKnockin.name,
         type: 'knockin',
-        description: edit.description || `knockin ${syntheticHit.name}`,
-        sequence: syntheticHit.sequence,
+        description: edit.description || `knockin ${syntheticHitForKnockin.name}`,
+        sequence: syntheticHitForKnockin.sequence,
         isSynthetic: true,
         color: getColorForType('knockin'),
       } as Module;
