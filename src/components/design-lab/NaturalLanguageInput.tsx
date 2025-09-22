@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { parseInstructions } from '@/lib/llm/llmParser';
@@ -78,7 +79,8 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
   };
 
   return (
-    <div className="space-y-4 p-6">
+    <Card className="p-6">
+      <div className="space-y-4">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -168,6 +170,7 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
           </AlertDescription>
         </Alert>
       )}
-    </div>
+      </div>
+    </Card>
   );
 }
