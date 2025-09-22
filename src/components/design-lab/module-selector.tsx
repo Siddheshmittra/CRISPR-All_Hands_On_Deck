@@ -314,6 +314,111 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     toast.success("Added custom synthetic gene to library")
   }
 
+  // Heuristics to robustly detect and extract gene symbols from tabular data
+  const normalizeHeader = (h: string) => (h || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  const geneHeaderCandidates = new Set([
+    'gene',
+    'genes',
+    'gene name',
+    'gene_name',
+    'gene symbol',
+    'genesymbol',
+    'symbol',
+    'symbols',
+    'hgnc',
+    'hgnc symbol',
+    'approved symbol',
+    'approved_symbol',
+    'target',
+    'target gene',
+  ])
+  const synonymsHeaderCandidates = new Set([
+    'synonym',
+    'synonyms',
+    'alias',
+    'aliases',
+  ])
+  const isNumericLike = (v: any) => typeof v === 'number' || (/^\s*\d+\s*$/.test(String(v || '')))
+  const isGeneLikeToken = (raw: string) => {
+    const s = (raw || '').trim().toUpperCase()
+    if (!s) return false
+    if (s.length > 20) return false
+    if (/^\d+$/.test(s)) return false
+    if (!/^[A-Z0-9][A-Z0-9\-]*$/.test(s)) return false
+    if (s.replace(/\-/g, '').length < 2) return false
+    return true
+  }
+  const pickFirstGeneLikeFromCell = (cell: any): string | null => {
+    if (cell == null) return null
+    const str = String(cell)
+    const parts = str.split(/[;,\|\/\t\n\r\s]+/).map(s => s.trim()).filter(Boolean)
+    for (const p of parts) {
+      if (isGeneLikeToken(p)) return p.toUpperCase()
+    }
+    return null
+  }
+  const detectGeneColumn = (headers: string[], sampleRows: any[]): string | null => {
+    if (!headers || headers.length === 0) return null
+    const normalized = headers.map(h => ({ raw: h, norm: normalizeHeader(h) }))
+    const headerScore = new Map<string, number>()
+    for (const h of normalized) {
+      let score = 0
+      if (geneHeaderCandidates.has(h.norm)) score += 3
+      if (h.norm.includes('gene') && h.norm.includes('symbol')) score += 3
+      if (h.norm === 'symbol') score += 2
+      if (h.norm.includes('gene')) score += 1
+      headerScore.set(h.raw, score)
+    }
+    const sample = sampleRows.slice(0, 50)
+    const contentScore = new Map<string, number>()
+    for (const h of headers) {
+      let hits = 0
+      let nonEmpty = 0
+      for (const row of sample) {
+        const v = (row && (row as any)[h])
+        if (v == null || String(v).trim() === '') continue
+        nonEmpty++
+        const token = pickFirstGeneLikeFromCell(v)
+        if (token) hits++
+      }
+      const frac = nonEmpty > 0 ? hits / nonEmpty : 0
+      let numericCount = 0
+      for (const row of sample) {
+        const v = (row && (row as any)[h])
+        if (isNumericLike(v)) numericCount++
+      }
+      const numericFrac = sample.length > 0 ? numericCount / sample.length : 0
+      const score = Math.max(0, frac - numericFrac)
+      contentScore.set(h, score)
+    }
+    let best: { h: string; total: number } | null = null
+    for (const h of headers) {
+      const total = (headerScore.get(h) || 0) * 2 + (contentScore.get(h) || 0)
+      if (!best || total > best.total) best = { h, total }
+    }
+    if (best && best.total > 0.5) return best.h
+    return null
+  }
+  const extractGeneNameFromRow = (row: any, headers: string[]): string => {
+    const geneCol = detectGeneColumn(headers, [row]) || null
+    if (geneCol) {
+      const tok = pickFirstGeneLikeFromCell(row[geneCol])
+      if (tok) return tok
+    }
+    for (const h of headers) {
+      const norm = normalizeHeader(h)
+      if (synonymsHeaderCandidates.has(norm)) {
+        const tok = pickFirstGeneLikeFromCell(row[h])
+        if (tok) return tok
+      }
+    }
+    for (const h of headers) {
+      const tok = pickFirstGeneLikeFromCell(row[h])
+      if (tok) return tok
+    }
+    return ''
+  }
+
   function handleDeleteModule(moduleId: string, folderId: string) {
     if (folderId === 'total-library') {
       // Remove from customModules (parent will update folders and construct)
@@ -429,31 +534,32 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         }
 
         try {
-                        let rows: any[] = [];
-                        if (file.name.endsWith('.csv')) {
-                Papa.parse(data as string, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                        // Always use the selected perturbation type from the dialog
-                        const processedRows = results.data.map((row: any) => ({
-                            'Gene Name': row['Gene Name'] || row['gene_name'] || row['gene'] || row['symbol'] || row['Symbol'] || Object.values(row)[0],
-                            'Perturbation': scanGenesPerturbationType
-                        }));
-                        processGeneNames(processedRows, fileName);
-                    }
-                });
+            let rows: any[] = [];
+            if (file.name.endsWith('.csv')) {
+              Papa.parse(data as string, {
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => {
+                  const arr = (results.data as any[]) || []
+                  const headers = arr.length > 0 ? Object.keys(arr[0] || {}) : []
+                  const processedRows = arr.map((row: any) => ({
+                    'Gene Name': extractGeneNameFromRow(row, headers),
+                    'Perturbation': scanGenesPerturbationType,
+                  }))
+                  processGeneNames(processedRows, fileName)
+                }
+              })
             } else if (file.name.endsWith('.xlsx')) {
-                                const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                rows = XLSX.utils.sheet_to_json(worksheet);
-                // Always use the selected perturbation type from the dialog
-                const processedRows = rows.map((row: any) => ({
-                    'Gene Name': row['Gene Name'] || row['gene_name'] || row['gene'] || row['symbol'] || row['Symbol'] || Object.values(row)[0],
-                    'Perturbation': scanGenesPerturbationType
-                }));
-                processGeneNames(processedRows, fileName);
+              const workbook = XLSX.read(data, { type: 'array' });
+              const sheetName = workbook.SheetNames[0];
+              const worksheet = workbook.Sheets[sheetName];
+              rows = XLSX.utils.sheet_to_json(worksheet);
+              const headers = rows.length > 0 ? Object.keys(rows[0] || {}) : []
+              const processedRows = rows.map((row: any) => ({
+                'Gene Name': extractGeneNameFromRow(row, headers),
+                'Perturbation': scanGenesPerturbationType,
+              }))
+              processGeneNames(processedRows, fileName)
             } else {
                 toast.error("Unsupported file type. Please use .csv or .xlsx");
             }
@@ -496,7 +602,15 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     
     for (const row of rows) {
         // More flexible gene name extraction
-        let geneName = row['Gene Name'] || row['gene_name'] || row['gene'] || row['symbol'] || row['Symbol'] || Object.values(row)[0];
+        let geneName = row['Gene Name'] || row['gene_name'] || row['gene'] || row['symbol'] || row['Symbol'] || '';
+        if (!geneName) {
+          // Last resort: scan the row's fields for the first gene-like token
+          const headers = Object.keys(row || {})
+          for (const h of headers) {
+            const tok = pickFirstGeneLikeFromCell(row[h])
+            if (tok) { geneName = tok; break }
+          }
+        }
         const perturbationType = row['Perturbation'] || row['perturbation'] || row['Type'] || row['type'];
 
         if (!geneName) continue;
