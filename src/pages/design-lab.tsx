@@ -171,8 +171,6 @@ const DesignLab = () => {
   }, [barcodePool, usedBarcodes, generalPool, internalPool])
 
   const handleAddLibrary = (libraryId: string, perturbationType?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => {
-    const existing = librarySyntax.find(l => l.id === libraryId)
-    if (existing) return
     const library = folders.find(f => f.id === libraryId)
 
     // Enforce Total Library constraint: only add if all contained modules share a single perturbation type
@@ -200,7 +198,7 @@ const DesignLab = () => {
     }
 
     const newLibrary: LibrarySyntax = {
-      id: libraryId,
+      id: `lib:${libraryId}:${randomUUID()}`,
       name: library?.name || libraryId,
       type: moduleType
     }
@@ -216,7 +214,8 @@ const DesignLab = () => {
     setLibrarySyntax(prev => prev.map(l => l.id === libraryId ? { ...l, type } : l))
     
     // Find the library to get its modules
-    const library = folders.find(f => f.id === libraryId)
+    const actualFolderId = libraryId.startsWith('lib:') ? libraryId.split(':')[1] : libraryId
+    const library = folders.find(f => f.id === actualFolderId)
     if (!library) return
     
     // Update all modules in this library to the new type
@@ -465,15 +464,12 @@ const DesignLab = () => {
       const folder = folders.find(f => f.id === folderId)
       if (!folder) return
       
-      // Don't add if already exists
-      if (librarySyntax.find(l => l.id === folderId)) return
-      
       // Get the first module in the folder to determine its type
       const folderModule = customModules.find(m => m.id === folder.modules[0]);
       const moduleType = folderModule?.type || 'overexpression';
       
       const newLibraryItem: LibrarySyntax = {
-        id: folder.id,
+        id: `lib:${folder.id}:${randomUUID()}`,
         name: folder.name,
         type: moduleType as 'overexpression' | 'knockout' | 'knockdown' | 'knockin'
       }

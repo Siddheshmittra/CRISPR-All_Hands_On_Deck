@@ -275,7 +275,8 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
           continue
         }
 
-        const library = folders.find(f => f.id === libSyntax.id);
+        const actualFolderId = libSyntax.id.startsWith('lib:') ? libSyntax.id.split(':')[1] : libSyntax.id
+        const library = folders.find(f => f.id === actualFolderId);
         if (!library || !library.modules || library.modules.length === 0) {
           toast.error(`Library '${library?.name || libSyntax.id}' is empty or not found.`);
           setIsGenerating(false);
