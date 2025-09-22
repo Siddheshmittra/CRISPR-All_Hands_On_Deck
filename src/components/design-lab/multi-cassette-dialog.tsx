@@ -96,7 +96,7 @@ interface MultiCassetteSetupProps {
   onLibraryTypeChange: (libraryId: string, type: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => void;
   onReorderLibraries: (newOrder: LibrarySyntax[]) => void;
   onLibrariesChange?: (libraries: LibrarySyntax[]) => void;
-  globalModule?: Module | null;
+  // No global module injection; constants are handled as virtual libraries
 }
 
 
@@ -119,8 +119,9 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
   const [isGenerating, setIsGenerating] = useState(false)
   const [libraries, setLibraries] = useState<LibrarySyntax[]>([])
   
-  // Filter libraries: hide 'total-library' if it mixes perturbation types
+  // Filter libraries: hide 'total-library' if it mixes perturbation types; include Constants as virtual per-module entries
   const eligibleLibraries = useMemo(() => {
+    const CONSTANTS_FOLDER_ID = 'constants-library'
     const result = folders.filter(folder => {
       if (folder.id !== 'total-library') return true
       const moduleObjs = (folder.modules || []).map((id: string) => customModules.find(m => m.id === id)).filter(Boolean)
@@ -249,35 +250,57 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     setIsGenerating(true);
     const loadingToast = toast.loading('Preparing to generate all combinations...');
     
-    // Build module lists for each library in the syntax order
+      // Build module lists for each library in the syntax order
     const libraryModuleLists: Module[][] = [];
     for (const libSyntax of librarySyntax) {
-      const library = folders.find(f => f.id === libSyntax.id);
-      if (!library || !library.modules || library.modules.length === 0) {
-        toast.error(`Library '${library?.name || libSyntax.id}' is empty or not found.`);
-        setIsGenerating(false);
-        toast.dismiss(loadingToast);
-        return;
-      }
-      const libraryModules = customModules.filter(m => library.modules.includes(m.id) && (m.sequence && m.sequence.length > 0));
-      if (libraryModules.length === 0) {
-        toast.error(`No modules with sequences found for library '${library.name}'.`);
-        setIsGenerating(false);
-        toast.dismiss(loadingToast);
-        return;
-      }
-      // Map modules to the library's specified type (keep original display name)
-      libraryModuleLists.push(
-        libraryModules.map((randomModule) => ({
-          ...randomModule,
-          id: `${randomModule.id}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
-          type: libSyntax.type,
-          sequence: randomModule.type === libSyntax.type ? randomModule.sequence : '',
-          sequenceSource: randomModule.sequenceSource,
-          originalType: randomModule.type,
-          originalSequence: randomModule.sequence
-        }))
-      );
+        // Handle virtual constant library entries: id starts with 'const-lib-<moduleId>'
+        if (libSyntax.id.startsWith('const-lib-')) {
+          const moduleId = libSyntax.id.replace('const-lib-', '')
+          const m = customModules.find(mm => mm.id === moduleId)
+          if (!m) {
+            toast.error(`Constant '${libSyntax.name}' not found.`)
+            setIsGenerating(false); toast.dismiss(loadingToast); return;
+          }
+          libraryModuleLists.push([
+            {
+              ...m,
+              id: `${m.id}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+              type: libSyntax.type,
+              sequence: m.type === libSyntax.type ? m.sequence : '',
+              sequenceSource: m.sequenceSource,
+              originalType: m.type,
+              originalSequence: m.sequence,
+            } as any
+          ])
+          continue
+        }
+
+        const library = folders.find(f => f.id === libSyntax.id);
+        if (!library || !library.modules || library.modules.length === 0) {
+          toast.error(`Library '${library?.name || libSyntax.id}' is empty or not found.`);
+          setIsGenerating(false);
+          toast.dismiss(loadingToast);
+          return;
+        }
+        const libraryModules = customModules.filter(m => library.modules.includes(m.id) && (m.sequence && m.sequence.length > 0));
+        if (libraryModules.length === 0) {
+          toast.error(`No modules with sequences found for library '${library.name}'.`);
+          setIsGenerating(false);
+          toast.dismiss(loadingToast);
+          return;
+        }
+        // Map modules to the library's specified type (keep original display name)
+        libraryModuleLists.push(
+          libraryModules.map((randomModule) => ({
+            ...randomModule,
+            id: `${randomModule.id}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+            type: libSyntax.type,
+            sequence: randomModule.type === libSyntax.type ? randomModule.sequence : '',
+            sequenceSource: randomModule.sequenceSource,
+            originalType: randomModule.type,
+            originalSequence: randomModule.sequence
+          }))
+        );
     }
 
     // Compute total combinations
@@ -485,21 +508,45 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
           
           <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block mb-1 text-sm font-medium">Add Library to Syntax</label>
+            <label className="block mb-1 text-sm font-medium">Add Library or Constant Gene to Syntax</label>
             <div className="flex gap-2">
-                <select
-                  value={selectedLibrary}
-                  onChange={e => setSelectedLibrary(e.target.value)}
+              <select
+                value={selectedLibrary}
+                onChange={e => setSelectedLibrary(e.target.value)}
                 className="h-9 px-2 flex-1 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {eligibleLibraries.map(folder => (
                   <option key={folder.id} value={folder.id}>{folder.name}</option>
                 ))}
+                {/* Virtual entries for constants: one option per module */}
+                {(() => {
+                  const constantsFolder = folders.find(f => f.id === 'constants-library')
+                  if (!constantsFolder) return null
+                  return constantsFolder.modules.map((mid: string) => {
+                    const mod = customModules.find(m => m.id === mid)
+                    if (!mod) return null
+                    const virtualId = `const:${mod.id}`
+                    return <option key={virtualId} value={virtualId}>{`Constant: ${mod.name}`}</option>
+                  })
+                })()}
               </select>
               <Button
                 size="sm"
-                  onClick={() => onAddLibrary(selectedLibrary)}
-                  disabled={!selectedLibrary || librarySyntax.find(l => l.id === selectedLibrary) !== undefined}
+                onClick={() => {
+                  if (selectedLibrary.startsWith('const:')) {
+                    const moduleId = selectedLibrary.replace('const:', '')
+                    const mod = customModules.find(m => m.id === moduleId)
+                    if (!mod) return
+                    // Create a virtual library entry for this single module
+                    const virtualLibId = `const-lib-${moduleId}`
+                    if (librarySyntax.find(l => l.id === virtualLibId)) return
+                    const newItem: LibrarySyntax = { id: virtualLibId, name: `Const: ${mod.name}`, type: (mod.type as any) || 'overexpression' }
+                    onReorderLibraries([...librarySyntax, newItem])
+                    return
+                  }
+                  onAddLibrary(selectedLibrary)
+                }}
+                disabled={!selectedLibrary}
               >
                 <Plus className="h-4 w-4" />
               </Button>

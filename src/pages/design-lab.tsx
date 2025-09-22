@@ -68,7 +68,8 @@ const DesignLab = () => {
   const [barcodePool, setBarcodePool] = useState<string[]>([])
   const [generalPool, setGeneralPool] = useState<Array<{ index: number; sequence: string }>>([])
   const [internalPool, setInternalPool] = useState<Array<{ index: number; sequence: string }>>([])
-  const [globalModule, setGlobalModule] = useState<Module | null>(null)
+  // Constants folder id
+  const CONSTANTS_FOLDER_ID = 'constants-library'
 
   // Load Roth pool once (used by Choose Barcode regardless of mode)
   React.useEffect(() => {
@@ -98,7 +99,11 @@ const DesignLab = () => {
       setCassetteMode(loaded.cassetteMode || 'single')
       setInputMode(loaded.inputMode || 'manual')
       setBarcodeMode(loaded.barcodeMode || 'general')
-      setGlobalModule((loaded as any).globalModule || null)
+      // Ensure Constants folder exists in loaded session
+      setFolders(prev => {
+        const hasConstants = (loaded.folders as any[]).some(f => f.id === CONSTANTS_FOLDER_ID)
+        return hasConstants ? (loaded.folders as any[]) : ([...((loaded.folders as any[]) || []), { id: CONSTANTS_FOLDER_ID, name: 'Constants', modules: [], open: true }])
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -112,10 +117,9 @@ const DesignLab = () => {
       cassetteMode,
       inputMode,
       barcodeMode,
-      globalModule,
     }
     designLabSession.scheduleSave(payload as unknown as any)
-  }, [customModules, folders, librarySyntax, cassetteBatch, cassetteMode, inputMode, barcodeMode, globalModule])
+  }, [customModules, folders, librarySyntax, cassetteBatch, cassetteMode, inputMode, barcodeMode])
 
   // Flush session on page hide/unload (non-invasive)
   React.useEffect(() => {
@@ -351,20 +355,6 @@ const DesignLab = () => {
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return
-
-    // Set global constant module by dropping from a library
-    if (
-      folders.map(f => f.id).includes(result.source.droppableId) &&
-      result.destination.droppableId === 'global-module'
-    ) {
-      const moduleId = result.draggableId
-      const module = customModules.find(m => m.id === moduleId)
-      if (module) {
-        setGlobalModule(module)
-        toast.success(`Set constant module: ${module.name}`)
-      }
-      return
-    }
 
     // Reorder within construct
     if (
@@ -658,7 +648,6 @@ const DesignLab = () => {
                 onRemoveLibrary={handleRemoveLibrary}
                 onLibraryTypeChange={handleLibraryTypeChange}
                 onReorderLibraries={handleReorderLibraries}
-                globalModule={globalModule}
               />
               <CassetteBatch 
                 cassetteBatch={cassetteBatch}
@@ -709,39 +698,6 @@ const DesignLab = () => {
                           handleModuleClick={handleModuleClick}
                           hideTypeSelector={cassetteMode === 'multi'}
                         />
-                      {/* Constant module chooser */}
-                      <Card className="p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-base font-semibold">Constant Module (optional)</h3>
-                          {globalModule && (
-                            <button
-                              className="text-sm px-2 py-1 border rounded"
-                              onClick={() => setGlobalModule(null)}
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </div>
-                        <Droppable droppableId="global-module" type="module">
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.droppableProps}
-                              className={`p-4 rounded border text-sm ${snapshot.isDraggingOver ? 'border-primary bg-primary/10' : 'border-border bg-background'}`}
-                            >
-                              {globalModule ? (
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">{globalModule.name}</span>
-                                  <span className="text-xs opacity-70">({globalModule.type})</span>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">Drag a module here (e.g., GFP) to include it in every generated construct</span>
-                              )}
-                              {provided.placeholder}
-                            </div>
-                          )}
-                        </Droppable>
-                      </Card>
                         <ErrorBoundary>
                           <MultiCassetteSetup
                             onAddCassettes={(cassettes) => {
@@ -758,7 +714,6 @@ const DesignLab = () => {
                             onRemoveLibrary={handleRemoveLibrary}
                             onLibraryTypeChange={handleLibraryTypeChange}
                             onReorderLibraries={handleReorderLibraries}
-                          globalModule={globalModule}
                           />
                         </ErrorBoundary>
                       </>

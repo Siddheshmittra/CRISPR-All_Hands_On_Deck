@@ -91,6 +91,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
   const [isLibraryLoading, setIsLibraryLoading] = useState(false)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
+  const CONSTANTS_FOLDER_ID = 'constants-library'
   // Benchling integration removed
 
   // Compute modules not in any folder
@@ -990,6 +991,16 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         <Droppable droppableId="module-selector-folders" type="library" isDropDisabled={isLibraryLoading}>
           {(provided) => (
             <div ref={provided.innerRef} {...provided.droppableProps}>
+              {/* Ensure a dedicated Constants folder exists */}
+              {(!folders.some(f => f.id === CONSTANTS_FOLDER_ID)) && (
+                <div className="mb-2 border rounded bg-muted">
+                  <div className="flex items-center px-2 py-1 select-none">
+                    <span className="font-semibold">Constants</span>
+                    <Badge variant="secondary" className="ml-2">0</Badge>
+                  </div>
+                  <div className="p-2 text-sm text-muted-foreground">Create a folder named "Constants" to pin single-gene constants.</div>
+                </div>
+              )}
               {folders.map((folder, index) => (
                 <Draggable key={folder.id} draggableId={folder.id} index={index}>
                   {(provided, snapshot) => (
