@@ -9,6 +9,7 @@ import { generateGenbank } from "@/lib/genbank"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { validateBarcode, generateBarcode } from "@/lib/barcode-utils"
+import { CodeHeading } from "@/components/ui/code-heading"
 
 interface Cassette {
   id: string
@@ -498,7 +499,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
     <Card className="p-6 mt-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">3. Encoding</h2>
+          <CodeHeading text="3. Encoding" className="text-xl font-bold text-gray-900 dark:text-white" />
           {cassetteBatch.length > CASSETTES_PER_PAGE && (
             <p className="text-sm text-muted-foreground">
               Showing {startIndex + 1}-{Math.min(endIndex, cassetteBatch.length)} of {cassetteBatch.length} constructs

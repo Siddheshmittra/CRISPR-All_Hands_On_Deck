@@ -25,6 +25,7 @@ import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { toast } from "sonner"
 import { generateBarcode } from "@/lib/barcode-utils"
 import { predictTCellFunction } from "@/lib/llm/predictFunction"
+import { CodeHeading } from "@/components/ui/code-heading"
 
 import { Module, LibrarySyntax } from "@/lib/types"
 
@@ -696,7 +697,7 @@ const DesignLab = () => {
                 {/* 3. Encoding box */}
                 {cassetteMode !== 'multi' && (
                   <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">3. Encoding</h2>
+                    <CodeHeading text="3. Encoding" className="text-xl font-bold text-gray-900 dark:text-white mb-2" />
                     {constructWithLinkers.length > 0 ? (
                       <p className="text-sm font-mono break-all">
                         {constructWithLinkers.map((item: any) => {
