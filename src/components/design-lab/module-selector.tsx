@@ -344,10 +344,16 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const isGeneLikeToken = (raw: string) => {
     const s = (raw || '').trim().toUpperCase()
     if (!s) return false
-    if (s.length > 20) return false
+    // Allow longer gene names (some gene symbols can be longer)
+    if (s.length > 30) return false
+    // Reject pure numbers
     if (/^\d+$/.test(s)) return false
-    if (!/^[A-Z0-9][A-Z0-9\-]*$/.test(s)) return false
-    if (s.replace(/\-/g, '').length < 2) return false
+    // Allow alphanumeric with hyphens, underscores, and dots (common in gene nomenclature)
+    if (!/^[A-Z0-9][A-Z0-9\-_.]*[A-Z0-9]$/.test(s) && !/^[A-Z0-9]$/.test(s)) return false
+    // Require at least one letter (genes must have letters, not just numbers)
+    if (!/[A-Z]/.test(s)) return false
+    // Minimum length of 2 characters (or 1 if it's a letter)
+    if (s.length < 1) return false
     return true
   }
   const pickFirstGeneLikeFromCell = (cell: any): string | null => {
@@ -402,22 +408,64 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     return null
   }
   const extractGeneNameFromRow = (row: any, headers: string[]): string => {
+    if (!row || typeof row !== 'object') return '';
+    
+    // Strategy 1: Try detecting the gene column from headers
     const geneCol = detectGeneColumn(headers, [row]) || null
-    if (geneCol) {
+    if (geneCol && row[geneCol]) {
       const tok = pickFirstGeneLikeFromCell(row[geneCol])
-      if (tok) return tok
+      if (tok) {
+        console.log('[Extract] Found gene via detected column:', tok, 'from column:', geneCol);
+        return tok;
+      }
     }
+    
+    // Strategy 2: Try common gene column names (case-insensitive)
+    const commonGeneHeaders = ['gene', 'gene name', 'gene_name', 'symbol', 'gene symbol', 'hgnc', 'target'];
+    for (const h of headers) {
+      const normH = normalizeHeader(h);
+      if (commonGeneHeaders.some(common => normH === common || normH.includes(common))) {
+        const tok = pickFirstGeneLikeFromCell(row[h]);
+        if (tok) {
+          console.log('[Extract] Found gene via common header:', tok, 'from column:', h);
+          return tok;
+        }
+      }
+    }
+    
+    // Strategy 3: Try synonym columns
     for (const h of headers) {
       const norm = normalizeHeader(h)
       if (synonymsHeaderCandidates.has(norm)) {
         const tok = pickFirstGeneLikeFromCell(row[h])
-        if (tok) return tok
+        if (tok) {
+          console.log('[Extract] Found gene via synonym column:', tok, 'from column:', h);
+          return tok;
+        }
       }
     }
-    for (const h of headers) {
-      const tok = pickFirstGeneLikeFromCell(row[h])
-      if (tok) return tok
+    
+    // Strategy 4: Try first column if it looks promising
+    if (headers.length > 0 && headers[0] && row[headers[0]]) {
+      const tok = pickFirstGeneLikeFromCell(row[headers[0]]);
+      if (tok) {
+        console.log('[Extract] Found gene via first column:', tok, 'from column:', headers[0]);
+        return tok;
+      }
     }
+    
+    // Strategy 5: Scan all columns as last resort
+    for (const h of headers) {
+      if (row[h]) {
+        const tok = pickFirstGeneLikeFromCell(row[h])
+        if (tok) {
+          console.log('[Extract] Found gene via column scan:', tok, 'from column:', h);
+          return tok;
+        }
+      }
+    }
+    
+    console.log('[Extract] No valid gene found in row:', row);
     return ''
   }
 
@@ -554,21 +602,41 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                   }
                   const headers = arr.length > 0 ? Object.keys(arr[0] || {}) : []
                   console.log('[Import] Headers detected:', headers);
-                  const processedRows = arr.map((row: any) => {
+                  
+                  const parseErrors: string[] = [];
+                  const processedRows = arr.map((row: any, index: number) => {
                     const geneName = extractGeneNameFromRow(row, headers);
-                    console.log('[Import] Extracted gene:', geneName, 'from row:', row);
-                    return {
-                      'Gene Name': geneName,
-                      'Perturbation': scanGenesPerturbationType,
+                    console.log('[Import] Row', index + 1, '- Extracted gene:', geneName, 'from row:', row);
+                    
+                    if (!geneName || !geneName.trim()) {
+                      parseErrors.push(`Row ${index + 1}: Could not extract valid gene name`);
+                      return null;
                     }
-                  }).filter(row => row['Gene Name']); // Only keep rows with valid gene names
-                  console.log('[Import] Processed rows:', processedRows.length);
+                    
+                    return {
+                      'Gene Name': geneName.trim().toUpperCase(),
+                      'Perturbation': scanGenesPerturbationType as 'overexpression' | 'knockout' | 'knockdown' | 'knockin',
+                    }
+                  }).filter((row): row is { 'Gene Name': string; 'Perturbation': 'overexpression' | 'knockout' | 'knockdown' | 'knockin' } => 
+                    row !== null && !!row['Gene Name'] && row['Gene Name'].length > 0
+                  );
+                  
+                  console.log('[Import] Successfully processed rows:', processedRows.length);
+                  console.log('[Import] Parse errors:', parseErrors.length);
+                  
                   if (processedRows.length === 0) {
-                    toast.error('No valid gene names found in file');
+                    toast.error(`No valid gene names found in CSV. Check that your file has a column with gene symbols.`);
                     setLoading(false);
                     setIsLibraryLoading(false);
                     return;
                   }
+                  
+                  if (parseErrors.length > 0 && parseErrors.length < arr.length) {
+                    toast.warning(`Processed ${processedRows.length} genes, skipped ${parseErrors.length} rows with invalid/missing gene names`);
+                  } else {
+                    toast.info(`Found ${processedRows.length} gene names. Processing...`);
+                  }
+                  
                   processGeneNames(processedRows, fileName)
                 },
                 error: (error) => {
@@ -592,21 +660,41 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
               }
               const headers = rows.length > 0 ? Object.keys(rows[0] || {}) : []
               console.log('[Import] Headers detected:', headers);
-              const processedRows = rows.map((row: any) => {
+              
+              const parseErrors: string[] = [];
+              const processedRows = rows.map((row: any, index: number) => {
                 const geneName = extractGeneNameFromRow(row, headers);
-                console.log('[Import] Extracted gene:', geneName, 'from row:', row);
-                return {
-                  'Gene Name': geneName,
-                  'Perturbation': scanGenesPerturbationType,
+                console.log('[Import] Row', index + 1, '- Extracted gene:', geneName, 'from row:', row);
+                
+                if (!geneName || !geneName.trim()) {
+                  parseErrors.push(`Row ${index + 1}: Could not extract valid gene name`);
+                  return null;
                 }
-              }).filter(row => row['Gene Name']); // Only keep rows with valid gene names
-              console.log('[Import] Processed rows:', processedRows.length);
+                
+                return {
+                  'Gene Name': geneName.trim().toUpperCase(),
+                  'Perturbation': scanGenesPerturbationType as 'overexpression' | 'knockout' | 'knockdown' | 'knockin',
+                }
+              }).filter((row): row is { 'Gene Name': string; 'Perturbation': 'overexpression' | 'knockout' | 'knockdown' | 'knockin' } => 
+                row !== null && !!row['Gene Name'] && row['Gene Name'].length > 0
+              );
+              
+              console.log('[Import] Successfully processed rows:', processedRows.length);
+              console.log('[Import] Parse errors:', parseErrors.length);
+              
               if (processedRows.length === 0) {
-                toast.error('No valid gene names found in file');
+                toast.error(`No valid gene names found in Excel file. Check that your file has a column with gene symbols.`);
                 setLoading(false);
                 setIsLibraryLoading(false);
                 return;
               }
+              
+              if (parseErrors.length > 0 && parseErrors.length < rows.length) {
+                toast.warning(`Processed ${processedRows.length} genes, skipped ${parseErrors.length} rows with invalid/missing gene names`);
+              } else {
+                toast.info(`Found ${processedRows.length} gene names. Processing...`);
+              }
+              
               processGeneNames(processedRows, fileName)
             } else {
                 toast.error("Unsupported file type. Please use .csv or .xlsx");
@@ -670,13 +758,27 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         }
         const perturbationType = row['Perturbation'] || row['perturbation'] || row['Type'] || row['type'];
 
-        if (!geneName) continue;
+        if (!geneName || !geneName.trim()) {
+          console.warn('[ProcessGenes] Skipping row with empty gene name:', row);
+          failedGenes.push('(empty name)');
+          continue;
+        }
         
         // Clean up gene name (remove whitespace, convert to uppercase for consistency)
         geneName = String(geneName).trim().toUpperCase();
         
+        // Validate that the gene name is reasonable (at least 2 characters, not just numbers)
+        if (geneName.length < 2 || /^\d+$/.test(geneName)) {
+          console.warn('[ProcessGenes] Skipping invalid gene name:', geneName);
+          failedGenes.push(geneName);
+          continue;
+        }
+        
         // Skip if already processed
-        if (processedGenes.has(geneName)) continue;
+        if (processedGenes.has(geneName)) {
+          console.log('[ProcessGenes] Skipping duplicate gene:', geneName);
+          continue;
+        }
         processedGenes.add(geneName);
 
         const moduleType = (['overexpression', 'knockout', 'knockdown', 'knockin'].includes(perturbationType?.toLowerCase()) 
@@ -697,16 +799,23 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             const enrichedModule = await enrichModuleWithSequence(partialModule, { enforceTypeSource: true });
             
             // Add module even if sequence enrichment partially failed
-            if (enrichedModule) {
-                newModules.push({
-                    id: `${enrichedModule.name || geneName}-${moduleType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                    name: enrichedModule.name || geneName,
-                    type: moduleType,
-                    description: enrichedModule.description || `Human gene ${enrichedModule.name || geneName}`,
-                    sequence: enrichedModule.sequence || '', // Allow empty sequences
-                    sequenceSource: enrichedModule.sequenceSource,
-                });
-                moduleAdded = true;
+            if (enrichedModule && (enrichedModule.name || geneName)) {
+                const finalName = enrichedModule.name || geneName;
+                // Double-check the name is valid
+                if (!finalName || finalName.trim().length < 2) {
+                    console.warn('[ProcessGenes] Enriched module has invalid name:', finalName);
+                    failedGenes.push(geneName);
+                } else {
+                    newModules.push({
+                        id: `${finalName}-${moduleType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        name: finalName,
+                        type: moduleType,
+                        description: enrichedModule.description || `Human gene ${finalName}`,
+                        sequence: enrichedModule.sequence || '', // Allow empty sequences
+                        sequenceSource: enrichedModule.sequenceSource,
+                    });
+                    moduleAdded = true;
+                }
             }
         } catch (error) {
             console.error(`Error enriching gene ${geneName}:`, error);
@@ -714,7 +823,11 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         
         // Fallback/skip behavior when enrichment failed
         if (!moduleAdded) {
-            if (moduleType === 'knockdown' || moduleType === 'knockout') {
+            // Validate gene name before adding as fallback
+            if (!geneName || geneName.trim().length < 2) {
+                console.warn('[ProcessGenes] Cannot add fallback for invalid gene name:', geneName);
+                failedGenes.push(geneName || '(empty)');
+            } else if (moduleType === 'knockdown' || moduleType === 'knockout') {
                 // Strict: do not add KD/KO modules without shRNA/gRNA sequences
                 failedGenes.push(geneName);
             } else {
@@ -762,18 +875,23 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       
       // Update the loading toast with results
       const withSeq = newModules.filter(m => (m.sequence && m.sequence.length > 0)).length;
+      const uniqueFailures = new Set(failedGenes.filter(g => g && g !== '(empty)'));
+      
       if (failedGenes.length === 0) {
-        toast.success(`Successfully added ${withSeq}/${newModules.length} genes to '${folderName}' with sequences.`, { id: toastId });
-      } else if (withSeq > 0) {
-        toast.success(`Added ${withSeq} genes with sequences to '${folderName}'. Skipped ${failedGenes.length} without available sequences.`, { id: toastId });
+        toast.success(`Successfully added all ${newModules.length} genes to '${folderName}' (${withSeq} with sequences).`, { id: toastId });
+      } else if (newModules.length > 0) {
+        toast.success(
+          `Added ${newModules.length} genes to '${folderName}' (${withSeq} with sequences). Skipped ${uniqueFailures.size} invalid/failed genes.`, 
+          { id: toastId, duration: 6000 }
+        );
       } else {
         toast.warning(
-          `No valid sequences found. Skipped ${failedGenes.length} genes.`, 
-          { id: toastId }
+          `No valid genes could be added. Skipped ${uniqueFailures.size} invalid/failed genes.`, 
+          { id: toastId, duration: 6000 }
         );
       }
       } else {
-        toast.error('No valid genes could be processed. Please check your gene names and try again.');
+        toast.error('No valid genes could be processed. Please check that your CSV file has a column with gene symbols (e.g., "Gene", "Symbol", "Gene Name").');
       }
     } catch (error) {
       console.error('Error processing gene names:', error);

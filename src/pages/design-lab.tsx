@@ -353,6 +353,23 @@ const DesignLab = () => {
       const items = Array.from(constructModules)
       const [reorderedItem] = items.splice(result.source.index, 1)
       items.splice(result.destination.index, 0, reorderedItem)
+      
+      // Validate syntax rules: OE/KI must come before KO/KD
+      const isGeneLike = (type: string) => type === 'overexpression' || type === 'knockin';
+      const isKoKd = (type: string) => type === 'knockout' || type === 'knockdown';
+      
+      // Check if the new order violates the rule (KO/KD before OE/KI)
+      let foundKoKd = false;
+      for (const item of items) {
+        if (isKoKd(item.type)) {
+          foundKoKd = true;
+        } else if (isGeneLike(item.type) && foundKoKd) {
+          // Violation: found OE/KI after KO/KD
+          toast.error('Syntax rule: Overexpression/Knock-in modules must come before Knockout/Knockdown modules');
+          return;
+        }
+      }
+      
       setConstructModules(items)
       return
     }
