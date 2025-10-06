@@ -111,10 +111,11 @@ function getColorForType(type: string): string {
   return colors[type] || 'bg-gray-100 text-gray-800';
 }
 
-function formatAlternativeList(list: string[]): string {
-  if (list.length === 1) return list[0];
-  if (list.length === 2) return `${list[0]} or ${list[1]}`;
-  return `${list.slice(0, -1).join(', ')}, or ${list[list.length - 1]}`;
+export interface DispatchWarning {
+  message: string;
+  alternatives?: string[];
+  action?: 'overexpression' | 'knockdown' | 'knockout' | 'knockin';
+  originalTarget?: string;
 }
 
 export async function dispatchEdits(
@@ -122,13 +123,15 @@ export async function dispatchEdits(
   opts?: { enforceTypeSource?: boolean }
 ): Promise<{
   modules: Module[];
-  warnings: string[];
+  warnings: DispatchWarning[];
 }> {
   const { valid, invalid, sensitive } = validateGenes(edits);
-  const warnings: string[] = [];
+  const warnings: DispatchWarning[] = [];
 
   if (invalid.length > 0) {
-    warnings.push(`Skipped invalid gene symbols: ${invalid.join(', ')}`);
+    warnings.push({
+      message: `Skipped invalid gene symbols: ${invalid.join(', ')}`
+    });
   }
 
   // Create modules with sequence validation
@@ -144,20 +147,25 @@ export async function dispatchEdits(
     } catch (error) {
       const baseMessage = error instanceof Error ? error.message : 'Unknown error while creating module';
       const suggestionType = draftModule?.type === 'knockin' ? 'overexpression' : draftModule?.type;
-      let suggestionSuffix = '';
+      let alternatives: string[] | undefined;
       try {
-        const alternatives = await suggestGeneAlternatives(draftModule?.name ?? edit.target, {
+        const nextAlternatives = await suggestGeneAlternatives(draftModule?.name ?? edit.target, {
           type: suggestionType,
           limit: 3,
         });
-        if (alternatives.length > 0) {
-          suggestionSuffix = ` Did you mean ${formatAlternativeList(alternatives)}?`;
+        if (nextAlternatives.length > 0) {
+          alternatives = nextAlternatives;
         }
       } catch (suggestionError) {
         console.warn('[dispatchEdits] Failed to compute gene suggestions:', suggestionError);
       }
 
-      warnings.push(`Failed to create module for ${edit.target}: ${baseMessage}${suggestionSuffix}`);
+      warnings.push({
+        message: `Failed to create module for ${edit.target}: ${baseMessage}`,
+        alternatives,
+        action: draftModule?.type ?? mapActionToModuleType(edit.action),
+        originalTarget: edit.target,
+      });
     }
   }
   

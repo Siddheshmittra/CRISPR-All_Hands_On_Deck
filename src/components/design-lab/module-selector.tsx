@@ -272,20 +272,35 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         sequence: moduleToAdd.sequence || '',
         isEnriching: true // Mark as enriching to show loading state
       }
-      
-      // Add the module immediately with loading state
-      onCustomModulesChange([...customModules, newModule])
-      
+
+      // Add the module immediately with loading state (for optimistic UI updates)
+      const nextCustomModules = [...customModules, newModule]
+      onCustomModulesChange(nextCustomModules)
+
       // Enrich the module in the background
       try {
-        const enrichedModule = await enrichModuleWithSequence(newModule)
-        onCustomModulesChange(customModules.map(m => 
+        const enforceTypeSource = selectedType === 'knockdown' || selectedType === 'knockout'
+        const enrichedModule = await enrichModuleWithSequence(newModule, enforceTypeSource ? { enforceTypeSource: true } : undefined)
+
+        const updatedModules = nextCustomModules.map(m =>
           m.id === newModule.id ? { ...enrichedModule, isEnriching: false } : m
-        ))
+        )
+        onCustomModulesChange(updatedModules)
+
         toast.success(`Added ${moduleToAdd.symbol} to library`)
       } catch (error) {
         console.error(`Failed to enrich ${moduleToAdd.symbol}:`, error)
-        toast.warning(`Added ${moduleToAdd.symbol} but sequence enrichment failed`)
+
+        // Remove the optimistic module and warn the user when type-specific sequence is unavailable
+        const cleanedModules = nextCustomModules.filter(m => m.id !== newModule.id)
+        onCustomModulesChange(cleanedModules)
+
+        const baseMessage = error instanceof Error ? error.message : 'Sequence enrichment failed'
+        const normalized = baseMessage.toLowerCase()
+        const shouldWarn = normalized.includes('not available') || normalized.includes('sequence not found') || normalized.includes('shrna') || normalized.includes('grna')
+        const typeLabel = selectedType.toUpperCase()
+        const notify = shouldWarn ? toast.warning : toast.error
+        notify(`Couldn't add ${moduleToAdd.symbol} as ${typeLabel}: ${baseMessage}`)
       }
     } catch (error) {
       console.error("Error adding module:", error)
@@ -1060,7 +1075,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
 
         const sortedIssues = [...issues].sort((a, b) => {
           if (a.severity === b.severity) {
-            return (a.row ?? Number.MAX_SAFE_INT) - (b.row ?? Number.MAX_SAFE_INT)
+            return (a.row ?? Number.MAX_SAFE_INTEGER) - (b.row ?? Number.MAX_SAFE_INTEGER)
           }
           return a.severity === 'error' ? -1 : 1
         })
@@ -1200,12 +1215,17 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   return (
     <>
       {showSyntheticSelector && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 sm:p-6 z-50">
-          <SyntheticGeneSelector
-            onGeneSelect={handleSyntheticGeneSelect}
-            onCustomSequence={handleCustomSequence}
-            onClose={() => setShowSyntheticSelector(false)}
-          />
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 sm:p-6 z-50"
+          onClick={() => setShowSyntheticSelector(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <SyntheticGeneSelector
+              onGeneSelect={handleSyntheticGeneSelect}
+              onCustomSequence={handleCustomSequence}
+              onClose={() => setShowSyntheticSelector(false)}
+            />
+          </div>
         </div>
       )}
       <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">

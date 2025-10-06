@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Sparkles, Loader2, Upload } from 'lucide-react';
 import type { Module } from '@/lib/types';
-import { planLibrariesFromPrompt, type PlannedLibrary } from '@/lib/llm/libraryPlanner';
+import { planLibrariesFromPrompt, type PlannedLibrary, type LibraryPlanType } from '@/lib/llm/libraryPlanner';
 import { predictTCellFunction } from '@/lib/llm/predictFunction';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
@@ -12,6 +13,7 @@ import { SyntheticDomainImporter } from './synthetic-domain-importer';
 import type { SyntheticGene } from '@/lib/types';
 import { LibraryViewer } from '@/components/design-lab/library-viewer';
 import { TypedHeading } from '@/components/ui/typed-heading';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface MultiCassetteNaturalProps {
   folders: Array<{ id: string; name: string; modules: string[]; open?: boolean }>;
@@ -34,6 +36,17 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
   const [showImporter, setShowImporter] = useState(false);
   const [syntheticDomains, setSyntheticDomains] = useState<SyntheticGene[]>([]);
   const [isApplying, setIsApplying] = useState(false);
+  const [libraryMixMode, setLibraryMixMode] = useState<'random' | 'custom'>('random');
+  const [randomLibraryCount, setRandomLibraryCount] = useState(2);
+  const perturbationTypes: LibraryPlanType[] = ['overexpression', 'knockdown', 'knockout', 'knockin'];
+  const [customTypeCounts, setCustomTypeCounts] = useState<Record<LibraryPlanType, number>>({
+    overexpression: 1,
+    knockdown: 0,
+    knockout: 0,
+    knockin: 0,
+  });
+  const initialGenesPerLibrary = Math.min(maxPerLibrary, Math.max(4, Math.round(maxPerLibrary / 2)));
+  const [genesPerLibrary, setGenesPerLibrary] = useState(initialGenesPerLibrary);
   const handleDomainsImported = (domains: SyntheticGene[]) => {
     setSyntheticDomains(prev => [...prev, ...domains]);
     setShowImporter(false);
@@ -42,11 +55,45 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
 
   const handlePlan = async () => {
     if (!prompt.trim()) return;
+
+    const hasLibraryRequest = libraryMixMode === 'random'
+      ? randomLibraryCount > 0
+      : Object.values(customTypeCounts).some(count => count > 0);
+
+    if (!hasLibraryRequest) {
+      toast.error('Select at least one perturbation configuration before planning libraries.');
+      return;
+    }
+
     setIsThinking(true);
     setPlans(null);
     try {
       console.log('Planning libraries for prompt:', prompt);
-      const result = await planLibrariesFromPrompt(prompt, maxPerLibrary);
+      const effectiveGenesPerLibrary = Math.max(1, Math.min(maxPerLibrary, Number.isFinite(genesPerLibrary) ? genesPerLibrary : maxPerLibrary));
+      const sanitizedCounts: Partial<Record<LibraryPlanType, number>> = {};
+      perturbationTypes.forEach(type => {
+        const raw = Math.floor(customTypeCounts[type] ?? 0);
+        if (raw > 0) {
+          sanitizedCounts[type] = raw;
+        }
+      });
+
+      const preferences = libraryMixMode === 'custom'
+        ? {
+            libraryMix: 'custom' as const,
+            typeCounts: sanitizedCounts,
+            genesPerLibrary: effectiveGenesPerLibrary,
+          }
+        : {
+            libraryMix: 'random' as const,
+            totalLibraries: Math.max(1, randomLibraryCount),
+            genesPerLibrary: effectiveGenesPerLibrary,
+          };
+
+      const result = await planLibrariesFromPrompt(prompt, {
+        maxPerLibrary: effectiveGenesPerLibrary,
+        preferences,
+      });
       console.log('Library planning result:', result);
       setPlans(result);
       if (result.length === 0) {
@@ -62,6 +109,9 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
     }
   };
 
+  const customHasCounts = Object.values(customTypeCounts).some(count => count > 0);
+  const canRequestLibraries = libraryMixMode === 'random' ? randomLibraryCount > 0 : customHasCounts;
+
   const slugify = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
   const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -69,133 +119,140 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
     if (!plans || plans.length === 0 || isApplying) return;
     setIsApplying(true);
 
-    // Build new modules and folders; also add to Total Library
-    const newModules: Module[] = [];
-    const newFolders: Array<{ id: string; name: string; modules: string[]; open?: boolean }> = [];
-    const totalLibraryIndex = folders.findIndex(f => f.id === 'total-library');
-    const totalLibrary = totalLibraryIndex >= 0 ? { ...folders[totalLibraryIndex] } : { id: 'total-library', name: 'Total Library', modules: [], open: true };
+    try {
+      // Build new modules and folders; also add to Total Library
+      const newModules: Module[] = [];
+      const newFolders: Array<{ id: string; name: string; modules: string[]; open?: boolean }> = [];
+      const totalLibraryIndex = folders.findIndex(f => f.id === 'total-library');
+      const totalLibrary = totalLibraryIndex >= 0 ? { ...folders[totalLibraryIndex] } : { id: 'total-library', name: 'Total Library', modules: [], open: true };
 
-    const skippedGenes: string[] = [];
-    const warnings: string[] = [];
+      const skippedGenes: string[] = [];
+      const warnings: string[] = [];
 
-    for (const plan of plans) {
-      const folderId = `lib-${slugify(plan.name)}-${uid()}`;
-      const moduleIds: string[] = [];
-      
-      // If this is a knockin plan and synthetic domains exist, try matching by name/tag first
-      const knockinDomains: SyntheticGene[] = plan.type === 'knockin' ? syntheticDomains : [];
+      for (const plan of plans) {
+        const folderId = `lib-${slugify(plan.name)}-${uid()}`;
+        const moduleIds: string[] = [];
 
-      for (const gene of plan.geneSymbols) {
-        try {
-          if (plan.type === 'knockin' && knockinDomains.length > 0) {
-            const match = knockinDomains.find(domain => 
-              domain.name.toLowerCase().includes(gene.toLowerCase()) ||
-              domain.tags.some(t => t.toLowerCase().includes(gene.toLowerCase()))
-            );
-            if (match) {
-              const syntheticModule: Module = {
-                id: `${match.name}-${uid()}`,
-                name: match.name,
-                type: 'knockin',
-                description: match.description,
-                sequence: match.sequence,
-                isSynthetic: true,
-                color: 'bg-green-100 text-green-800'
-              };
-              newModules.push(syntheticModule);
-              moduleIds.push(syntheticModule.id);
-              totalLibrary.modules.push(syntheticModule.id);
-              continue;
-            }
-          }
+        // If this is a knockin plan and synthetic domains exist, try matching by name/tag first
+        const knockinDomains: SyntheticGene[] = plan.type === 'knockin' ? syntheticDomains : [];
 
-          const base: Module = {
-            id: `${gene}-${uid()}`,
-            name: gene,
-            type: plan.type,
-            description: `${plan.type} ${gene} (planned: ${plan.name})`,
-            sequence: '',
-          }
-          
-          // Try with strict source enforcement first
+        for (const gene of plan.geneSymbols) {
           try {
-            const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { enforceTypeSource: true });
-            newModules.push(enriched);
-            moduleIds.push(enriched.id);
-            totalLibrary.modules.push(enriched.id);
-          } catch (strictError) {
-            // If strict enforcement fails, try with fallback to Ensembl
-            console.warn(`Strict source failed for ${gene}, trying fallback:`, strictError);
-            
+            if (plan.type === 'knockin' && knockinDomains.length > 0) {
+              const match = knockinDomains.find(domain =>
+                domain.name.toLowerCase().includes(gene.toLowerCase()) ||
+                domain.tags.some(t => t.toLowerCase().includes(gene.toLowerCase()))
+              );
+              if (match) {
+                const syntheticModule: Module = {
+                  id: `${match.name}-${uid()}`,
+                  name: match.name,
+                  type: 'knockin',
+                  description: match.description,
+                  sequence: match.sequence,
+                  isSynthetic: true,
+                  color: 'bg-green-100 text-green-800'
+                };
+                newModules.push(syntheticModule);
+                moduleIds.push(syntheticModule.id);
+                totalLibrary.modules.push(syntheticModule.id);
+                continue;
+              }
+            }
+
+            const base: Module = {
+              id: `${gene}-${uid()}`,
+              name: gene,
+              type: plan.type,
+              description: `${plan.type} ${gene} (planned: ${plan.name})`,
+              sequence: '',
+            };
+
+            // Try with strict source enforcement first
             try {
-              const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { enforceTypeSource: false });
+              const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { enforceTypeSource: true });
               newModules.push(enriched);
               moduleIds.push(enriched.id);
               totalLibrary.modules.push(enriched.id);
-              
-              // Track that this gene used fallback sequence
-              if (plan.type === 'knockdown') {
-                warnings.push(`${gene}: Using cDNA sequence (shRNA not available)`);
-              } else if (plan.type === 'knockout') {
-                warnings.push(`${gene}: Using cDNA sequence (gRNA not available)`);
+            } catch (strictError) {
+              // If strict enforcement fails, try with fallback to Ensembl
+              console.warn(`Strict source failed for ${gene}, trying fallback:`, strictError);
+
+              try {
+                const enriched = await (await import('@/lib/ensembl')).enrichModuleWithSequence(base, { enforceTypeSource: false });
+                newModules.push(enriched);
+                moduleIds.push(enriched.id);
+                totalLibrary.modules.push(enriched.id);
+
+                // Track that this gene used fallback sequence
+                if (plan.type === 'knockdown') {
+                  warnings.push(`${gene}: Using cDNA sequence (shRNA not available)`);
+                } else if (plan.type === 'knockout') {
+                  warnings.push(`${gene}: Using cDNA sequence (gRNA not available)`);
+                }
+              } catch (fallbackError) {
+                console.error(`Both strict and fallback failed for ${gene}:`, fallbackError);
+                skippedGenes.push(`${gene} (${plan.type})`);
               }
-            } catch (fallbackError) {
-              console.error(`Both strict and fallback failed for ${gene}:`, fallbackError);
-              skippedGenes.push(`${gene} (${plan.type})`);
             }
+          } catch (e) {
+            console.error(`Failed to process gene ${gene}:`, e);
+            skippedGenes.push(`${gene} (${plan.type})`);
           }
-        } catch (e) {
-          console.error(`Failed to process gene ${gene}:`, e);
-          skippedGenes.push(`${gene} (${plan.type})`);
+        }
+
+        // Only create folder if it has modules
+        if (moduleIds.length > 0) {
+          newFolders.push({ id: folderId, name: plan.name, modules: moduleIds, open: true });
         }
       }
+
+      // Commit to state
+      setCustomModules((prev: Module[]) => [...prev, ...newModules]);
+      setFolders((prev: any[]) => {
+        const nonTotal = prev.filter((f: any) => f.id !== 'total-library');
+        const updated = [totalLibrary, ...nonTotal, ...newFolders];
+        // Optional: point selection to first newly created library to make it visible
+        try { setSelectedFolderId && setSelectedFolderId(newFolders[0]?.id || totalLibrary.id); } catch {}
+        return updated;
+      });
+
+      // Add to library syntax with correct types
+      for (let i = 0; i < Math.min(plans.length, newFolders.length); i++) {
+        const plan = plans[i];
+        const folderId = newFolders[i]?.id;
+        if (folderId) {
+          onAddLibrary(folderId, plan.type);
+        }
+      }
+
+      // Show comprehensive feedback
+      let message = `Added ${newFolders.length} libraries with ${newModules.length} modules`;
       
-      // Only create folder if it has modules
-      if (moduleIds.length > 0) {
-        newFolders.push({ id: folderId, name: plan.name, modules: moduleIds, open: true });
+      if (warnings.length > 0) {
+        message += `\n⚠️ Using fallback sequences: ${warnings.length} genes`;
+        console.warn('Fallback sequences used:', warnings);
       }
-    }
-
-    // Commit to state
-    setCustomModules((prev: Module[]) => [...prev, ...newModules]);
-    setFolders((prev: any[]) => {
-      const nonTotal = prev.filter((f: any) => f.id !== 'total-library');
-      const updated = [totalLibrary, ...nonTotal, ...newFolders];
-      // Optional: point selection to first newly created library to make it visible
-      try { setSelectedFolderId && setSelectedFolderId(newFolders[0]?.id || totalLibrary.id); } catch {}
-      return updated;
-    });
-
-    // Add to library syntax with correct types
-    for (let i = 0; i < Math.min(plans.length, newFolders.length); i++) {
-      const plan = plans[i];
-      const folderId = newFolders[i]?.id;
-      if (folderId) {
-        onAddLibrary(folderId, plan.type);
+      
+      if (skippedGenes.length > 0) {
+        message += `\n❌ Skipped: ${skippedGenes.join(', ')}`;
+        console.error('Skipped genes:', skippedGenes);
       }
+      
+      if (skippedGenes.length > 0) {
+        toast.error(message);
+      } else if (warnings.length > 0) {
+        toast.warning(message);
+      } else {
+        toast.success(message);
+      }
+    } catch (error) {
+      console.error('Failed to apply planned libraries:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred while applying plans.';
+      toast.error(`Failed to add planned libraries: ${errorMessage}`);
+    } finally {
+      setIsApplying(false);
     }
-
-    // Show comprehensive feedback
-    let message = `Added ${newFolders.length} libraries with ${newModules.length} modules`;
-    
-    if (warnings.length > 0) {
-      message += `\n⚠️ Using fallback sequences: ${warnings.length} genes`;
-      console.warn('Fallback sequences used:', warnings);
-    }
-    
-    if (skippedGenes.length > 0) {
-      message += `\n❌ Skipped: ${skippedGenes.join(', ')}`;
-      console.error('Skipped genes:', skippedGenes);
-    }
-    
-    if (skippedGenes.length > 0) {
-      toast.error(message);
-    } else if (warnings.length > 0) {
-      toast.warning(message);
-    } else {
-      toast.success(message);
-    }
-    setIsApplying(false);
   };
 
   const handlePredict = async () => {
@@ -257,8 +314,92 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
             className="min-h-[100px]"
           />
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Perturbation mix</label>
+            <Select value={libraryMixMode} onValueChange={(value) => setLibraryMixMode(value as 'random' | 'custom')}>
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="Select mix" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="random">Let the planner mix perturbation types</SelectItem>
+                <SelectItem value="custom">Specify counts for each perturbation type</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Genes per library (max {maxPerLibrary})</label>
+            <Input
+              type="number"
+              min={1}
+              max={maxPerLibrary}
+              value={genesPerLibrary}
+              onChange={(event) => {
+                const next = Number.parseInt(event.target.value, 10);
+                if (Number.isNaN(next)) {
+                  setGenesPerLibrary(1);
+                  return;
+                }
+                setGenesPerLibrary(Math.max(1, Math.min(maxPerLibrary, next)));
+              }}
+            />
+          </div>
+        </div>
+        {libraryMixMode === 'random' ? (
+          <div className="space-y-2 sm:max-w-xs">
+            <label className="text-sm font-medium text-muted-foreground">Approximate library count</label>
+            <Input
+              type="number"
+              min={1}
+              max={12}
+              value={randomLibraryCount}
+              onChange={(event) => {
+                const next = Number.parseInt(event.target.value, 10);
+                if (Number.isNaN(next)) {
+                  setRandomLibraryCount(1);
+                  return;
+                }
+                setRandomLibraryCount(Math.max(1, Math.min(12, next)));
+              }}
+            />
+            <p className="text-xs text-muted-foreground">Planner will aim for this many libraries, mixing types based on your prompt.</p>
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {perturbationTypes.map((type) => {
+              const labelMap: Record<LibraryPlanType, string> = {
+                overexpression: 'Overexpression libraries',
+                knockdown: 'Knockdown libraries',
+                knockout: 'Knockout libraries',
+                knockin: 'Knockin libraries',
+              };
+              return (
+                <div key={type} className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">{labelMap[type]}</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={12}
+                    value={customTypeCounts[type] ?? 0}
+                    onChange={(event) => {
+                      const next = Number.parseInt(event.target.value, 10);
+                      setCustomTypeCounts((prev) => ({
+                        ...prev,
+                        [type]: Number.isNaN(next) ? 0 : Math.max(0, Math.min(12, next)),
+                      }));
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
         <div className="flex gap-2">
-          <Button onClick={handlePlan} disabled={!prompt.trim() || isThinking} className="min-w-[180px]">
+          <Button
+            onClick={handlePlan}
+            disabled={!prompt.trim() || isThinking || !canRequestLibraries}
+            className="min-w-[180px]"
+          >
             {isThinking ? (
               <>
                 <Sparkles className="h-4 w-4 mr-2 animate-spin" />
@@ -366,5 +507,3 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
     </Card>
   );
 }
-
-

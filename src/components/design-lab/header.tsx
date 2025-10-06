@@ -41,25 +41,27 @@ function useNucleotideScramble(target: string, speedMs: number = 30, start: bool
 
 export const Header = () => {
   const containerRef = React.useRef<HTMLDivElement | null>(null)
-  const [visible, setVisible] = React.useState(false)
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null)
+  const [stuck, setStuck] = React.useState(false)
   React.useEffect(() => {
-    const el = containerRef.current
+    const el = sentinelRef.current
     if (!el) return
     const io = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setVisible(true)
-        io.disconnect()
-      }
-    }, { threshold: 0.6 })
+      // When the sentinel scrolls out of view, the header has reached the top and is sticky
+      setStuck(!entry.isIntersecting)
+    }, { threshold: 0 })
     io.observe(el)
     return () => io.disconnect()
   }, [])
 
   const title = "CRISPR-All Hands On Deck!"
-  const display = useNucleotideScramble(title, 45, visible)
+  const display = useNucleotideScramble(title, 45, stuck)
 
   return (
-    <div className="w-full sticky top-0 z-50" ref={containerRef}>
+    <>
+      {/* Sentinel used to detect when header becomes sticky */}
+      <div ref={sentinelRef} aria-hidden className="h-px w-full" />
+      <div className="w-full sticky top-0 z-50" ref={containerRef}>
       {/* White top bar with logo */}
       <div className="bg-white w-full py-6 px-8 border-b border-gray-200">
         <div className="max-w-7xl mx-auto">
@@ -73,37 +75,40 @@ export const Header = () => {
               />
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-3xl font-bold text-gray-900 font-mono select-none">
-                  {(() => {
-                    const full = title
-                    const idxPrefixEnd = "CRISPR-All ".length
-                    const idxHandsStart = full.indexOf("Hands")
-                    const idxHandsEnd = idxHandsStart + "Hands".length
-                    const idxOnStart = full.indexOf("On", idxHandsEnd)
-                    const idxOnEnd = idxOnStart + "On".length
-                    const idxDeckStart = full.indexOf("Deck", idxOnEnd)
-                    const idxDeckEnd = idxDeckStart + "Deck".length
-                    const idxBang = full.indexOf("!", idxDeckEnd)
+              {stuck && (
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-gray-900 font-mono select-none">
+                    {(() => {
+                      const full = title
+                      const idxPrefixEnd = "CRISPR-All ".length
+                      const idxHandsStart = full.indexOf("Hands")
+                      const idxHandsEnd = idxHandsStart + "Hands".length
+                      const idxOnStart = full.indexOf("On", idxHandsEnd)
+                      const idxOnEnd = idxOnStart + "On".length
+                      const idxDeckStart = full.indexOf("Deck", idxOnEnd)
+                      const idxDeckEnd = idxDeckStart + "Deck".length
+                      const idxBang = full.indexOf("!", idxDeckEnd)
 
-                    const chars: JSX.Element[] = []
-                    for (let i = 0; i < display.length; i++) {
-                      let cls = "text-gray-900"
-                      if (i >= idxHandsStart && i < idxHandsEnd) cls = "text-[hsl(66,70%,47%)] italic"
-                      else if (i >= idxOnStart && i < idxOnEnd) cls = "text-[hsl(13,95%,59%)] italic"
-                      else if (i >= idxDeckStart && i < idxDeckEnd) cls = "text-[hsl(32,75%,49%)] italic"
-                      else if (i === idxBang) cls = "text-[hsl(220,35%,65%)] italic"
-                      else if (i < idxPrefixEnd) cls = "text-gray-900"
-                      chars.push(<span key={i} className={cls}>{display[i]}</span>)
-                    }
-                    return chars
-                  })()}
+                      const chars: JSX.Element[] = []
+                      for (let i = 0; i < display.length; i++) {
+                        let cls = "text-gray-900"
+                        if (i >= idxHandsStart && i < idxHandsEnd) cls = "text-[hsl(66,70%,47%)] italic"
+                        else if (i >= idxOnStart && i < idxOnEnd) cls = "text-[hsl(13,95%,59%)] italic"
+                        else if (i >= idxDeckStart && i < idxDeckEnd) cls = "text-[hsl(32,75%,49%)] italic"
+                        else if (i === idxBang) cls = "text-[hsl(220,35%,65%)] italic"
+                        else if (i < idxPrefixEnd) cls = "text-gray-900"
+                        chars.push(<span key={i} className={cls}>{display[i]}</span>)
+                      }
+                      return chars
+                    })()}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

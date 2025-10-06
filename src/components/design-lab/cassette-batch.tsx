@@ -188,7 +188,11 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
         try {
           // Clear sequence and source to force re-enrichment
           const moduleToEnrich = { ...item, sequence: '', sequenceSource: undefined };
-          const enriched = await enrichModuleWithSequence(moduleToEnrich);
+          const enforceTypeSource = item.type === 'knockout' || item.type === 'knockdown';
+          const enriched = await enrichModuleWithSequence(
+            moduleToEnrich,
+            enforceTypeSource ? { enforceTypeSource: true } : undefined
+          );
           correctSequence = enriched.sequence || '';
           
           // Update the module with the new sequence and source
@@ -198,8 +202,13 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
           });
         } catch (err) {
           console.error(`Error re-enriching ${item.name}:`, err);
-          // If enrichment fails, use existing sequence if available
-          if (!correctSequence && item.originalSequence) {
+          const enforceTypeSource = item.type === 'knockout' || item.type === 'knockdown';
+          const baseMessage = err instanceof Error ? err.message : 'Sequence enrichment failed';
+          if (enforceTypeSource) {
+            toast.warning(`Couldn't refresh ${item.name} ${item.type.toUpperCase()} sequence: ${baseMessage}`);
+            correctSequence = '';
+          } else if (!correctSequence && item.originalSequence) {
+            // For OE/KI we can safely reuse the original sequence if we had one
             correctSequence = item.originalSequence;
           }
         }

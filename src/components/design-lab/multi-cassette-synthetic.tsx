@@ -35,7 +35,7 @@ export function MultiCassetteSynthetic(props: MultiCassetteSyntheticProps) {
     
     try {
       // Enhanced planning that considers synthetic domains
-      const result = await planLibrariesFromPrompt(prompt, maxPerLibrary);
+      const result = await planLibrariesFromPrompt(prompt, { maxPerLibrary });
       setPlans(result);
       
       if (result.length === 0) {

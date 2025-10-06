@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { parseInstructions } from '@/lib/llm/llmParser';
-import { dispatchEdits } from '@/lib/llm/dispatcher';
+import { dispatchEdits, DispatchWarning } from '@/lib/llm/dispatcher';
 import { Module } from '@/lib/types';
 import { TypedHeading } from '@/components/ui/typed-heading';
 
@@ -17,7 +17,7 @@ interface NaturalLanguageInputProps {
 export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLanguageInputProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [warnings, setWarnings] = useState<string[]>([]);
+  const [warnings, setWarnings] = useState<DispatchWarning[]>([]);
   const [preview, setPreview] = useState<{action: string, target: string}[]>([]);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -77,6 +77,54 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSuggestionClick = async (warningIndex: number, alternative: string) => {
+    const warning = warnings[warningIndex];
+    if (!warning) return;
+
+    const action = warning.action ?? 'overexpression';
+    setIsLoading(true);
+
+    try {
+      const instructions = [{
+        action: action as any,
+        target: alternative,
+        description: `${action} ${alternative}`,
+      }];
+
+      const { modules, warnings: followupWarnings } = await dispatchEdits(instructions, { enforceTypeSource: true });
+
+      if (modules.length > 0) {
+        onModulesGenerated(modules);
+        setPreview(prev => prev.map(item => {
+          if (
+            warning.originalTarget &&
+            item.action === action &&
+            item.target.trim().toUpperCase() === warning.originalTarget.trim().toUpperCase()
+          ) {
+            return { ...item, target: alternative };
+          }
+          return item;
+        }));
+        setShowPreview(true);
+      }
+
+      setWarnings(prev => {
+        const remaining = prev.filter((_, idx) => idx !== warningIndex);
+        return followupWarnings.length > 0 ? [...remaining, ...followupWarnings] : remaining;
+      });
+    } catch (error) {
+      console.error('Error applying suggestion:', error);
+      onError?.('Failed to apply suggestion. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatActionLabel = (action?: string) => {
+    if (!action) return 'Add';
+    return action.charAt(0).toUpperCase() + action.slice(1);
   };
 
   return (
@@ -162,9 +210,27 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Warning</AlertTitle>
-          <AlertDescription className="space-y-2">
+          <AlertDescription className="space-y-4">
             {warnings.map((warning, i) => (
-              <p key={i}>{warning}</p>
+              <div key={i} className="space-y-2">
+                <p>{warning.message}</p>
+                {warning.alternatives && warning.alternatives.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Try instead:</span>
+                    {warning.alternatives.map((alternative) => (
+                      <Button
+                        key={alternative}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSuggestionClick(i, alternative)}
+                        disabled={isLoading}
+                      >
+                        {formatActionLabel(warning.action)} {alternative}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </AlertDescription>
         </Alert>

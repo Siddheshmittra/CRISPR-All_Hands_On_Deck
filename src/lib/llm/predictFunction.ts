@@ -1,4 +1,5 @@
 import { Module } from "@/lib/types";
+import { fetchCrossrefSources } from "./sources";
 
 export interface PredictionSource {
   title: string;
@@ -10,20 +11,10 @@ export interface TCellPrediction {
   sources: PredictionSource[];
 }
 
-async function fetchCrossrefSources(query: string, rows = 5): Promise<PredictionSource[]> {
-  try {
-    const params = new URLSearchParams({ query, rows: String(rows), select: 'title,URL' });
-    const res = await fetch(`https://api.crossref.org/works?${params.toString()}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    const items = (data?.message?.items || []) as Array<{ title?: string[]; URL?: string }>;
-    return items
-      .filter((it) => (it.title?.[0] || '').trim() && (it.URL || '').trim())
-      .slice(0, rows)
-      .map((it) => ({ title: it.title![0], url: it.URL! }));
-  } catch {
-    return [];
-  }
+// keep exported type but delegate to shared utility with URL sanitization
+async function fetchPredictionSources(query: string, rows = 5): Promise<PredictionSource[]> {
+  const sources = await fetchCrossrefSources(query, rows);
+  return sources.map(s => ({ title: s.title, url: s.url }));
 }
 
 export async function predictTCellFunction(modules: Module[]): Promise<TCellPrediction> {
@@ -36,7 +27,7 @@ export async function predictTCellFunction(modules: Module[]): Promise<TCellPred
 
   // Build a search query to ground sources
   const searchQuery = `T cell ${modules.map((m) => m.name).join(' ')} function immunology`;
-  const sources = await fetchCrossrefSources(searchQuery, 3);
+  const sources = await fetchPredictionSources(searchQuery, 3);
 
   // Prepare LLM messages via proxy
   const system = `You are an immunology assistant. Answer strictly as a single concise sentence (<= 30 words), no preamble.

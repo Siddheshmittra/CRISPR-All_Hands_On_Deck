@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { validateGenes } from './geneValidator';
+import { buildLibrarySearchQuery, fetchCrossrefSources } from './sources';
 
 export type LibraryPlanType = 'overexpression' | 'knockdown' | 'knockout' | 'knockin';
 
@@ -10,6 +11,18 @@ export interface PlannedLibrary {
   criteria?: string;
   geneSymbols: string[];
   sources?: Array<{ title: string; url: string }>;
+}
+
+export interface PlanningPreferences {
+  libraryMix?: 'random' | 'custom';
+  typeCounts?: Partial<Record<LibraryPlanType, number>>;
+  totalLibraries?: number;
+  genesPerLibrary?: number;
+}
+
+export interface PlanLibrariesOptions {
+  maxPerLibrary?: number;
+  preferences?: PlanningPreferences;
 }
 
 function createOpenAI(): OpenAI | null {
@@ -61,17 +74,55 @@ Few‑shot guidance (do not copy verbatim; use as behavior pattern):
    Output idea: two libraries, one KD of exhaustion TFs (e.g., NR4A1/3, TOX), one OE of memory cytokines (e.g., IL7, IL15, IL21), with brief criteria and sources.
 `;
 
-export async function planLibrariesFromPrompt(prompt: string, maxPerLibrary = 30): Promise<PlannedLibrary[]> {
+function buildPreferenceMessage(preferences?: PlanningPreferences, maxPerLibrary?: number): string | null {
+  if (!preferences) return null;
+  const lines: string[] = [];
+
+  if (preferences.libraryMix === 'custom' && preferences.typeCounts) {
+    const requested = Object.entries(preferences.typeCounts)
+      .map(([type, rawCount]) => {
+        const numeric = typeof rawCount === 'number' ? rawCount : Number(rawCount);
+        const count = Number.isFinite(numeric) ? Math.floor(numeric) : 0;
+        return { type, count };
+      })
+      .filter(({ count }) => count > 0)
+      .map(({ type, count }) => `${count} ${type} librar${count === 1 ? 'y' : 'ies'}`);
+    if (requested.length > 0) {
+      lines.push(`Produce libraries that match these counts as closely as possible: ${requested.join(', ')}.`);
+      lines.push('Do not add extra library types unless necessary to satisfy the biological intent.');
+    }
+  } else if (preferences.libraryMix === 'random' && preferences.totalLibraries) {
+    lines.push(`Aim for roughly ${preferences.totalLibraries} libraries total. Mix perturbation types based on the user prompt.`);
+  }
+
+  const targetGenes = preferences.genesPerLibrary ?? maxPerLibrary;
+  if (targetGenes) {
+    lines.push(`Keep each library to about ${targetGenes} genes (never exceed ${targetGenes}).`);
+  } else if (maxPerLibrary) {
+    lines.push(`Never exceed ${maxPerLibrary} genes per library.`);
+  }
+
+  if (lines.length === 0) return null;
+  return `Please respect these planning constraints:\n- ${lines.join('\n- ')}`;
+}
+
+export async function planLibrariesFromPrompt(prompt: string, options?: PlanLibrariesOptions): Promise<PlannedLibrary[]> {
+  const effectiveMax = Math.max(1, options?.maxPerLibrary ?? 30);
   const messages = [
     {
       role: 'system' as const,
-      content: systemPrompt.replaceAll('MAX_PER_LIBRARY', String(maxPerLibrary)),
+      content: systemPrompt.replaceAll('MAX_PER_LIBRARY', String(effectiveMax)),
     },
     {
       role: 'user' as const,
       content: prompt,
     },
   ];
+
+  const preferenceMessage = buildPreferenceMessage(options?.preferences, effectiveMax);
+  if (preferenceMessage) {
+    messages.push({ role: 'user' as const, content: preferenceMessage });
+  }
 
   const rawProxy = (import.meta.env.VITE_LLM_PROXY_URL || '').trim();
   const proxy = rawProxy ? (rawProxy.endsWith('/') ? rawProxy.slice(0, -1) : rawProxy) : '';
@@ -174,14 +225,26 @@ export async function planLibrariesFromPrompt(prompt: string, maxPerLibrary = 30
       name: lib.name,
       type: lib.type,
       criteria: lib.criteria,
-      geneSymbols: cleaned.slice(0, maxPerLibrary),
+      geneSymbols: cleaned.slice(0, effectiveMax),
       sources: lib.sources?.slice(0, 5) || [],
     } as PlannedLibrary;
   });
 
-  const finalPlans = plans.filter((p) => p.geneSymbols.length > 0);
+  // For each plan, if sources are missing or look weak, fetch from Crossref
+  const withSources = await Promise.all(plans.map(async (p) => {
+    const existing = Array.isArray(p.sources) ? p.sources.filter(s => s?.title && s?.url) : [];
+    if (existing.length >= 1) return p; // keep LLM-provided if already present
+    const query = buildLibrarySearchQuery({
+      name: p.name,
+      type: p.type,
+      criteria: p.criteria,
+      geneSymbols: p.geneSymbols,
+    });
+    const fetched = await fetchCrossrefSources(query, 3);
+    return { ...p, sources: fetched.slice(0, 3) } as PlannedLibrary;
+  }));
+
+  const finalPlans = withSources.filter((p) => p.geneSymbols.length > 0);
   console.log('Final library plans:', finalPlans);
   return finalPlans;
 }
-
-
