@@ -139,11 +139,9 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     }
   }, [eligibleLibraries, selectedLibrary])
   
-  // Always visualize syntax with OE/KI first then KO/KD (Rule 2)
+  // Display syntax in the order provided by parent (user can reorder with constraints)
   const orderedSyntax = useMemo(() => {
-    const geneLike = librarySyntax.filter(l => l.type === 'overexpression' || l.type === 'knockin')
-    const koKd = librarySyntax.filter(l => l.type === 'knockout' || l.type === 'knockdown')
-    return [...geneLike, ...koKd]
+    return librarySyntax
   }, [librarySyntax])
 
   // Group counts for UI separators
@@ -482,6 +480,22 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     if (!moving) return;
     displayList.splice(source.index, 1);
     displayList.splice(destination.index, 0, moving);
+
+    // Validate syntax rules: OE/KI must come before KO/KD
+    const isGeneLike = (type: string) => type === 'overexpression' || type === 'knockin';
+    const isKoKd = (type: string) => type === 'knockout' || type === 'knockdown';
+    
+    // Check if the new order violates the rule (KO/KD before OE/KI)
+    let foundKoKd = false;
+    for (const item of displayList) {
+      if (isKoKd(item.type)) {
+        foundKoKd = true;
+      } else if (isGeneLike(item.type) && foundKoKd) {
+        // Violation: found OE/KI after KO/KD
+        toast.error('Syntax rule: Overexpression/Knock-in libraries must come before Knockout/Knockdown libraries');
+        return;
+      }
+    }
 
     // Map back to original items by id, preserving updated display order
     const byId = new Map(librarySyntax.map(it => [it.id, it] as const));

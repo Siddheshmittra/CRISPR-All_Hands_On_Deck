@@ -521,10 +521,10 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const fileName = file.name.replace(/\.(csv|xlsx)$/, '');
-    if (!file) return;
-
+    const fileName = file.name.replace(/\.(csv|xlsx)$/i, '');
+    
     setLoading(true);
+    setIsLibraryLoading(true);
     const reader = new FileReader();
 
     reader.onload = async (e) => {
@@ -532,48 +532,103 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         if (typeof data !== 'string' && !(data instanceof ArrayBuffer)) {
             toast.error("Failed to read file.");
             setLoading(false);
+            setIsLibraryLoading(false);
             return;
         }
 
         try {
             let rows: any[] = [];
-            if (file.name.endsWith('.csv')) {
+            if (file.name.toLowerCase().endsWith('.csv')) {
               Papa.parse(data as string, {
                 header: true,
                 skipEmptyLines: true,
+                dynamicTyping: false,
                 complete: (results) => {
+                  console.log('[Import] CSV parsed:', results.data.length, 'rows');
                   const arr = (results.data as any[]) || []
+                  if (arr.length === 0) {
+                    toast.error('No data found in CSV file');
+                    setLoading(false);
+                    setIsLibraryLoading(false);
+                    return;
+                  }
                   const headers = arr.length > 0 ? Object.keys(arr[0] || {}) : []
-                  const processedRows = arr.map((row: any) => ({
-                    'Gene Name': extractGeneNameFromRow(row, headers),
-                    'Perturbation': scanGenesPerturbationType,
-                  }))
+                  console.log('[Import] Headers detected:', headers);
+                  const processedRows = arr.map((row: any) => {
+                    const geneName = extractGeneNameFromRow(row, headers);
+                    console.log('[Import] Extracted gene:', geneName, 'from row:', row);
+                    return {
+                      'Gene Name': geneName,
+                      'Perturbation': scanGenesPerturbationType,
+                    }
+                  }).filter(row => row['Gene Name']); // Only keep rows with valid gene names
+                  console.log('[Import] Processed rows:', processedRows.length);
+                  if (processedRows.length === 0) {
+                    toast.error('No valid gene names found in file');
+                    setLoading(false);
+                    setIsLibraryLoading(false);
+                    return;
+                  }
                   processGeneNames(processedRows, fileName)
+                },
+                error: (error) => {
+                  console.error('[Import] CSV parse error:', error);
+                  toast.error('Failed to parse CSV file');
+                  setLoading(false);
+                  setIsLibraryLoading(false);
                 }
               })
-            } else if (file.name.endsWith('.xlsx')) {
+            } else if (file.name.toLowerCase().endsWith('.xlsx')) {
               const workbook = XLSX.read(data, { type: 'array' });
               const sheetName = workbook.SheetNames[0];
               const worksheet = workbook.Sheets[sheetName];
-              rows = XLSX.utils.sheet_to_json(worksheet);
+              rows = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
+              console.log('[Import] XLSX parsed:', rows.length, 'rows');
+              if (rows.length === 0) {
+                toast.error('No data found in Excel file');
+                setLoading(false);
+                setIsLibraryLoading(false);
+                return;
+              }
               const headers = rows.length > 0 ? Object.keys(rows[0] || {}) : []
-              const processedRows = rows.map((row: any) => ({
-                'Gene Name': extractGeneNameFromRow(row, headers),
-                'Perturbation': scanGenesPerturbationType,
-              }))
+              console.log('[Import] Headers detected:', headers);
+              const processedRows = rows.map((row: any) => {
+                const geneName = extractGeneNameFromRow(row, headers);
+                console.log('[Import] Extracted gene:', geneName, 'from row:', row);
+                return {
+                  'Gene Name': geneName,
+                  'Perturbation': scanGenesPerturbationType,
+                }
+              }).filter(row => row['Gene Name']); // Only keep rows with valid gene names
+              console.log('[Import] Processed rows:', processedRows.length);
+              if (processedRows.length === 0) {
+                toast.error('No valid gene names found in file');
+                setLoading(false);
+                setIsLibraryLoading(false);
+                return;
+              }
               processGeneNames(processedRows, fileName)
             } else {
                 toast.error("Unsupported file type. Please use .csv or .xlsx");
+                setLoading(false);
+                setIsLibraryLoading(false);
             }
         } catch (error) {
             console.error("Error parsing file:", error);
-            toast.error("Error parsing file.");
-        } finally {
+            toast.error(`Error parsing file: ${error instanceof Error ? error.message : 'Unknown error'}`);
             setLoading(false);
+            setIsLibraryLoading(false);
         }
     };
 
-    if (file.name.endsWith('.csv')) {
+    reader.onerror = () => {
+      console.error('[Import] File read error');
+      toast.error('Failed to read file');
+      setLoading(false);
+      setIsLibraryLoading(false);
+    };
+
+    if (file.name.toLowerCase().endsWith('.csv')) {
         reader.readAsText(file);
     } else {
         reader.readAsArrayBuffer(file);
