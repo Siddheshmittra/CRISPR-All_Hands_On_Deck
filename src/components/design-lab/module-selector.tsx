@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ModuleButton } from "@/components/ui/module-button"
-import { Search, Upload, Plus, Trash2, Edit3, Check, X, RefreshCw, FolderPlus, ChevronDown, Loader2 } from "lucide-react"
+import { Search, Upload, Plus, Trash2, Edit3, Check, X, RefreshCw, FolderPlus, ChevronDown, Loader2, AlertTriangle, Info } from "lucide-react"
 import { Draggable, Droppable } from "@hello-pangea/dnd"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
@@ -16,6 +16,26 @@ import { UnifiedGeneSearch } from "./unified-gene-search"
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
 import { TypedHeading } from '@/components/ui/typed-heading'
+
+type ImportIssue = {
+  gene: string
+  reason: string
+  severity: 'warning' | 'error'
+  row?: number
+}
+
+interface ImportReport {
+  folderName: string
+  totalRows: number
+  parsedGenes: number
+  addedModules: number
+  withSequences: number
+  placeholders: number
+  durationMs: number
+  issues: ImportIssue[]
+  errorCount: number
+  warningCount: number
+}
 
 interface ModuleSelectorProps {
   selectedModules: Module[]
@@ -92,6 +112,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
   const [isLibraryLoading, setIsLibraryLoading] = useState(false)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
+  const [importReport, setImportReport] = useState<ImportReport | null>(null)
   const CONSTANTS_FOLDER_ID = 'constants-library'
   // Benchling integration removed
 
@@ -813,183 +834,256 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         return
       }
 
-      // Set loading state
+      setImportReport(null)
+
       setIsLibraryLoading(true)
-      
-      // Show loading state
+
       const toastId = toast.loading(`Scanning ${rows.length} genes...`, {
         description: 'Loading library...'
       });
 
+      const startedAt = Date.now()
+
       try {
+        const issues: ImportIssue[] = []
+        const processedGenes = new Set<string>()
+        const pendingGenes: Array<{ geneName: string; moduleType: 'overexpression' | 'knockout' | 'knockdown' | 'knockin'; row: number; order: number }> = []
 
-    toast.info(`Found ${rows.length} entries. Fetching details...`);
+        rows.forEach((row, index) => {
+          // More flexible gene name extraction
+          let geneName = row['Gene Name'] || row['gene_name'] || row['gene'] || row['symbol'] || row['Symbol'] || ''
+          if (!geneName) {
+            const headers = Object.keys(row || {})
+            for (const h of headers) {
+              const tok = pickFirstGeneLikeFromCell(row[h])
+              if (tok) { geneName = tok; break }
+            }
+          }
 
-    const newModules: Module[] = [];
-    const failedGenes: string[] = [];
-    const processedGenes = new Set<string>(); // Prevent duplicates
-    
-    for (const row of rows) {
-        // More flexible gene name extraction
-        let geneName = row['Gene Name'] || row['gene_name'] || row['gene'] || row['symbol'] || row['Symbol'] || '';
-        if (!geneName) {
-          // Last resort: scan the row's fields for the first gene-like token
-          const headers = Object.keys(row || {})
-          for (const h of headers) {
-            const tok = pickFirstGeneLikeFromCell(row[h])
-            if (tok) { geneName = tok; break }
+          const rowNumber = index + 1
+          const perturbationType = row['Perturbation'] || row['perturbation'] || row['Type'] || row['type']
+
+          if (!geneName || !geneName.trim()) {
+            console.warn('[ProcessGenes] Skipping row with empty gene name:', row)
+            issues.push({ gene: `Row ${rowNumber}`, reason: 'No valid gene symbol detected', severity: 'error', row: rowNumber })
+            return
+          }
+
+          geneName = String(geneName).trim().toUpperCase()
+
+          if (geneName.length < 2 || /^\d+$/.test(geneName)) {
+            console.warn('[ProcessGenes] Skipping invalid gene name:', geneName)
+            issues.push({ gene: geneName, reason: 'Invalid gene symbol format', severity: 'error', row: rowNumber })
+            return
+          }
+
+          if (isPerturbationToken(geneName)) {
+            console.warn('[ProcessGenes] Skipping perturbation keyword masquerading as gene:', geneName)
+            issues.push({ gene: geneName, reason: 'Looks like a perturbation label, not a gene', severity: 'error', row: rowNumber })
+            return
+          }
+
+          if (processedGenes.has(geneName)) {
+            console.log('[ProcessGenes] Skipping duplicate gene:', geneName)
+            issues.push({ gene: geneName, reason: `Duplicate entry skipped (row ${rowNumber})`, severity: 'warning', row: rowNumber })
+            return
+          }
+          processedGenes.add(geneName)
+
+          const moduleType = (['overexpression', 'knockout', 'knockdown', 'knockin'].includes(perturbationType?.toLowerCase())
+            ? perturbationType.toLowerCase()
+            : selectedType) as 'overexpression' | 'knockout' | 'knockdown' | 'knockin'
+
+          pendingGenes.push({ geneName, moduleType, row: rowNumber, order: index })
+        })
+
+        if (pendingGenes.length === 0) {
+          toast.error('No valid gene names found. Please check your input.', { id: toastId, duration: 6000 })
+          setImportReport({
+            folderName,
+            totalRows: rows.length,
+            parsedGenes: 0,
+            addedModules: 0,
+            withSequences: 0,
+            placeholders: 0,
+            durationMs: Date.now() - startedAt,
+            issues,
+            errorCount: issues.filter(i => i.severity === 'error').length,
+            warningCount: issues.filter(i => i.severity === 'warning').length
+          })
+          return
+        }
+
+        const moduleResults: Array<{ module: Module; order: number }> = []
+        let withSequences = 0
+        let placeholders = 0
+
+        const queue = [...pendingGenes]
+        const concurrency = Math.min(6, Math.max(1, queue.length))
+
+        const processEntry = async ({ geneName, moduleType, row, order }: typeof pendingGenes[number]) => {
+          const moduleId = `${geneName}-${moduleType}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+          const baseModule: Module = {
+            id: moduleId,
+            name: geneName,
+            type: moduleType,
+            description: `Human gene ${geneName}`,
+            sequence: ''
+          }
+
+          try {
+            const enrichedModule = await enrichModuleWithSequence(baseModule, { enforceTypeSource: true })
+            const finalName = enrichedModule.name?.trim() || geneName
+            if (!finalName || finalName.length < 2) {
+              console.warn('[ProcessGenes] Enriched module has invalid name:', finalName)
+              issues.push({ gene: geneName, reason: 'Sequence fetched but returned an invalid name', severity: 'error', row })
+              return
+            }
+
+            const hasSequence = !!(enrichedModule.sequence && enrichedModule.sequence.length > 0)
+
+            if ((moduleType === 'knockout' || moduleType === 'knockdown') && !hasSequence) {
+              issues.push({
+                gene: geneName,
+                reason: moduleType === 'knockout' ? 'gRNA sequence not available for knockout import' : 'shRNA sequence not available for knockdown import',
+                severity: 'error',
+                row
+              })
+              return
+            }
+
+            moduleResults.push({
+              module: {
+                ...enrichedModule,
+                id: moduleId,
+                name: finalName,
+                type: moduleType,
+                description: enrichedModule.description || (hasSequence ? `Human gene ${finalName}` : `Human gene ${finalName} (sequence not found)`)
+              },
+              order
+            })
+
+            if (hasSequence) {
+              withSequences += 1
+            } else {
+              placeholders += 1
+              issues.push({ gene: geneName, reason: 'Sequence not found; added as placeholder module', severity: 'warning', row })
+            }
+          } catch (error: any) {
+            if (moduleType === 'knockout' || moduleType === 'knockdown') {
+              issues.push({
+                gene: geneName,
+                reason: error?.message ? String(error.message) : `Failed to enrich ${moduleType.toUpperCase()} construct`,
+                severity: 'error',
+                row
+              })
+              return
+            }
+
+            moduleResults.push({
+              module: {
+                ...baseModule,
+                description: `Human gene ${geneName} (sequence not found)`
+              },
+              order
+            })
+            placeholders += 1
+            issues.push({
+              gene: geneName,
+              reason: `${error?.message ? String(error.message) + '. ' : ''}Added as placeholder module`,
+              severity: 'warning',
+              row
+            })
           }
         }
-        const perturbationType = row['Perturbation'] || row['perturbation'] || row['Type'] || row['type'];
 
-        if (!geneName || !geneName.trim()) {
-          console.warn('[ProcessGenes] Skipping row with empty gene name:', row);
-          failedGenes.push('(empty name)');
-          continue;
-        }
-        
-        // Clean up gene name (remove whitespace, convert to uppercase for consistency)
-        geneName = String(geneName).trim().toUpperCase();
-        
-        // Validate that the gene name is reasonable (at least 2 characters, not just numbers)
-        if (geneName.length < 2 || /^\d+$/.test(geneName)) {
-          console.warn('[ProcessGenes] Skipping invalid gene name:', geneName);
-          failedGenes.push(geneName);
-          continue;
-        }
-        
-        const moduleType = (['overexpression', 'knockout', 'knockdown', 'knockin'].includes(perturbationType?.toLowerCase()) 
-                            ? perturbationType.toLowerCase() 
-                            : selectedType) as 'overexpression' | 'knockout' | 'knockdown' | 'knockin';
-        
-        if (isPerturbationToken(geneName)) {
-          console.warn('[ProcessGenes] Skipping perturbation keyword masquerading as gene:', geneName);
-          failedGenes.push(geneName);
-          continue;
+        async function worker() {
+          while (queue.length > 0) {
+            const next = queue.shift()
+            if (!next) break
+            await processEntry(next)
+          }
         }
 
-        // Skip if already processed
-        if (processedGenes.has(geneName)) {
-          console.log('[ProcessGenes] Skipping duplicate gene:', geneName);
-          continue;
+        await Promise.all(Array.from({ length: concurrency }, () => worker()))
+
+        moduleResults.sort((a, b) => a.order - b.order)
+        const finalModules = moduleResults.map(item => item.module)
+
+        if (finalModules.length > 0) {
+          onCustomModulesChange([...customModules, ...finalModules])
+
+          const newModuleIds = finalModules.map(m => m.id)
+
+          const updatedFolders = [...folders]
+          const totalIdx = updatedFolders.findIndex(f => f.id === 'total-library')
+          if (totalIdx >= 0) {
+            const total = { ...updatedFolders[totalIdx] }
+            total.modules = [...total.modules, ...newModuleIds]
+            updatedFolders[totalIdx] = total
+          } else {
+            updatedFolders.unshift({ id: 'total-library', name: 'Total Library', modules: [...newModuleIds], open: true })
+          }
+
+          const newFolder = {
+            id: `folder-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            name: folderName,
+            modules: newModuleIds,
+            open: true
+          }
+
+          setFolders([...updatedFolders, newFolder])
+          setSelectedFolderId(newFolder.id)
         }
-        processedGenes.add(geneName);
 
-        let moduleAdded = false;
-        
-        try {
-            const partialModule: Module = { 
-                id: geneName, 
-                name: geneName, 
-                type: moduleType, 
-                description: `Human gene ${geneName}`, 
-                sequence: '' 
-            };
-            
-            const enrichedModule = await enrichModuleWithSequence(partialModule, { enforceTypeSource: true });
-            
-            // Add module even if sequence enrichment partially failed
-            if (enrichedModule && (enrichedModule.name || geneName)) {
-                const finalName = enrichedModule.name || geneName;
-                // Double-check the name is valid
-                if (!finalName || finalName.trim().length < 2) {
-                    console.warn('[ProcessGenes] Enriched module has invalid name:', finalName);
-                    failedGenes.push(geneName);
-                } else {
-                    newModules.push({
-                        id: `${finalName}-${moduleType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                        name: finalName,
-                        type: moduleType,
-                        description: enrichedModule.description || `Human gene ${finalName}`,
-                        sequence: enrichedModule.sequence || '', // Allow empty sequences
-                        sequenceSource: enrichedModule.sequenceSource,
-                    });
-                    moduleAdded = true;
-                }
-            }
-        } catch (error) {
-            console.error(`Error enriching gene ${geneName}:`, error);
-        }
-        
-        // Fallback/skip behavior when enrichment failed
-        if (!moduleAdded) {
-            // Validate gene name before adding as fallback
-            if (!geneName || geneName.trim().length < 2) {
-                console.warn('[ProcessGenes] Cannot add fallback for invalid gene name:', geneName);
-                failedGenes.push(geneName || '(empty)');
-            } else if (moduleType === 'knockdown' || moduleType === 'knockout') {
-                // Strict: do not add KD/KO modules without shRNA/gRNA sequences
-                failedGenes.push(geneName);
-            } else {
-                // For OE/KI, allow adding placeholder and attempt enrichment later if needed
-                newModules.push({
-                    id: `${geneName}-${moduleType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                    name: geneName,
-                    type: moduleType,
-                    description: `Human gene ${geneName} (sequence not found)`,
-                    sequence: '',
-                });
-                failedGenes.push(geneName);
-            }
-        }
-    }
+        const durationMs = Date.now() - startedAt
+        const errorCount = issues.filter(i => i.severity === 'error').length
+        const warningCount = issues.filter(i => i.severity === 'warning').length
 
-    // Always add modules; always create a dedicated library for this import, and also add to Total Library
-    if (newModules.length > 0) {
-      // Append modules using the provided setter (non-functional API)
-      onCustomModulesChange([...customModules, ...newModules])
+        const messages: string[] = []
+        if (finalModules.length > 0) messages.push(`Added ${finalModules.length} gene${finalModules.length === 1 ? '' : 's'} to '${folderName}'`)
+        if (withSequences > 0) messages.push(`${withSequences} with sequences`)
+        if (placeholders > 0) messages.push(`${placeholders} placeholder${placeholders === 1 ? '' : 's'}`)
 
-      const newModuleIds = newModules.map(m => m.id)
+        const summary = messages.length > 0 ? `${messages.join(' · ')} in ${(durationMs / 1000).toFixed(durationMs > 2000 ? 1 : 2)}s.` : ''
 
-      {
-        const updated = [...folders]
-        // Ensure Total Library exists and append
-        const totalIdx = updated.findIndex(f => f.id === 'total-library')
-        if (totalIdx >= 0) {
-          const total = { ...updated[totalIdx] }
-          total.modules = [...total.modules, ...newModuleIds]
-          updated[totalIdx] = total
+        if (finalModules.length === 0) {
+          const reason = errorCount > 0 ? `Skipped ${errorCount} gene${errorCount === 1 ? '' : 's'} due to errors.` : 'Could not add any genes from the import.'
+          toast.error(`${reason}`, { id: toastId, duration: 7000 })
+        } else if (errorCount > 0) {
+          toast.warning(`${summary} Skipped ${errorCount} gene${errorCount === 1 ? '' : 's'} (see notes).`, { id: toastId, duration: 7000 })
+        } else if (warningCount > 0) {
+          toast.info(`${summary} ${warningCount} warning${warningCount === 1 ? '' : 's'} recorded.`, { id: toastId, duration: 6000 })
         } else {
-          updated.unshift({ id: 'total-library', name: 'Total Library', modules: [...newModuleIds], open: true })
+          toast.success(summary || `Successfully added ${finalModules.length} gene${finalModules.length === 1 ? '' : 's'}.`, { id: toastId, duration: 5000 })
         }
 
-        // Always create a new library for this file/import
-        const newFolder = {
-          id: `folder-${Date.now()}`,
-          name: folderName,
-          modules: newModuleIds,
-          open: true,
-        }
-        setFolders([...updated, newFolder])
+        const sortedIssues = [...issues].sort((a, b) => {
+          if (a.severity === b.severity) {
+            return (a.row ?? Number.MAX_SAFE_INT) - (b.row ?? Number.MAX_SAFE_INT)
+          }
+          return a.severity === 'error' ? -1 : 1
+        })
+
+        setImportReport({
+          folderName,
+          totalRows: rows.length,
+          parsedGenes: pendingGenes.length,
+          addedModules: finalModules.length,
+          withSequences,
+          placeholders,
+          durationMs,
+          issues: sortedIssues,
+          errorCount,
+          warningCount
+        })
+      } catch (error) {
+        console.error('Error processing gene names:', error)
+        toast.error('An error occurred while processing genes', { id: toastId, duration: 6000 })
+      } finally {
+        setIsLibraryLoading(false)
       }
-      
-      // Update the loading toast with results
-      const withSeq = newModules.filter(m => (m.sequence && m.sequence.length > 0)).length;
-      const uniqueFailures = new Set(failedGenes.filter(g => g && g !== '(empty)'));
-      
-      if (failedGenes.length === 0) {
-        toast.success(`Successfully added all ${newModules.length} genes to '${folderName}' (${withSeq} with sequences).`, { id: toastId });
-      } else if (newModules.length > 0) {
-        toast.success(
-          `Added ${newModules.length} genes to '${folderName}' (${withSeq} with sequences). Skipped ${uniqueFailures.size} invalid/failed genes.`, 
-          { id: toastId, duration: 6000 }
-        );
-      } else {
-        toast.warning(
-          `No valid genes could be added. Skipped ${uniqueFailures.size} invalid/failed genes.`, 
-          { id: toastId, duration: 6000 }
-        );
-      }
-      } else {
-        toast.error('No valid genes could be processed. Please check that your CSV file has a column with gene symbols (e.g., "Gene", "Symbol", "Gene Name").');
-      }
-    } catch (error) {
-      console.error('Error processing gene names:', error);
-      toast.error('An error occurred while processing genes');
-    } finally {
-      setIsLibraryLoading(false);
-    }
-  };
+    };
 
   // Close and reset the Import dialog
   const handleCloseImportDialog = () => {
@@ -1246,133 +1340,185 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       </div>
       {/* Search */}
       {/* Folder/Library display */}
-      <div className="mb-4 relative">
-        {isLibraryLoading && (
-          <div className="absolute inset-0 bg-background/80 z-10 flex flex-col items-center justify-center gap-2">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <span className="text-sm font-medium text-muted-foreground">Processing import...</span>
-          </div>
-        )}
-        <Droppable droppableId="module-selector-folders" type="library" isDropDisabled={isLibraryLoading}>
-          {(provided) => (
-            <div ref={provided.innerRef} {...provided.droppableProps}>
-              {/* Ensure a dedicated Constants folder exists */}
-              {(!folders.some(f => f.id === CONSTANTS_FOLDER_ID)) && (
-                <div className="mb-3 rounded-lg border border-gray-200 bg-white shadow-sm">
-                  <div className="flex items-center px-3 py-2 select-none">
-                    <span className="font-semibold">Constants</span>
-                    <Badge variant="secondary" className="ml-2">0</Badge>
-                  </div>
-                  <div className="px-3 pb-3 text-sm text-muted-foreground">Create a folder named "Constants" to pin single-gene constants.</div>
-                </div>
-              )}
-              {folders.map((folder, index) => (
-                <Draggable key={folder.id} draggableId={folder.id} index={index}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      className={`mb-3 rounded-lg border border-gray-200 bg-white transition-all shadow-sm ${snapshot.isDragging ? 'shadow-lg' : ''}`}
-                    >
-                      <div
-                        {...provided.dragHandleProps}
-                        className="flex items-center cursor-pointer px-3 py-2 select-none hover:bg-gray-50"
-                        onClick={() => handleToggleFolder(folder.id)}
-                      >
-                        <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${folder.open ? '' : '-rotate-90'}`} />
-                        <div className="flex items-center gap-2">
-                          {editingFolderId === folder.id ? (
-                            <Input
-                              type="text"
-                              value={editingFolderName}
-                              onChange={(e) => setEditingFolderName(e.target.value)}
-                              onBlur={handleSaveFolderName}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSaveFolderName();
-                                if (e.key === 'Escape') setEditingFolderId(null);
-                              }}
-                              autoFocus
-                              className="h-7"
-                            />
-                          ) : (
-                            <span className="font-semibold text-gray-800">{folder.name}</span>
-                          )}
-                          <Badge variant="secondary">{folder.modules.length}</Badge>
-                        </div>
-                        <div className="flex-grow" />
-                        {folder.id !== 'total-library' && (
-                          <div className="flex items-center">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); handleStartEditingFolder(folder.id, folder.name); }}
-                              className="h-6 w-6 p-0"
-                            >
-                              <Edit3 className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); handleStartConversion(folder.id); }}
-                              className="h-6 w-6 p-0"
-                            >
-                              <RefreshCw className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); setFolders(folders.filter(f => f.id !== folder.id)); }}
-                              className="h-6 w-6 p-0 text-destructive"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        )}
+      <div className="mb-4">
+        <div className="flex flex-col gap-4 lg:flex-row">
+          <div className="relative flex-1">
+            {isLibraryLoading && (
+              <div className="absolute inset-0 bg-background/80 z-10 flex flex-col items-center justify-center gap-2">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">Processing import...</span>
+              </div>
+            )}
+            <Droppable droppableId="module-selector-folders" type="library" isDropDisabled={isLibraryLoading}>
+              {(provided) => (
+                <div ref={provided.innerRef} {...provided.droppableProps}>
+                  {/* Ensure a dedicated Constants folder exists */}
+                  {(!folders.some(f => f.id === CONSTANTS_FOLDER_ID)) && (
+                    <div className="mb-3 rounded-lg border border-gray-200 bg-white shadow-sm">
+                      <div className="flex items-center px-3 py-2 select-none">
+                        <span className="font-semibold">Constants</span>
+                        <Badge variant="secondary" className="ml-2">0</Badge>
                       </div>
-                      {folder.open && !snapshot.isDragging && (
-                        <Droppable droppableId={folder.id} type="module">
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.droppableProps}
-                              className={`flex flex-wrap gap-2 p-3 bg-gray-50/60 border-t border-gray-200 rounded-b-lg min-h-[56px] transition-all ${snapshot.isDraggingOver ? 'bg-primary/5 ring-1 ring-primary/20' : ''}`}
-                            >
-                              {customModules
-                                .filter(m => folder.modules.includes(m.id))
-                                .map((module, index) => (
-                                  <Draggable key={module.id} draggableId={module.id} index={index}>
-                                    {(provided, snapshot) => (
-                                      <div
-                                        ref={provided.innerRef}
-                                        {...provided.draggableProps}
-                                        {...provided.dragHandleProps}
-                                        className={`transition-all ${snapshot.isDragging ? 'shadow-lg' : ''}`}
-                                      >
-                                        <ModuleButton
-                                          module={module}
-                                          isSelected={selectedModules.some(m => m.id === module.id)}
-                                          onClick={() => handleModuleClick(module)}
-                                          onRemove={() => handleDeleteModule(module.id, folder.id)}
-                                          showRemoveButton={true}
-                                          enableContextMenu={true}
-                                        />
-                                      </div>
-                                    )}
-                                  </Draggable>
-                                ))}
-                              {provided.placeholder}
-                            </div>
-                          )}
-                        </Droppable>
-                      )}
+                      <div className="px-3 pb-3 text-sm text-muted-foreground">Create a folder named "Constants" to pin single-gene constants.</div>
                     </div>
                   )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </div>
+                  {folders.map((folder, index) => (
+                    <Draggable key={folder.id} draggableId={folder.id} index={index}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={`mb-3 rounded-lg border border-gray-200 bg-white transition-all shadow-sm ${snapshot.isDragging ? 'shadow-lg' : ''}`}
+                        >
+                          <div
+                            {...provided.dragHandleProps}
+                            className="flex items-center cursor-pointer px-3 py-2 select-none hover:bg-gray-50"
+                            onClick={() => handleToggleFolder(folder.id)}
+                          >
+                            <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${folder.open ? '' : '-rotate-90'}`} />
+                            <div className="flex items-center gap-2">
+                              {editingFolderId === folder.id ? (
+                                <Input
+                                  type="text"
+                                  value={editingFolderName}
+                                  onChange={(e) => setEditingFolderName(e.target.value)}
+                                  onBlur={handleSaveFolderName}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveFolderName();
+                                    if (e.key === 'Escape') setEditingFolderId(null);
+                                  }}
+                                  autoFocus
+                                  className="h-7"
+                                />
+                              ) : (
+                                <span className="font-semibold text-gray-800">{folder.name}</span>
+                              )}
+                              <Badge variant="secondary">{folder.modules.length}</Badge>
+                            </div>
+                            <div className="flex-grow" />
+                            {folder.id !== 'total-library' && (
+                              <div className="flex items-center">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); handleStartEditingFolder(folder.id, folder.name); }}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Edit3 className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); handleStartConversion(folder.id); }}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <RefreshCw className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); setFolders(folders.filter(f => f.id !== folder.id)); }}
+                                  className="h-6 w-6 p-0 text-destructive"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          {folder.open && !snapshot.isDragging && (
+                            <Droppable droppableId={folder.id} type="module">
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.droppableProps}
+                                  className={`flex flex-wrap gap-2 p-3 bg-gray-50/60 border-t border-gray-200 rounded-b-lg min-h-[56px] transition-all ${snapshot.isDraggingOver ? 'bg-primary/5 ring-1 ring-primary/20' : ''}`}
+                                >
+                                  {customModules
+                                    .filter(m => folder.modules.includes(m.id))
+                                    .map((module, index) => (
+                                      <Draggable key={module.id} draggableId={module.id} index={index}>
+                                        {(provided, snapshot) => (
+                                          <div
+                                            ref={provided.innerRef}
+                                            {...provided.draggableProps}
+                                            {...provided.dragHandleProps}
+                                            className={`transition-all ${snapshot.isDragging ? 'shadow-lg' : ''}`}
+                                          >
+                                            <ModuleButton
+                                              module={module}
+                                              isSelected={selectedModules.some(m => m.id === module.id)}
+                                              onClick={() => handleModuleClick(module)}
+                                              onRemove={() => handleDeleteModule(module.id, folder.id)}
+                                              showRemoveButton={true}
+                                              enableContextMenu={true}
+                                            />
+                                          </div>
+                                        )}
+                                      </Draggable>
+                                    ))}
+                                  {provided.placeholder}
+                                </div>
+                              )}
+                            </Droppable>
+                          )}
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </div>
+
+          {!isLibraryLoading && importReport && importReport.issues.length > 0 && (
+            <aside className="w-full shrink-0 rounded-lg border border-gray-200 bg-white shadow-sm lg:w-72 xl:w-80">
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Import notes</p>
+                    <p className="text-xs text-muted-foreground">
+                      {importReport.folderName} • {importReport.errorCount} error{importReport.errorCount === 1 ? '' : 's'}, {importReport.warningCount} warning{importReport.warningCount === 1 ? '' : 's'} • {(importReport.durationMs / 1000).toFixed(importReport.durationMs > 2000 ? 1 : 2)}s
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setImportReport(null)}
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
+                  {importReport.issues.slice(0, 40).map((issue, idx) => {
+                    const severityStyles = issue.severity === 'error'
+                      ? 'border-red-200 bg-red-50 text-red-800'
+                      : 'border-amber-200 bg-amber-50 text-amber-900'
+                    const Icon = issue.severity === 'error' ? AlertTriangle : Info
+                    return (
+                      <div
+                        key={`${issue.gene}-${issue.row ?? 'na'}-${idx}`}
+                        className={`flex items-start gap-2 rounded-md border px-2.5 py-2 text-xs ${severityStyles}`}
+                      >
+                        <Icon className="mt-0.5 h-3.5 w-3.5" />
+                        <div className="leading-snug">
+                          <span className="font-semibold">{issue.gene}</span>
+                          <span className="block text-[11px] text-current/90">{issue.reason}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {importReport.issues.length > 40 && (
+                    <div className="rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-[11px] text-muted-foreground">
+                      +{importReport.issues.length - 40} more notes hidden
+                    </div>
+                  )}
+                </div>
+              </div>
+            </aside>
           )}
-        </Droppable>
+        </div>
       </div>
       {/* Integrations section removed */}
       </Card>

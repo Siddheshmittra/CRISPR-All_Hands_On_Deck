@@ -1,6 +1,6 @@
 import { EditInstruction } from './llmParser';
 import { validateGenes } from './geneValidator';
-import { resolveGene, enrichModuleWithSequence } from '@/lib/ensembl';
+import { resolveGene, enrichModuleWithSequence, suggestGeneAlternatives } from '@/lib/ensembl';
 import { syntheticGenes } from '@/lib/synthetic-genes';
 import type { Module } from '@/lib/types';
 
@@ -111,6 +111,12 @@ function getColorForType(type: string): string {
   return colors[type] || 'bg-gray-100 text-gray-800';
 }
 
+function formatAlternativeList(list: string[]): string {
+  if (list.length === 1) return list[0];
+  if (list.length === 2) return `${list[0]} or ${list[1]}`;
+  return `${list.slice(0, -1).join(', ')}, or ${list[list.length - 1]}`;
+}
+
 export async function dispatchEdits(
   edits: EditInstruction[],
   opts?: { enforceTypeSource?: boolean }
@@ -128,16 +134,30 @@ export async function dispatchEdits(
   // Create modules with sequence validation
   const modules: Module[] = [];
   for (const edit of valid) {
+    let draftModule: Module | null = null;
     try {
-      const module = await createModule(edit);
-      const enriched = await enrichModuleWithSequence(module, { 
-        enforceTypeSource: opts?.enforceTypeSource 
+      draftModule = await createModule(edit);
+      const enriched = await enrichModuleWithSequence(draftModule, {
+        enforceTypeSource: opts?.enforceTypeSource
       });
       modules.push(enriched);
     } catch (error) {
-      if (error instanceof Error) {
-        warnings.push(`Failed to create module for ${edit.target}: ${error.message}`);
+      const baseMessage = error instanceof Error ? error.message : 'Unknown error while creating module';
+      const suggestionType = draftModule?.type === 'knockin' ? 'overexpression' : draftModule?.type;
+      let suggestionSuffix = '';
+      try {
+        const alternatives = await suggestGeneAlternatives(draftModule?.name ?? edit.target, {
+          type: suggestionType,
+          limit: 3,
+        });
+        if (alternatives.length > 0) {
+          suggestionSuffix = ` Did you mean ${formatAlternativeList(alternatives)}?`;
+        }
+      } catch (suggestionError) {
+        console.warn('[dispatchEdits] Failed to compute gene suggestions:', suggestionError);
       }
+
+      warnings.push(`Failed to create module for ${edit.target}: ${baseMessage}${suggestionSuffix}`);
     }
   }
   

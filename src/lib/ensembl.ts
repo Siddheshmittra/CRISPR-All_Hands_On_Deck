@@ -20,6 +20,28 @@ const gRNAData: GrnaRecord[] = (rawGrnaDb as any[]).map(r => ({
   gRNASequence: (r['Final gRNA Seq for\nCRISPR-All Syntax'] as string).trim(),
 }));
 
+const shRNASet = new Set<string>(
+  shRNAData
+    .map(record => record['Symbol']?.trim().toUpperCase())
+    .filter((symbol): symbol is string => !!symbol && symbol.length > 0)
+);
+
+const gRNASet = new Set<string>(
+  gRNAData
+    .map(record => record.geneSymbol?.trim().toUpperCase())
+    .filter((symbol): symbol is string => !!symbol && symbol.length > 0)
+);
+
+const perturbationGeneSet = new Set<string>([...shRNASet, ...gRNASet]);
+
+const heuristicAlternatives: Record<string, string[]> = {
+  SIR2: ['SIRT1', 'SIRT2'],
+  SIR1: ['SIRT1'],
+  P53: ['TP53'],
+  PD1: ['PDCD1'],
+  'PD-1': ['PDCD1'],
+};
+
 const ENSEMBL = 'https://rest.ensembl.org';
 const GRCH37 = 'https://grch37.rest.ensembl.org';
 
@@ -83,6 +105,69 @@ function setInLocalStorage(type: 'gene' | 'cdna', key: string, value: any): void
       timestamp: Date.now(),
     })
   );
+}
+
+type ModuleType = 'overexpression' | 'knockdown' | 'knockout' | 'knockin';
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  return dp[m][n];
+}
+
+function findLocalAlternatives(target: string, type: ModuleType | undefined, limit: number): string[] {
+  const normalized = target.trim().toUpperCase();
+  if (!normalized) return [];
+
+  let dataset: Set<string>;
+  if (type === 'knockdown') {
+    dataset = shRNASet;
+  } else if (type === 'knockout') {
+    dataset = gRNASet;
+  } else {
+    dataset = perturbationGeneSet;
+  }
+
+  const maxDistance = normalized.length <= 4 ? 1 : 2;
+  const scored: Array<{ gene: string; score: number }> = [];
+
+  dataset.forEach(candidate => {
+    if (!candidate || candidate === normalized) return;
+
+    const distance = levenshtein(normalized, candidate);
+    const prefixBonus = candidate.startsWith(normalized[0]) ? -0.2 : 0;
+    const containsBonus = candidate.includes(normalized) ? -0.5 : 0;
+
+    if (containsBonus < 0 || normalized.includes(candidate)) {
+      scored.push({ gene: candidate, score: Math.max(distance - 0.5, 0) });
+      return;
+    }
+
+    if (distance <= maxDistance) {
+      scored.push({ gene: candidate, score: distance + prefixBonus });
+    }
+  });
+
+  scored.sort((a, b) => a.score - b.score);
+  return scored.slice(0, limit).map(entry => entry.gene);
 }
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
@@ -178,6 +263,59 @@ export async function searchEnsembl(query: string): Promise<Array<{ symbol: stri
   } catch (error) {
     return await searchDirectEnsembl();
   }
+}
+
+export async function suggestGeneAlternatives(
+  symbol: string,
+  opts?: { limit?: number; type?: ModuleType }
+): Promise<string[]> {
+  const limit = Math.max(1, opts?.limit ?? 3);
+  const cleaned = (symbol || '').trim();
+  if (!cleaned) return [];
+
+  const normalized = cleaned.toUpperCase();
+  const suggestions: string[] = [];
+  const seen = new Set<string>();
+
+  const pushCandidate = (candidate: string | undefined | null) => {
+    if (!candidate) return;
+    const trimmed = candidate.trim();
+    if (!trimmed) return;
+    const upper = trimmed.toUpperCase();
+    if (upper === normalized) return;
+    if (seen.has(upper)) return;
+    seen.add(upper);
+    suggestions.push(trimmed);
+  };
+
+  const heuristic = heuristicAlternatives[normalized];
+  if (heuristic && heuristic.length > 0) {
+    heuristic.forEach(pushCandidate);
+  }
+
+  const localCandidates = findLocalAlternatives(cleaned, opts?.type, limit * 2);
+  localCandidates.forEach(pushCandidate);
+
+  if (suggestions.length < limit) {
+    try {
+      const remote = await searchEnsembl(cleaned);
+      for (const result of remote) {
+        const candidate = result.symbol?.trim();
+        if (!candidate) continue;
+        const candidateUpper = candidate.toUpperCase();
+
+        if (opts?.type === 'knockdown' && !shRNASet.has(candidateUpper)) continue;
+        if (opts?.type === 'knockout' && !gRNASet.has(candidateUpper)) continue;
+
+        pushCandidate(candidate);
+        if (suggestions.length >= limit) break;
+      }
+    } catch (error) {
+      console.warn(`[suggestGeneAlternatives] Remote suggestion lookup failed for ${symbol}:`, error);
+    }
+  }
+
+  return suggestions.slice(0, limit);
 }
 
 export async function resolveGene(
