@@ -257,7 +257,16 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h2 ref={headingRef} className="text-xl font-bold text-gray-900 dark:text-white font-mono relative inline-block">
+        <h2
+          ref={headingRef}
+          className="text-xl font-bold text-gray-900 dark:text-white font-mono relative inline-block cursor-pointer select-none"
+          title="Toggle DNA splash"
+          onClick={() => {
+            if (flipTimeoutRef.current) window.clearTimeout(flipTimeoutRef.current)
+            if (splashTimeoutRef.current) window.clearTimeout(splashTimeoutRef.current)
+            setShowDnaSplash(prev => !prev)
+          }}
+        >
           {/* DNA splash text */}
           <span className={`${showDnaSplash ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-0.5'} transition-all duration-700 ease-in-out absolute inset-0`}>TACCTCACTAGCTGACTATATGATCTACTCTCACTA</span>
           {/* Final header text */}
