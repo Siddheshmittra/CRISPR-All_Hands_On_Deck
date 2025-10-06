@@ -133,18 +133,7 @@ const DesignLab = () => {
     }
   }, [])
 
-  // Lightweight restore indicator (less invasive)
-  const [showRestoreBanner, setShowRestoreBanner] = useState<boolean>(() => {
-    try { return !!localStorage.getItem('design-lab:session:v2') || !!localStorage.getItem('design-lab:session') } catch { return false }
-  })
-
-  const handleClearSession = () => {
-    try {
-      localStorage.removeItem('design-lab:session')
-    } catch {}
-    designLabSession.clear()
-    setShowRestoreBanner(false)
-  }
+  // Session auto-restore remains enabled; banner removed for cleaner UI
 
   const usedBarcodes = React.useMemo(() => new Set(
     cassetteBatch.map(c => c.barcode).filter((b): b is string => !!b)
@@ -573,29 +562,6 @@ const DesignLab = () => {
       <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
-          {showRestoreBanner && (
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  A previous session was found. Your workspace will auto-restore on load.
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="px-3 py-1 text-sm border rounded"
-                    onClick={() => setShowRestoreBanner(false)}
-                  >
-                    Hide
-                  </button>
-                  <button
-                    className="px-3 py-1 text-sm border rounded"
-                    onClick={handleClearSession}
-                  >
-                    Clear Saved Session
-                  </button>
-                </div>
-              </div>
-            </Card>
-          )}
           <DesignMode
             cassetteMode={cassetteMode}
             onCassetteModeChange={setCassetteMode}

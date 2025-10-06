@@ -92,15 +92,6 @@ const Landing = () => {
               })()}
             </span>
           </div>
-
-          <div className="mt-10 flex justify-center">
-            <Link
-              to="/design"
-              className="px-6 py-3 rounded-md bg-primary text-primary-foreground shadow hover:opacity-90 transition"
-            >
-              Launch Design Lab
-            </Link>
-          </div>
         </div>
 
         <button
