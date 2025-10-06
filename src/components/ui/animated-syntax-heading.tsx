@@ -90,6 +90,7 @@ export function AnimatedSyntaxHeading({ className, storageKey }: AnimatedSyntaxH
             } ${isAnimating ? "scale-105 rotate-2" : "scale-100 rotate-0"}`}
             style={{
               transitionProperty: "transform, opacity",
+              textShadow: "0 0 0.5px #000, 0 0 1.5px #000"
             }}
           >
             {LETTERS[letterIndex]}

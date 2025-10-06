@@ -43,7 +43,6 @@ export function CodeHeading({ text, className, storageKey }: CodeHeadingProps) {
           <span className="bg-gray-900/5 dark:bg-gray-100/5 px-3 py-1 rounded border border-gray-300 dark:border-gray-600">
             {text}
           </span>
-          <span className={`absolute left-0 right-0 bottom-0 h-[2px] bg-green-500 origin-left transition-transform duration-700 ${visible ? 'scale-x-100' : 'scale-x-0'}`} />
         </span>
       </span>
     </h2>

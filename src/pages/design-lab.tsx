@@ -793,7 +793,7 @@ const DesignLab = () => {
                       ))}
                     </ul>
                   )}
-                  <p className="text-xs text-muted-foreground mt-2">Answers come from the same API used by Natural Language mode.</p>
+                  <p className="text-xs text-muted-foreground mt-2">Predictions come from the same API used by Natural Language mode.</p>
                 </div>
                 <div>
                   <button
