@@ -5,6 +5,7 @@ import { Trash2, RotateCcw, Shuffle, ArrowRight } from "lucide-react"
 import { Droppable, Draggable } from "@hello-pangea/dnd"
 import { ConstructItem, Module } from "@/lib/types"
 import { Badge } from "../ui/badge"
+import { AnimatedSyntaxHeading } from "@/components/ui/animated-syntax-heading"
 
 interface ConstructLayoutProps {
   constructModules: ConstructItem[]
@@ -42,7 +43,7 @@ export const ConstructLayout = ({
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">2. Syntax</h2>
+        <AnimatedSyntaxHeading className="text-xl font-bold text-gray-900 dark:text-white" />
         <div className="flex gap-2">
 <Button variant="outline" size="sm" onClick={onReset}>
             <RotateCcw className="h-4 w-4 mr-2" />

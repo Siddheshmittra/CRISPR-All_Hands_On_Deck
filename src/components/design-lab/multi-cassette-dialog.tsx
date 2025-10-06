@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import { Module, LibrarySyntax } from "@/lib/types"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { randomUUID } from "@/lib/uuid"
+import { AnimatedSyntaxHeading } from "@/components/ui/animated-syntax-heading"
 // Removed NaturalLanguageInput from multi-cassette manual section
 
 // Hardcoded syntax components with their sequences and types
@@ -498,7 +499,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
       <DragDropContext onDragEnd={handleDragEnd}>
         <Card className="p-6 mb-4 border border-gray-200 dark:border-gray-700 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">2. Syntax</h3>
+            <AnimatedSyntaxHeading className="text-xl font-bold text-gray-900 dark:text-white" />
             {isGenerating && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="inline-block h-2 w-2 rounded-full bg-primary animate-pulse"></span>
