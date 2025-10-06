@@ -6,10 +6,10 @@ interface AnimatedSyntaxHeadingProps {
 
 const LETTERS = ["S", "y", "n", "t", "a", "x"]
 const MODULE_COLORS = [
-  "bg-[hsl(66,70%,85%)] text-[hsl(66,70%,25%)] border-[hsl(66,70%,60%)]", // OE - lime-ish
-  "bg-[hsl(13,95%,85%)] text-[hsl(13,95%,25%)] border-[hsl(13,95%,60%)]",  // KO - red-orange
-  "bg-[hsl(32,75%,85%)] text-[hsl(32,75%,25%)] border-[hsl(32,75%,60%)]",  // KD - orange
-  "bg-[hsl(220,35%,85%)] text-[hsl(220,35%,25%)] border-[hsl(220,35%,60%)]", // KI - blue-ish
+  "bg-[hsl(66,70%,70%)] text-white border-[hsl(66,70%,55%)]", // OE - solid lime
+  "bg-[hsl(13,95%,65%)] text-white border-[hsl(13,95%,50%)]",  // KO - solid red-orange
+  "bg-[hsl(32,75%,60%)] text-white border-[hsl(32,75%,45%)]",  // KD - solid orange
+  "bg-[hsl(220,35%,60%)] text-white border-[hsl(220,35%,45%)]", // KI - solid blue
 ]
 
 function shuffle<T>(arr: T[]): T[] {
@@ -47,17 +47,17 @@ export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps)
     if (!visible) return
     setIsAnimating(true)
 
-    // Shuffle multiple times over ~1.2 seconds
+    // Shuffle multiple times over ~1.8 seconds with slower, smoother transitions
     const shuffleInterval = setInterval(() => {
       setDisplayOrder(shuffle([0, 1, 2, 3, 4, 5]))
-    }, 80)
+    }, 200)
 
-    // After 1.2s, snap to final order
+    // After 1.8s, snap to final order
     const snapTimeout = setTimeout(() => {
       clearInterval(shuffleInterval)
       setDisplayOrder([0, 1, 2, 3, 4, 5])
       setIsAnimating(false)
-    }, 1200)
+    }, 1800)
 
     return () => {
       clearInterval(shuffleInterval)
@@ -68,13 +68,13 @@ export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps)
   return (
     <h2 ref={containerRef} className={className} aria-label="2. Syntax">
       <span className="inline-block mr-2">2.</span>
-      <span className="inline-flex gap-1">
+      <span className="inline-flex gap-0.5">
         {displayOrder.map((letterIndex, posIndex) => (
           <span
             key={posIndex}
-            className={`inline-block px-2 py-1 rounded border font-bold text-sm transition-all duration-300 ${
+            className={`inline-block px-2 py-1 rounded border font-bold text-sm shadow-sm transition-all duration-500 ease-in-out ${
               MODULE_COLORS[letterIndex % MODULE_COLORS.length]
-            } ${isAnimating ? "scale-110" : "scale-100"}`}
+            } ${isAnimating ? "scale-105 rotate-2" : "scale-100 rotate-0"}`}
             style={{
               transitionProperty: "transform, opacity",
             }}

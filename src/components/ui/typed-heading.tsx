@@ -36,7 +36,7 @@ function useTypedText(text: string, speedMsPerChar: number, start: boolean) {
   return display
 }
 
-export function TypedHeading({ text, className, speedMsPerChar = 35 }: TypedHeadingProps) {
+export function TypedHeading({ text, className, speedMsPerChar = 50 }: TypedHeadingProps) {
   const ref = React.useRef<HTMLHeadingElement | null>(null)
   const [visible, setVisible] = React.useState(false)
 
@@ -54,10 +54,14 @@ export function TypedHeading({ text, className, speedMsPerChar = 35 }: TypedHead
   }, [])
 
   const display = useTypedText(text, speedMsPerChar, visible)
+  const isComplete = display === text
 
   return (
     <h2 ref={ref} className={className} aria-label={text}>
       {display}
+      {!isComplete && (
+        <span className="inline-block w-[2px] h-[1em] bg-current ml-1 animate-pulse" style={{ verticalAlign: 'middle' }} />
+      )}
     </h2>
   )
 }
