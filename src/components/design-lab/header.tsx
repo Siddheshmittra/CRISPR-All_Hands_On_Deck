@@ -11,13 +11,13 @@ export const Header = () => {
               <img 
                 src="/images/Roth.png" 
                 alt="Roth Lab Logo" 
-                width={300}
+                width={260}
                 className="object-contain"
               />
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-gray-900">
   CRISPR-All{' '}
   <span className="italic">
     <span className="text-[hsl(66,70%,47%)]">Hands</span>{' '}
