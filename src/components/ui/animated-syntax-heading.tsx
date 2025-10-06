@@ -2,7 +2,7 @@ import React from "react"
 
 interface AnimatedSyntaxHeadingProps {
   className?: string
-  storageKey?: string
+  storageKey?: string // retained for backward compatibility; not used for gating
 }
 
 const LETTERS = ["S", "y", "n", "t", "a", "x"]
@@ -22,35 +22,35 @@ function shuffle<T>(arr: T[]): T[] {
   return copy
 }
 
-export function AnimatedSyntaxHeading({ className, storageKey }: AnimatedSyntaxHeadingProps) {
+export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps) {
   const [displayOrder, setDisplayOrder] = React.useState<number[]>([0, 1, 2, 3, 4, 5])
   const [isAnimating, setIsAnimating] = React.useState(false)
   const [visible, setVisible] = React.useState(false)
-  const key = React.useMemo(() => storageKey || 'anim:syntax', [storageKey])
-  const [played, setPlayed] = React.useState<boolean>(() => {
-    try { return sessionStorage.getItem(key) === '1' } catch { return false }
-  })
   const containerRef = React.useRef<HTMLHeadingElement | null>(null)
+  const lastStartRef = React.useRef<number>(0)
+  const COOLDOWN_MS = 6000 // prevent rapid replays while scrolling
 
   React.useEffect(() => {
     const el = containerRef.current
     if (!el) return
-    if (played) { setVisible(true); return }
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          setVisible(true)
-          io.disconnect()
+          const now = Date.now()
+          if (!isAnimating && now - lastStartRef.current > COOLDOWN_MS) {
+            lastStartRef.current = now
+            setVisible(true)
+          }
         }
       },
-      { threshold: 0.5 }
+      { threshold: 0.2 }
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [played])
+  }, [isAnimating])
 
   React.useEffect(() => {
-    if (!visible || played) return
+    if (!visible || isAnimating) return
     setIsAnimating(true)
 
     // Shuffle multiple times over ~1.8 seconds with slower, smoother transitions
@@ -63,20 +63,14 @@ export function AnimatedSyntaxHeading({ className, storageKey }: AnimatedSyntaxH
       clearInterval(shuffleInterval)
       setDisplayOrder([0, 1, 2, 3, 4, 5])
       setIsAnimating(false)
+      setVisible(false) // allow re-trigger on next intersection
     }, 1800)
 
     return () => {
       clearInterval(shuffleInterval)
       clearTimeout(snapTimeout)
     }
-  }, [visible, played])
-
-  React.useEffect(() => {
-    if (!played && !isAnimating && visible) {
-      try { sessionStorage.setItem(key, '1') } catch {}
-      setPlayed(true)
-    }
-  }, [played, isAnimating, visible, key])
+  }, [visible, isAnimating])
 
   return (
     <h2 ref={containerRef} className={className} aria-label="2. Syntax">
