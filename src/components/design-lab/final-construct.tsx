@@ -41,6 +41,7 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
 
   // Temporary DNA splash heading when first seen
   const [showDnaSplash, setShowDnaSplash] = useState(false)
+  const [dnaProgress, setDnaProgress] = useState(0)
   const headingRef = useRef<HTMLHeadingElement | null>(null)
   useEffect(() => {
     const el = headingRef.current
@@ -48,7 +49,19 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
     const io = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
         setShowDnaSplash(true)
-        setTimeout(() => setShowDnaSplash(false), 5000)
+        // Smooth progress underline during splash
+        setDnaProgress(0)
+        const totalMs = 5000
+        const startedAt = performance.now()
+        const tick = (now: number) => {
+          const elapsed = now - startedAt
+          const pct = Math.min(100, (elapsed / totalMs) * 100)
+          setDnaProgress(pct)
+          if (pct < 100) requestAnimationFrame(tick)
+        }
+        requestAnimationFrame(tick)
+        // Switch to final header after splash
+        setTimeout(() => setShowDnaSplash(false), totalMs)
         io.disconnect()
       }
     }, { threshold: 0.6 })
@@ -236,8 +249,13 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h2 ref={headingRef} className="text-xl font-bold text-gray-900 dark:text-white font-mono">
-          {showDnaSplash ? 'TACCTCACTAGCTGACTATATGATCTACTCTCACTA' : '4. DNA Sequence'}
+        <h2 ref={headingRef} className="text-xl font-bold text-gray-900 dark:text-white font-mono relative inline-block">
+          {/* DNA splash text */}
+          <span className={`${showDnaSplash ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-0.5'} transition-all duration-700 ease-in-out absolute inset-0`}>TACCTCACTAGCTGACTATATGATCTACTCTCACTA</span>
+          {/* Final header text */}
+          <span className={`${showDnaSplash ? 'opacity-0 scale-95 translate-y-0.5' : 'opacity-100 scale-100 translate-y-0'} transition-all duration-700 ease-in-out block`}>4. DNA Sequence</span>
+          {/* Progress underline during splash */}
+          <span className={`absolute left-0 bottom-0 h-[2px] bg-green-500 transition-opacity duration-500 ${showDnaSplash ? 'opacity-100' : 'opacity-0'}`} style={{ width: `${dnaProgress}%` }} />
         </h2>
         <div className="flex gap-2">
           <Button 

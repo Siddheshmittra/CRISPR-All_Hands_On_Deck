@@ -2,6 +2,7 @@ import React from "react"
 
 interface AnimatedSyntaxHeadingProps {
   className?: string
+  storageKey?: string
 }
 
 const LETTERS = ["S", "y", "n", "t", "a", "x"]
@@ -21,15 +22,20 @@ function shuffle<T>(arr: T[]): T[] {
   return copy
 }
 
-export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps) {
+export function AnimatedSyntaxHeading({ className, storageKey }: AnimatedSyntaxHeadingProps) {
   const [displayOrder, setDisplayOrder] = React.useState<number[]>([0, 1, 2, 3, 4, 5])
   const [isAnimating, setIsAnimating] = React.useState(false)
   const [visible, setVisible] = React.useState(false)
+  const key = React.useMemo(() => storageKey || 'anim:syntax', [storageKey])
+  const [played, setPlayed] = React.useState<boolean>(() => {
+    try { return sessionStorage.getItem(key) === '1' } catch { return false }
+  })
   const containerRef = React.useRef<HTMLHeadingElement | null>(null)
 
   React.useEffect(() => {
     const el = containerRef.current
     if (!el) return
+    if (played) { setVisible(true); return }
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -41,10 +47,10 @@ export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps)
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [])
+  }, [played])
 
   React.useEffect(() => {
-    if (!visible) return
+    if (!visible || played) return
     setIsAnimating(true)
 
     // Shuffle multiple times over ~1.8 seconds with slower, smoother transitions
@@ -63,7 +69,14 @@ export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps)
       clearInterval(shuffleInterval)
       clearTimeout(snapTimeout)
     }
-  }, [visible])
+  }, [visible, played])
+
+  React.useEffect(() => {
+    if (!played && !isAnimating && visible) {
+      try { sessionStorage.setItem(key, '1') } catch {}
+      setPlayed(true)
+    }
+  }, [played, isAnimating, visible, key])
 
   return (
     <h2 ref={containerRef} className={className} aria-label="2. Syntax">

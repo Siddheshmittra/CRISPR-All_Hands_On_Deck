@@ -4,6 +4,7 @@ interface TypedHeadingProps {
   text: string
   className?: string
   speedMsPerChar?: number
+  storageKey?: string
 }
 
 function useTypedText(text: string, speedMsPerChar: number, start: boolean) {
@@ -36,11 +37,16 @@ function useTypedText(text: string, speedMsPerChar: number, start: boolean) {
   return display
 }
 
-export function TypedHeading({ text, className, speedMsPerChar = 50 }: TypedHeadingProps) {
+export function TypedHeading({ text, className, speedMsPerChar = 50, storageKey }: TypedHeadingProps) {
   const ref = React.useRef<HTMLHeadingElement | null>(null)
   const [visible, setVisible] = React.useState(false)
+  const key = React.useMemo(() => storageKey || `anim:typed:${text}`, [storageKey, text])
+  const [played, setPlayed] = React.useState<boolean>(() => {
+    try { return sessionStorage.getItem(key) === '1' } catch { return false }
+  })
 
   React.useEffect(() => {
+    if (played) { setVisible(true); return }
     const el = ref.current
     if (!el) return
     const io = new IntersectionObserver(([entry]) => {
@@ -51,10 +57,18 @@ export function TypedHeading({ text, className, speedMsPerChar = 50 }: TypedHead
     }, { threshold: 0.5 })
     io.observe(el)
     return () => io.disconnect()
-  }, [])
+  }, [played])
 
-  const display = useTypedText(text, speedMsPerChar, visible)
-  const isComplete = display === text
+  const animatedDisplay = useTypedText(text, speedMsPerChar, visible && !played)
+  const display = played ? text : animatedDisplay
+  const isComplete = played || display === text
+
+  React.useEffect(() => {
+    if (!played && isComplete) {
+      try { sessionStorage.setItem(key, '1') } catch {}
+      setPlayed(true)
+    }
+  }, [isComplete, played, key])
 
   return (
     <h2 ref={ref} className={className} aria-label={text}>
