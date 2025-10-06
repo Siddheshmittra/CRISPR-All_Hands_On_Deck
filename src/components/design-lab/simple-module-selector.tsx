@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { Card } from "@/components/ui/card"
+import { TypedHeading } from "@/components/ui/typed-heading"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -258,7 +259,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="space-y-5">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">1. Desired Genetic Perturbation</h2>
+        <TypedHeading text="1. Desired Genetic Perturbation" className="text-xl font-bold text-gray-900 dark:text-white" />
         
         {/* Type Selector - Styled to match scan genes dialog */}
         <div className="p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">

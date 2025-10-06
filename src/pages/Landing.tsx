@@ -95,7 +95,7 @@ const Landing = () => {
         </div>
 
         <button
-          aria-label="Scroll to get started"
+         
           onClick={() => designRef.current?.scrollIntoView({ behavior: "smooth" })}
           className="absolute bottom-8 inline-flex flex-col items-center text-gray-500 hover:text-gray-700 transition"
         >

@@ -7,6 +7,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { parseInstructions } from '@/lib/llm/llmParser';
 import { dispatchEdits } from '@/lib/llm/dispatcher';
 import { Module } from '@/lib/types';
+import { TypedHeading } from '@/components/ui/typed-heading';
 
 interface NaturalLanguageInputProps {
   onModulesGenerated: (modules: Module[]) => void;
@@ -83,9 +84,7 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
       <div className="space-y-4">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            1. Desired Genetic Perturbation
-          </h2>
+          <TypedHeading text="1. Desired Genetic Perturbation" className="text-xl font-bold text-gray-900 dark:text-white" />
           <Textarea
             id="natural-language"
             placeholder="Describe your genetic modifications (e.g., 'overexpress BATF, knockdown IRF4')"

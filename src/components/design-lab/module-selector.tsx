@@ -15,6 +15,7 @@ import { SyntheticGene } from "@/lib/types"
 import { UnifiedGeneSearch } from "./unified-gene-search"
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
+import { TypedHeading } from '@/components/ui/typed-heading'
 
 interface ModuleSelectorProps {
   selectedModules: Module[]
@@ -851,7 +852,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         </div>
       )}
       <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">1. Desired Genetic Perturbations (Libraries)</h2>
+        <TypedHeading text="1. Desired Genetic Perturbations (Libraries)" className="text-xl font-bold text-gray-900 dark:text-white mb-4" />
 
       {/* Perturbation Type - button selector */}
       <div className="mb-5 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -993,12 +994,12 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             <div ref={provided.innerRef} {...provided.droppableProps}>
               {/* Ensure a dedicated Constants folder exists */}
               {(!folders.some(f => f.id === CONSTANTS_FOLDER_ID)) && (
-                <div className="mb-2 border rounded bg-muted">
-                  <div className="flex items-center px-2 py-1 select-none">
+                <div className="mb-3 rounded-lg border border-gray-200 bg-white shadow-sm">
+                  <div className="flex items-center px-3 py-2 select-none">
                     <span className="font-semibold">Constants</span>
                     <Badge variant="secondary" className="ml-2">0</Badge>
                   </div>
-                  <div className="p-2 text-sm text-muted-foreground">Create a folder named "Constants" to pin single-gene constants.</div>
+                  <div className="px-3 pb-3 text-sm text-muted-foreground">Create a folder named "Constants" to pin single-gene constants.</div>
                 </div>
               )}
               {folders.map((folder, index) => (
@@ -1007,11 +1008,11 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                     <div
                       ref={provided.innerRef}
                       {...provided.draggableProps}
-                      className={`mb-2 border rounded bg-muted transition-all ${snapshot.isDragging ? 'shadow-lg' : ''}`}
+                      className={`mb-3 rounded-lg border border-gray-200 bg-white transition-all shadow-sm ${snapshot.isDragging ? 'shadow-lg' : ''}`}
                     >
                       <div
                         {...provided.dragHandleProps}
-                        className="flex items-center cursor-pointer px-2 py-1 select-none"
+                        className="flex items-center cursor-pointer px-3 py-2 select-none hover:bg-gray-50"
                         onClick={() => handleToggleFolder(folder.id)}
                       >
                         <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${folder.open ? '' : '-rotate-90'}`} />
@@ -1030,7 +1031,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                               className="h-7"
                             />
                           ) : (
-                            <span className="font-semibold">{folder.name}</span>
+                            <span className="font-semibold text-gray-800">{folder.name}</span>
                           )}
                           <Badge variant="secondary">{folder.modules.length}</Badge>
                         </div>
@@ -1070,7 +1071,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                             <div
                               ref={provided.innerRef}
                               {...provided.droppableProps}
-                              className={`flex flex-wrap gap-2 p-2 bg-background/50 min-h-[50px] transition-all ${snapshot.isDraggingOver ? 'bg-primary/10' : ''}`}
+                              className={`flex flex-wrap gap-2 p-3 bg-gray-50/60 border-t border-gray-200 rounded-b-lg min-h-[56px] transition-all ${snapshot.isDraggingOver ? 'bg-primary/5 ring-1 ring-primary/20' : ''}`}
                             >
                               {customModules
                                 .filter(m => folder.modules.includes(m.id))

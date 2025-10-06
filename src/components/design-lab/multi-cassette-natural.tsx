@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { SyntheticDomainImporter } from './synthetic-domain-importer';
 import type { SyntheticGene } from '@/lib/types';
 import { LibraryViewer } from '@/components/design-lab/library-viewer';
+import { TypedHeading } from '@/components/ui/typed-heading';
 
 interface MultiCassetteNaturalProps {
   folders: Array<{ id: string; name: string; modules: string[]; open?: boolean }>;
@@ -230,7 +231,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">1. Desired Genetic Perturbations (Libraries)</h2>
+        <TypedHeading text="1. Desired Genetic Perturbations (Libraries)" className="text-xl font-bold text-gray-900 dark:text-white" />
         <Dialog open={showImporter} onOpenChange={setShowImporter}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">
