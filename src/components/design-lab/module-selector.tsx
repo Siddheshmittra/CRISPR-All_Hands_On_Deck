@@ -340,6 +340,52 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     'alias',
     'aliases',
   ])
+  const perturbationTokenSet = new Set([
+    'OVEREXPRESSION',
+    'OVER-EXPRESSION',
+    'OVER EXPRESSION',
+    'UPREGULATION',
+    'UP-REGULATION',
+    'DOWNREGULATION',
+    'DOWN-REGULATION',
+    'KNOCKOUT',
+    'KNOCK-OUT',
+    'KNOCK DOWN',
+    'KNOCKDOWN',
+    'KNOCKIN',
+    'KNOCK-IN',
+    'KO',
+    'KD',
+    'KI',
+    'OE',
+    'PERTURBATION',
+    'PERTURBATIONS',
+    'TYPE',
+    'TYPES',
+    'CONTROL',
+    'NEGATIVE CONTROL',
+    'POSITIVE CONTROL',
+    'UNTREATED',
+    'VEHICLE',
+    'NONE',
+    'N/A',
+    'NA',
+    'SYNTHETIC',
+    'REFERENCE',
+    'REFERENCE GENE'
+  ])
+  const isPerturbationToken = (raw: unknown): boolean => {
+    if (raw == null) return false
+    const upper = String(raw).trim().toUpperCase()
+    if (!upper) return false
+    if (perturbationTokenSet.has(upper)) return true
+    if (upper.includes('PERTURBATION')) return true
+    if (upper.includes('CONTROL') && upper.length <= 20) return true
+    if (/KNOCK[\s-]?(OUT|DOWN|IN)/.test(upper)) return true
+    if (/OVER[\s-]?EXPRESS/.test(upper)) return true
+    if (/UP[\s-]?REGUL/.test(upper) || /DOWN[\s-]?REGUL/.test(upper)) return true
+    return false
+  }
   const isNumericLike = (v: any) => typeof v === 'number' || (/^\s*\d+\s*$/.test(String(v || '')))
   const isGeneLikeToken = (raw: string) => {
     const s = (raw || '').trim().toUpperCase()
@@ -348,6 +394,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     if (s.length > 30) return false
     // Reject pure numbers
     if (/^\d+$/.test(s)) return false
+    if (isPerturbationToken(s)) return false
     // Allow alphanumeric with hyphens, underscores, and dots (common in gene nomenclature)
     if (!/^[A-Z0-9][A-Z0-9\-_.]*[A-Z0-9]$/.test(s) && !/^[A-Z0-9]$/.test(s)) return false
     // Require at least one letter (genes must have letters, not just numbers)
@@ -365,12 +412,44 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     }
     return null
   }
+  const nonGeneHeaderTokens = new Set([
+    'perturbation',
+    'perturbations',
+    'type',
+    'types',
+    'category',
+    'categories',
+    'class',
+    'classes',
+    'phenotype',
+    'phenotypes',
+    'notes',
+    'note',
+    'description',
+    'descriptions',
+    'library',
+    'folder',
+    'folders',
+    'module',
+    'modules',
+    'group',
+    'groups',
+    'condition',
+    'conditions',
+    'control',
+    'controls',
+    'status'
+  ])
   const detectGeneColumn = (headers: string[], sampleRows: any[]): string | null => {
     if (!headers || headers.length === 0) return null
     const normalized = headers.map(h => ({ raw: h, norm: normalizeHeader(h) }))
     const headerScore = new Map<string, number>()
     for (const h of normalized) {
       let score = 0
+      if (nonGeneHeaderTokens.has(h.norm)) {
+        headerScore.set(h.raw, -5)
+        continue
+      }
       if (geneHeaderCandidates.has(h.norm)) score += 3
       if (h.norm.includes('gene') && h.norm.includes('symbol')) score += 3
       if (h.norm === 'symbol') score += 2
@@ -388,6 +467,11 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         nonEmpty++
         const token = pickFirstGeneLikeFromCell(v)
         if (token) hits++
+      }
+      const norm = normalizeHeader(h)
+      if (nonGeneHeaderTokens.has(norm)) {
+        contentScore.set(h, -1)
+        continue
       }
       const frac = nonEmpty > 0 ? hits / nonEmpty : 0
       let numericCount = 0
@@ -414,7 +498,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     const geneCol = detectGeneColumn(headers, [row]) || null
     if (geneCol && row[geneCol]) {
       const tok = pickFirstGeneLikeFromCell(row[geneCol])
-      if (tok) {
+      if (tok && !isPerturbationToken(tok)) {
         console.log('[Extract] Found gene via detected column:', tok, 'from column:', geneCol);
         return tok;
       }
@@ -426,7 +510,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       const normH = normalizeHeader(h);
       if (commonGeneHeaders.some(common => normH === common || normH.includes(common))) {
         const tok = pickFirstGeneLikeFromCell(row[h]);
-        if (tok) {
+        if (tok && !isPerturbationToken(tok)) {
           console.log('[Extract] Found gene via common header:', tok, 'from column:', h);
           return tok;
         }
@@ -438,7 +522,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       const norm = normalizeHeader(h)
       if (synonymsHeaderCandidates.has(norm)) {
         const tok = pickFirstGeneLikeFromCell(row[h])
-        if (tok) {
+        if (tok && !isPerturbationToken(tok)) {
           console.log('[Extract] Found gene via synonym column:', tok, 'from column:', h);
           return tok;
         }
@@ -448,7 +532,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     // Strategy 4: Try first column if it looks promising
     if (headers.length > 0 && headers[0] && row[headers[0]]) {
       const tok = pickFirstGeneLikeFromCell(row[headers[0]]);
-      if (tok) {
+      if (tok && !isPerturbationToken(tok)) {
         console.log('[Extract] Found gene via first column:', tok, 'from column:', headers[0]);
         return tok;
       }
@@ -458,7 +542,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     for (const h of headers) {
       if (row[h]) {
         const tok = pickFirstGeneLikeFromCell(row[h])
-        if (tok) {
+        if (tok && !isPerturbationToken(tok)) {
           console.log('[Extract] Found gene via column scan:', tok, 'from column:', h);
           return tok;
         }
@@ -734,7 +818,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       
       // Show loading state
       const toastId = toast.loading(`Scanning ${rows.length} genes...`, {
-        description: 'Loading library…'
+        description: 'Loading library...'
       });
 
       try {
@@ -774,6 +858,16 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           continue;
         }
         
+        const moduleType = (['overexpression', 'knockout', 'knockdown', 'knockin'].includes(perturbationType?.toLowerCase()) 
+                            ? perturbationType.toLowerCase() 
+                            : selectedType) as 'overexpression' | 'knockout' | 'knockdown' | 'knockin';
+        
+        if (isPerturbationToken(geneName)) {
+          console.warn('[ProcessGenes] Skipping perturbation keyword masquerading as gene:', geneName);
+          failedGenes.push(geneName);
+          continue;
+        }
+
         // Skip if already processed
         if (processedGenes.has(geneName)) {
           console.log('[ProcessGenes] Skipping duplicate gene:', geneName);
@@ -781,10 +875,6 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         }
         processedGenes.add(geneName);
 
-        const moduleType = (['overexpression', 'knockout', 'knockdown', 'knockin'].includes(perturbationType?.toLowerCase()) 
-                            ? perturbationType.toLowerCase() 
-                            : selectedType) as 'overexpression' | 'knockout' | 'knockdown' | 'knockin';
-        
         let moduleAdded = false;
         
         try {
@@ -1158,8 +1248,9 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       {/* Folder/Library display */}
       <div className="mb-4 relative">
         {isLibraryLoading && (
-          <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center">
+          <div className="absolute inset-0 bg-background/80 z-10 flex flex-col items-center justify-center gap-2">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground">Processing import...</span>
           </div>
         )}
         <Droppable droppableId="module-selector-folders" type="library" isDropDisabled={isLibraryLoading}>
