@@ -1,5 +1,7 @@
 import React from "react"
 import { Link } from "react-router-dom"
+import { ChevronDown } from "lucide-react"
+import Index from "./Index"
 
 const NUCLEOTIDES = ["A", "C", "G", "T"]
 
@@ -52,26 +54,12 @@ function useNucleotideScramble(target: string, speedMs: number = 30) {
 
 const Landing = () => {
   const title = "CRISPR-All Hands On Deck!"
-  const display = useNucleotideScramble(title, 25)
+  const display = useNucleotideScramble(title, 45)
+  const designRef = React.useRef<HTMLDivElement | null>(null)
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="bg-white w-full py-10 px-8 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div>
-              <img
-                src="/images/Roth.png"
-                alt="Roth Lab Logo"
-                width={300}
-                className="object-contain"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+    <div className="bg-white">
+      <div className="min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative">
         <div className="text-center">
           <div className="text-5xl sm:text-6xl font-extrabold tracking-tight">
             <span className="font-mono select-none">
@@ -105,10 +93,6 @@ const Landing = () => {
             </span>
           </div>
 
-          <p className="mt-6 text-lg text-gray-600 max-w-2xl mx-auto">
-            Design modular, combinatorial genetic perturbations in primary human T cells.
-          </p>
-
           <div className="mt-10 flex justify-center">
             <Link
               to="/design"
@@ -118,6 +102,19 @@ const Landing = () => {
             </Link>
           </div>
         </div>
+
+        <button
+          aria-label="Scroll to get started"
+          onClick={() => designRef.current?.scrollIntoView({ behavior: "smooth" })}
+          className="absolute bottom-8 inline-flex flex-col items-center text-gray-500 hover:text-gray-700 transition"
+        >
+          <span className="text-sm mb-1">Scroll to get started</span>
+          <ChevronDown className="h-6 w-6 animate-bounce" />
+        </button>
+      </div>
+
+      <div ref={designRef} id="design-start">
+        <Index />
       </div>
     </div>
   )
