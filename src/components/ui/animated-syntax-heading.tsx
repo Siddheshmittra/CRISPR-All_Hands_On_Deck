@@ -28,7 +28,16 @@ export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps)
   const [visible, setVisible] = React.useState(false)
   const containerRef = React.useRef<HTMLHeadingElement | null>(null)
   const lastStartRef = React.useRef<number>(0)
-  const COOLDOWN_MS = 6000 // prevent rapid replays while scrolling
+  const COOLDOWN_MS = 6000
+
+  // Refs for FLIP animation
+  const itemRefs = React.useRef<Map<string, HTMLSpanElement>>(new Map())
+  const prevRectsRef = React.useRef<Map<string, DOMRect>>(new Map())
+  const setItemRef = React.useCallback((id: string, el: HTMLSpanElement | null) => {
+    const map = itemRefs.current
+    if (el) map.set(id, el)
+    else map.delete(id)
+  }, [])
 
   React.useEffect(() => {
     const el = containerRef.current
@@ -53,7 +62,7 @@ export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps)
     if (!visible || isAnimating) return
     setIsAnimating(true)
 
-    // Shuffle multiple times over ~1.8 seconds with slower, smoother transitions
+    // Shuffle multiple times over ~1.8 seconds
     const shuffleInterval = setInterval(() => {
       setDisplayOrder(shuffle([0, 1, 2, 3, 4, 5]))
     }, 200)
@@ -72,24 +81,62 @@ export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps)
     }
   }, [visible, isAnimating])
 
+  // FLIP: animate position changes of letter chips
+  React.useLayoutEffect(() => {
+    const ids = LETTERS
+    const newRects = new Map<string, DOMRect>()
+    for (const id of ids) {
+      const el = itemRefs.current.get(id)
+      if (el) newRects.set(id, el.getBoundingClientRect())
+    }
+
+    const prevRects = prevRectsRef.current
+    newRects.forEach((newRect, id) => {
+      const prevRect = prevRects.get(id)
+      if (!prevRect) return
+      const dx = prevRect.left - newRect.left
+      const dy = prevRect.top - newRect.top
+      if (dx !== 0 || dy !== 0) {
+        const el = itemRefs.current.get(id)
+        if (!el) return
+        el.style.transform = `translate(${dx}px, ${dy}px)`
+        el.style.transition = "transform 0s"
+        requestAnimationFrame(() => {
+          el.style.transform = ""
+          el.style.transition = "transform 500ms ease"
+        })
+      }
+    })
+
+    prevRectsRef.current = newRects
+  }, [displayOrder])
+
   return (
     <h2 ref={containerRef} className={className} aria-label="2. Syntax">
       <span className="inline-block mr-2">2.</span>
       <span className="inline-flex gap-0.5">
-        {displayOrder.map((letterIndex, posIndex) => (
-          <span
-            key={posIndex}
-            className={`inline-block px-2 py-1 rounded border font-bold text-sm shadow-sm transition-all duration-500 ease-in-out ${
-              MODULE_COLORS[letterIndex % MODULE_COLORS.length]
-            } ${isAnimating ? "scale-105 rotate-2" : "scale-100 rotate-0"}`}
-            style={{
-              transitionProperty: "transform, opacity",
-              textShadow: "0 0 0.5px #000, 0 0 1.5px #000"
-            }}
-          >
-            {LETTERS[letterIndex]}
-          </span>
-        ))}
+        {displayOrder.map((letterIndex) => {
+          const id = LETTERS[letterIndex]
+          return (
+            <span
+              key={id}
+              ref={(el) => setItemRef(id, el)}
+              className="inline-block"
+              style={{ willChange: 'transform' }}
+            >
+              <span
+                className={`inline-block px-2 py-1 rounded border font-bold text-sm shadow-sm transition-transform duration-500 ease-in-out ${
+                  MODULE_COLORS[letterIndex % MODULE_COLORS.length]
+                } ${isAnimating ? "scale-105 rotate-2" : "scale-100 rotate-0"}`}
+                style={{
+                  textShadow: "0 0 0.5px #000, 0 0 1.5px #000"
+                }}
+              >
+                {LETTERS[letterIndex]}
+              </span>
+            </span>
+          )
+        })}
       </span>
     </h2>
   )
