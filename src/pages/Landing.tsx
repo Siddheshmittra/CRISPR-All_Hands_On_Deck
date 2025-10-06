@@ -99,7 +99,7 @@ const Landing = () => {
           onClick={() => designRef.current?.scrollIntoView({ behavior: "smooth" })}
           className="absolute bottom-8 inline-flex flex-col items-center text-gray-500 hover:text-gray-700 transition"
         >
-          <span className="text-sm mb-1">Scroll to get started</span>
+         
           <ChevronDown className="h-6 w-6 animate-bounce" />
         </button>
       </div>

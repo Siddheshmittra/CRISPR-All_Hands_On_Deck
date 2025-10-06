@@ -5,13 +5,9 @@ interface CodeHeadingProps {
   className?: string
 }
 
-const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>/{}[]()".split("")
-
 export function CodeHeading({ text, className }: CodeHeadingProps) {
-  const [display, setDisplay] = React.useState<string>(text)
   const [visible, setVisible] = React.useState(false)
   const containerRef = React.useRef<HTMLHeadingElement | null>(null)
-  const iterationRef = React.useRef(0)
 
   React.useEffect(() => {
     const el = containerRef.current
@@ -29,36 +25,7 @@ export function CodeHeading({ text, className }: CodeHeadingProps) {
     return () => io.disconnect()
   }, [])
 
-  React.useEffect(() => {
-    if (!visible) return
-
-    let iteration = 0
-    const maxIterations = text.length
-
-    const interval = setInterval(() => {
-      setDisplay(
-        text
-          .split("")
-          .map((char, index) => {
-            if (char === " ") return " "
-            if (index < iteration) {
-              return text[index]
-            }
-            return CHARS[Math.floor(Math.random() * CHARS.length)]
-          })
-          .join("")
-      )
-
-      if (iteration >= maxIterations) {
-        clearInterval(interval)
-        setDisplay(text)
-      }
-
-      iteration += 1 / 3
-    }, 40)
-
-    return () => clearInterval(interval)
-  }, [visible, text])
+  // No scramble; use a subtle fade + underline sweep
 
   return (
     <h2
@@ -68,8 +35,11 @@ export function CodeHeading({ text, className }: CodeHeadingProps) {
     >
       <span className="inline-flex items-center gap-2">
         <span className="text-green-500 font-bold">&gt;</span>
-        <span className="bg-gray-900/5 dark:bg-gray-100/5 px-3 py-1 rounded border border-gray-300 dark:border-gray-600">
-          {display}
+        <span className={`relative inline-block transition-all duration-500 ease-out ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-0.5'}`}>
+          <span className="bg-gray-900/5 dark:bg-gray-100/5 px-3 py-1 rounded border border-gray-300 dark:border-gray-600">
+            {text}
+          </span>
+          <span className={`absolute left-0 right-0 bottom-0 h-[2px] bg-green-500 origin-left transition-transform duration-700 ${visible ? 'scale-x-100' : 'scale-x-0'}`} />
         </span>
       </span>
     </h2>

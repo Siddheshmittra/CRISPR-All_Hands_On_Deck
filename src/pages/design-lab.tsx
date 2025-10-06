@@ -778,10 +778,8 @@ const DesignLab = () => {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="text-sm">
-                    {predictedSentence ? (
+                    {predictedSentence && (
                       <span>{predictedSentence}</span>
-                    ) : (
-                      <span className="text-muted-foreground">No prediction yet.</span>
                     )}
                   </div>
                   {predictedSources && predictedSources.length > 0 && (

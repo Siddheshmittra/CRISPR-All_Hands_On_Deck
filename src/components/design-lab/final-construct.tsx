@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,6 +38,23 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
   const [barcodeIndex, setBarcodeIndex] = useState<number | null>(null)
   const [integratedSegments, setIntegratedSegments] = useState<AnnotatedSegment[] | null>(null)
   // Prediction UI moved to Predicted Function section
+
+  // Temporary DNA splash heading when first seen
+  const [showDnaSplash, setShowDnaSplash] = useState(false)
+  const headingRef = useRef<HTMLHeadingElement | null>(null)
+  useEffect(() => {
+    const el = headingRef.current
+    if (!el) return
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setShowDnaSplash(true)
+        setTimeout(() => setShowDnaSplash(false), 5000)
+        io.disconnect()
+      }
+    }, { threshold: 0.6 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
 
   const generateAnnotatedSequence = (): AnnotatedSegment[] => {
     const segments: AnnotatedSegment[] = [];
@@ -219,7 +236,9 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">4. DNA Sequence</h2>
+        <h2 ref={headingRef} className="text-xl font-bold text-gray-900 dark:text-white font-mono">
+          {showDnaSplash ? 'TACCTCACTAGCTGACTATATGATCTACTCTCACTA' : '4. DNA Sequence'}
+        </h2>
         <div className="flex gap-2">
           <Button 
             variant="outline" 
