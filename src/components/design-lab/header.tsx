@@ -1,8 +1,8 @@
-import { Dna } from "lucide-react"
+ 
 
 export const Header = () => {
   return (
-    <div className="w-full">
+    <div className="w-full sticky top-0 z-50">
       {/* White top bar with logo */}
       <div className="bg-white w-full py-6 px-8 border-b border-gray-200">
         <div className="max-w-7xl mx-auto">
@@ -25,12 +25,6 @@ export const Header = () => {
     <span className="text-[hsl(32,75%,49%)]">Deck</span><span className="text-[hsl(220,35%,65%)]">!</span>
   </span>
 </h1>
-                <p className="text-sm text-gray-600">
-                  Design modular, combinatorial genetic perturbations in primary human T cells.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-gray-400">
-                <Dna className="h-8 w-8" />
               </div>
             </div>
           </div>

@@ -59,7 +59,7 @@ const Landing = () => {
 
   return (
     <div className="bg-white">
-      <div className="min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative">
+      <div className="min-h-screen grid place-items-center px-4 sm:px-6 lg:px-8 relative">
         <div className="text-center">
           <div className="text-5xl sm:text-6xl font-extrabold tracking-tight">
             <span className="font-mono select-none">
