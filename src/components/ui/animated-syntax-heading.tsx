@@ -121,11 +121,13 @@ export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps)
       if (dx !== 0 || dy !== 0) {
         const el = itemRefs.current.get(id)
         if (!el) return
-        el.style.transform = `translate(${dx}px, ${dy}px)`
+        // Set inverse transform and force reflow to enable FLIP on Safari/WebKit
+        el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`
         el.style.transition = "transform 0s"
+        void el.getBoundingClientRect()
         requestAnimationFrame(() => {
-          el.style.transform = ""
           el.style.transition = "transform 500ms ease"
+          el.style.transform = "translate3d(0, 0, 0)"
         })
       }
     })
