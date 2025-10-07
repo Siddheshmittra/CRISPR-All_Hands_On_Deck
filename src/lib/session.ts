@@ -137,6 +137,7 @@ const LibrarySyntaxSchema = z.object({
   id: z.string(),
   name: z.string(),
   type: z.enum(["overexpression", "knockout", "knockdown", "knockin"]).catch("overexpression"),
+  mode: z.enum(["constant", "variable"]).optional().catch("variable"),
 }).strict();
 
 const CassetteSchema = z.object({
@@ -186,5 +187,4 @@ export const designLabSession = createSessionStorage<DesignLabSession>({
     }
   }
 });
-
 

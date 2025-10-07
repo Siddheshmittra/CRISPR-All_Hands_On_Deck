@@ -1,14 +1,11 @@
-import { useState, useMemo, useRef, useEffect } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Search, Plus, ArrowRight, X, Trash2, GripVertical } from "lucide-react"
+import { Plus, ArrowRight, X, GripVertical } from "lucide-react"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { toast } from "sonner"
-import { Module, LibrarySyntax } from "@/lib/types"
+import { Module, LibrarySyntax, LibrarySyntaxAddOptions } from "@/lib/types"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { randomUUID } from "@/lib/uuid"
 import { AnimatedSyntaxHeading } from "@/components/ui/animated-syntax-heading"
@@ -92,7 +89,7 @@ interface MultiCassetteSetupProps {
   folders: any[];
   customModules: Module[];
   librarySyntax: LibrarySyntax[];
-  onAddLibrary: (libraryId: string) => void;
+  onAddLibrary: (libraryId: string, options?: LibrarySyntaxAddOptions) => void;
   onRemoveLibrary: (libraryId: string) => void;
   onLibraryTypeChange: (libraryId: string, type: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => void;
   onReorderLibraries: (newOrder: LibrarySyntax[]) => void;
@@ -139,22 +136,38 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     }
   }, [eligibleLibraries, selectedLibrary])
   
-  // Display syntax in the order provided by parent (user can reorder with constraints)
-  const orderedSyntax = useMemo(() => {
-    return librarySyntax
-  }, [librarySyntax])
+  // Normalize syntax entries to ensure mode is always defined
+  const normalizedSyntax = useMemo(() => {
+    return librarySyntax.map(item => item.mode ? item : { ...item, mode: 'variable' });
+  }, [librarySyntax]);
 
-  // Group counts for UI separators
+  const constantSyntax = useMemo(() => normalizedSyntax.filter(item => item.mode === 'constant'), [normalizedSyntax]);
+  const variableSyntax = useMemo(() => normalizedSyntax.filter(item => item.mode !== 'constant'), [normalizedSyntax]);
+  const generationOrder = useMemo(() => [...constantSyntax, ...variableSyntax], [constantSyntax, variableSyntax]);
+
+  // If legacy syntax entries lack a mode, promote them to parent state once
+  useEffect(() => {
+    const missingPlacement = librarySyntax.some(item => !item.mode);
+    if (missingPlacement) {
+      onReorderLibraries(normalizedSyntax);
+    }
+  }, [librarySyntax, normalizedSyntax, onReorderLibraries]);
+
+  // Group counts for UI separators in preview
   const geneLikeCount = useMemo(
-    () => orderedSyntax.filter(l => l.type === 'overexpression' || l.type === 'knockin').length,
-    [orderedSyntax]
-  )
-  const koKdCount = orderedSyntax.length - geneLikeCount
+    () => generationOrder.filter(l => l.type === 'overexpression' || l.type === 'knockin').length,
+    [generationOrder]
+  );
+  const koKdCount = generationOrder.length - geneLikeCount;
 
   // Quick lookup for module counts per library (folder)
   const getFolderCount = (libraryId: string) => {
-    const folder = folders.find(f => f.id === libraryId)
-    return folder?.modules?.length || 0
+    if (libraryId.startsWith('const-lib-')) {
+      return 1;
+    }
+    const actualId = libraryId.startsWith('lib:') ? libraryId.split(':')[1] : libraryId;
+    const folder = folders.find(f => f.id === actualId);
+    return folder?.modules?.length || 0;
   }
 
   // Initialize libraries from props
@@ -240,7 +253,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
   const handleManualGenerate = async () => {
     if (!onAddCassettes || isGenerating) return;
 
-    if (librarySyntax.length === 0) {
+    if (generationOrder.length === 0) {
       toast.error('Please add libraries to the syntax section first');
       return;
     }
@@ -251,7 +264,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     
       // Build module lists for each library in the syntax order
     const libraryModuleLists: Module[][] = [];
-    for (const libSyntax of librarySyntax) {
+    for (const libSyntax of generationOrder) {
         // Handle virtual constant library entries: id starts with 'const-lib-<moduleId>'
         if (libSyntax.id.startsWith('const-lib-')) {
           const moduleId = libSyntax.id.replace('const-lib-', '')
@@ -462,54 +475,185 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
 
 
 
+  type DroppableKey = 'constants-syntax' | 'variables-syntax';
+
   const handleDragEnd = (result: DropResult) => {
     const { destination, source } = result;
-    
-    // Dropped outside the list
     if (!destination) return;
-    
-    // No change in position
-    if (destination.droppableId === source.droppableId && 
-        destination.index === source.index) {
+
+    const droppableIds: DroppableKey[] = ['constants-syntax', 'variables-syntax'];
+    const sourceKey = source.droppableId as DroppableKey;
+    const destKey = destination.droppableId as DroppableKey;
+
+    if (!droppableIds.includes(sourceKey) || !droppableIds.includes(destKey)) {
       return;
     }
 
-    // Reorder using the displayed order (orderedSyntax) to avoid index mismatches
-    const displayList = Array.from(orderedSyntax);
-    const moving = displayList[source.index];
-    if (!moving) return;
-    displayList.splice(source.index, 1);
-    displayList.splice(destination.index, 0, moving);
+    if (sourceKey === destKey && source.index === destination.index) {
+      return;
+    }
 
-    // Validate syntax rules: OE/KI must come before KO/KD
+    const lists: Record<DroppableKey, LibrarySyntax[]> = {
+      'constants-syntax': [...constantSyntax],
+      'variables-syntax': [...variableSyntax],
+    };
+
+    const moving = lists[sourceKey][source.index];
+    if (!moving) return;
+
+    if (destKey === 'constants-syntax' && !moving.id.startsWith('const-lib-')) {
+      toast.error('Only single-gene entries can be pinned as constants.');
+      return;
+    }
+
+    lists[sourceKey].splice(source.index, 1);
+
+    const updatedItem: LibrarySyntax = {
+      ...moving,
+      mode: destKey === 'constants-syntax' ? 'constant' : 'variable',
+    };
+
+    lists[destKey].splice(destination.index, 0, updatedItem);
+
+    const recombined = [...lists['constants-syntax'], ...lists['variables-syntax']];
+
+    // Validate syntax rules: OE/KI must precede KO/KD in the combined order
     const isGeneLike = (type: string) => type === 'overexpression' || type === 'knockin';
     const isKoKd = (type: string) => type === 'knockout' || type === 'knockdown';
-    
-    // Check if the new order violates the rule (KO/KD before OE/KI)
+
     let foundKoKd = false;
-    for (const item of displayList) {
-      if (isKoKd(item.type)) {
+    for (const entry of recombined) {
+      if (isKoKd(entry.type)) {
         foundKoKd = true;
-      } else if (isGeneLike(item.type) && foundKoKd) {
-        // Violation: found OE/KI after KO/KD
-        toast.error('Syntax rule: Overexpression/Knock-in libraries must come before Knockout/Knockdown libraries');
+      } else if (isGeneLike(entry.type) && foundKoKd) {
+        toast.error('Syntax rule: Overexpression/Knock-in libraries must come before Knockout/Knockdown libraries.');
         return;
       }
     }
 
-    // Map back to original items by id, preserving updated display order
-    const byId = new Map(librarySyntax.map(it => [it.id, it] as const));
-    const reordered = displayList.map(d => byId.get(d.id)).filter(Boolean) as LibrarySyntax[];
-
-    onReorderLibraries(reordered);
+    onReorderLibraries(recombined);
   };
 
-  // Natural language input removed for multi-cassette manual section
+  const getTypeClasses = (type: LibrarySyntax['type']) => {
+    if (type === 'overexpression') return 'bg-overexpression text-overexpression-foreground border-overexpression/30';
+    if (type === 'knockout') return 'bg-knockout text-knockout-foreground border-knockout/30';
+    if (type === 'knockdown') return 'bg-knockdown text-knockdown-foreground border-knockdown/30';
+    return 'bg-card text-card-foreground border-border';
+  };
+
+  const getTypeIcon = (type: LibrarySyntax['type']) => {
+    if (type === 'knockdown') return '↓';
+    if (type === 'knockout') return '✖';
+    if (type === 'knockin') return '→';
+    return '↑';
+  };
+
+  const renderSyntaxDraggable = (library: LibrarySyntax, index: number) => (
+    <Draggable key={library.id} draggableId={library.id} index={index}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          className="flex items-center gap-2"
+        >
+          <div
+            {...provided.dragHandleProps}
+            className="h-6 w-6 flex items-center justify-center rounded bg-muted/60 text-muted-foreground"
+            title="Drag to reorder"
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </div>
+          <div
+            className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all border ${
+              snapshot.isDragging ? 'shadow-lg rotate-1' : 'hover:shadow-md'
+            } ${getTypeClasses(library.type)}`}
+          >
+            <span className="opacity-80 text-base">{getTypeIcon(library.type)}</span>
+            <div className="flex flex-col min-w-[160px] max-w-[200px]">
+              <span className="truncate" title={library.name}>{library.name}</span>
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground/80">
+                {library.mode === 'constant' ? 'Constant' : 'Variable'} • {getFolderCount(library.id)} {getFolderCount(library.id) === 1 ? 'module' : 'modules'}
+              </span>
+            </div>
+            <Select
+              value={library.type}
+              onValueChange={(v) =>
+                onLibraryTypeChange(
+                  library.id,
+                  v as 'overexpression' | 'knockout' | 'knockdown' | 'knockin'
+                )
+              }
+            >
+              <SelectTrigger className="h-7 w-[8.5rem] bg-background/60 text-foreground border-border">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="overexpression">Overexpression</SelectItem>
+                <SelectItem value="knockin">Knockin</SelectItem>
+                <SelectItem value="knockout">Knockout</SelectItem>
+                <SelectItem value="knockdown">Knockdown</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveLibrary(library.id);
+              }}
+              className="ml-1 h-6 w-6 p-0 opacity-80 hover:opacity-100"
+              title="Remove from syntax"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </Draggable>
+  );
+
+  const renderConstructPreview = () => {
+    if (generationOrder.length === 0) {
+      return (
+        <span className="text-sm text-muted-foreground">
+          Add constants and variable libraries above to define the multi-construct syntax.
+        </span>
+      );
+    }
+
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        {generationOrder.map((library, index) => (
+          <div key={`preview-${library.id}`} className="flex items-center gap-2">
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium border ${getTypeClasses(library.type)}`}>
+              <span className="opacity-80 text-base">{getTypeIcon(library.type)}</span>
+              <div className="flex flex-col min-w-[140px] max-w-[180px]">
+                <span className="truncate" title={library.name}>{library.name}</span>
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground/80">
+                  {library.mode === 'constant' ? 'Constant' : 'Variable'} • {getFolderCount(library.id)} {getFolderCount(library.id) === 1 ? 'module' : 'modules'}
+                </span>
+              </div>
+            </div>
+            {index === geneLikeCount - 1 && koKdCount > 0 ? (
+              <div className="flex items-center gap-2 px-2">
+                <span className="text-xs text-muted-foreground">STOP</span>
+                <span className="text-xs text-muted-foreground">▸</span>
+                <span className="text-xs text-muted-foreground">Triplex</span>
+                <span className="text-xs text-muted-foreground">▸</span>
+                <span className="text-xs text-muted-foreground">Adaptor</span>
+                {index < generationOrder.length - 1 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
+              </div>
+            ) : index < generationOrder.length - 1 ? (
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            ) : null}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
-      {/* Natural language input intentionally omitted in multi-cassette manual section */}
-      
       <DragDropContext onDragEnd={handleDragEnd}>
         <Card className="p-6 mb-4 border border-gray-200 dark:border-gray-700 shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -521,213 +665,180 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
               </div>
             )}
           </div>
-          
-          <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block mb-1 text-sm font-medium">Add Library or Constant Gene to Syntax</label>
-            <div className="flex gap-2">
-              <select
-                value={selectedLibrary}
-                onChange={e => setSelectedLibrary(e.target.value)}
-                className="h-9 px-2 flex-1 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {eligibleLibraries.map(folder => (
-                  <option key={folder.id} value={folder.id}>{folder.name}</option>
-                ))}
-                {/* Virtual entries for constants: one option per module */}
-                {(() => {
-                  const constantsFolder = folders.find(f => f.id === 'constants-library')
-                  if (!constantsFolder) return null
-                  return constantsFolder.modules.map((mid: string) => {
-                    const mod = customModules.find(m => m.id === mid)
-                    if (!mod) return null
-                    const virtualId = `const:${mod.id}`
-                    return <option key={virtualId} value={virtualId}>{`Constant: ${mod.name}`}</option>
-                  })
-                })()}
-              </select>
-              <Button
-                size="sm"
-                onClick={() => {
-                  if (selectedLibrary.startsWith('const:')) {
-                    const moduleId = selectedLibrary.replace('const:', '')
-                    const mod = customModules.find(m => m.id === moduleId)
-                    if (!mod) return
-                    // Create a virtual library entry for this single module
-                    const virtualLibId = `const-lib-${moduleId}`
-                    if (librarySyntax.find(l => l.id === virtualLibId)) return
-                    const newItem: LibrarySyntax = { id: virtualLibId, name: `Const: ${mod.name}`, type: (mod.type as any) || 'overexpression' }
-                    onReorderLibraries([...librarySyntax, newItem])
-                    return
-                  }
-                  onAddLibrary(selectedLibrary)
-                }}
-                disabled={!selectedLibrary}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
 
-          {/* Library Syntax Section */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">Arrange libraries to define construct syntax</label>
+          <div className="grid gap-4 md:grid-cols-2 mb-6">
+            <div>
+              <label className="block mb-1 text-sm font-medium">Add Library or Constant Gene to Syntax</label>
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  disabled={librarySyntax.length === 0}
+                <select
+                  value={selectedLibrary}
+                  onChange={e => setSelectedLibrary(e.target.value)}
+                  className="h-9 px-2 flex-1 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {eligibleLibraries.map(folder => (
+                    <option key={folder.id} value={folder.id}>{folder.name}</option>
+                  ))}
+                  {(() => {
+                    const constantsFolder = folders.find(f => f.id === 'constants-library');
+                    if (!constantsFolder) return null;
+                    return constantsFolder.modules.map((mid: string) => {
+                      const mod = customModules.find(m => m.id === mid);
+                      if (!mod) return null;
+                      const virtualId = `const:${mod.id}`;
+                      return <option key={virtualId} value={virtualId}>{`Constant: ${mod.name}`}</option>;
+                    });
+                  })()}
+                </select>
+                <Button
+                  size="sm"
                   onClick={() => {
-                    // Shuffle within groups while preserving OE/KI before KO/KD
-                    const geneLike = librarySyntax.filter(l => l.type === 'overexpression' || l.type === 'knockin')
-                    const koKd = librarySyntax.filter(l => l.type === 'knockout' || l.type === 'knockdown')
-                    const shuffle = <T,>(arr: T[]) => {
-                      const copy = [...arr]
-                      for (let i = copy.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1))
-                        ;[copy[i], copy[j]] = [copy[j], copy[i]]
+                    if (selectedLibrary.startsWith('const:')) {
+                      const moduleId = selectedLibrary.replace('const:', '');
+                      const mod = customModules.find(m => m.id === moduleId);
+                      if (!mod) return;
+                      const virtualLibId = `const-lib-${moduleId}`;
+                      if (normalizedSyntax.some(l => l.id === virtualLibId)) {
+                        toast.message('Constant already added.');
+                        return;
                       }
-                      return copy
+                      const newItem: LibrarySyntax = {
+                        id: virtualLibId,
+                        name: `Const: ${mod.name}`,
+                        type: (mod.type as LibrarySyntax['type']) || 'overexpression',
+                        mode: 'constant',
+                      };
+                      const merged = [...normalizedSyntax, newItem];
+                      const regrouped = [
+                        ...merged.filter(entry => entry.mode === 'constant'),
+                        ...merged.filter(entry => entry.mode !== 'constant'),
+                      ];
+                      onReorderLibraries(regrouped);
+                      return;
                     }
-                    const randomized = [...shuffle(geneLike), ...shuffle(koKd)]
-                    onReorderLibraries(randomized)
+                    onAddLibrary(selectedLibrary);
+                  }}
+                  disabled={!selectedLibrary}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-start gap-2 md:items-end md:text-right">
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                Constants: {constantSyntax.length} • Variable slots: {variableSyntax.length}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={variableSyntax.length <= 1}
+                  onClick={() => {
+                    const shuffle = <T,>(arr: T[]) => {
+                      const copy = [...arr];
+                      for (let i = copy.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [copy[i], copy[j]] = [copy[j], copy[i]];
+                      }
+                      return copy;
+                    };
+                    const randomized = shuffle(variableSyntax);
+                    onReorderLibraries([
+                      ...constantSyntax,
+                      ...randomized,
+                    ]);
                   }}
                 >
                   <ArrowRight className="h-4 w-4 mr-1" />
-                  Randomize
+                  Randomize Variables
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => {
-                    // Clear syntax
-                    onReorderLibraries([])
-                  }}
-                  disabled={librarySyntax.length === 0}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onReorderLibraries([])}
+                  disabled={generationOrder.length === 0}
                 >
                   Reset
                 </Button>
               </div>
             </div>
-            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-background">
-              <Droppable droppableId="library-syntax" direction="horizontal">
+          </div>
+
+          <div className="grid gap-4">
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium">Constants (fixed across every construct)</label>
+                <span className="text-xs text-muted-foreground">Drag to reorder</span>
+              </div>
+              <Droppable droppableId="constants-syntax" direction="horizontal">
                 {(provided, snapshot) => (
                   <div
-                    {...provided.droppableProps}
                     ref={provided.innerRef}
-                    className={`flex items-center gap-2 flex-wrap min-h-[80px] p-4 rounded transition-all ${
-                      snapshot.isDraggingOver ? 'bg-primary/10 border border-primary' : ''
+                    {...provided.droppableProps}
+                    className={`flex flex-wrap gap-2 min-h-[72px] rounded-md border border-dashed p-3 transition-all ${
+                      snapshot.isDraggingOver ? 'border-primary bg-primary/10' : 'border-border'
                     }`}
                   >
-                    {librarySyntax.length === 0 ? (
+                    {constantSyntax.length === 0 ? (
                       <span className="text-sm text-muted-foreground">
-                        Add libraries above or drag them from the module selector to build your construct syntax
+                        Select single-gene entries from the Constants folder to lock them into every construct.
                       </span>
                     ) : (
-                      <>
-                        {/* Draggable libraries with rule-aware decorations */}
-                        {orderedSyntax.map((library, index) => (
-                          <div key={`${library.id}-wrap`} className="flex items-center gap-2">
-                            <Draggable key={library.id} draggableId={library.id} index={index}>
-                              {(provided, snapshot) => (
-                                <div className="flex items-center gap-2" ref={provided.innerRef} {...provided.draggableProps}>
-                                  <div
-                                    {...provided.dragHandleProps}
-                                    className="h-6 w-6 flex items-center justify-center rounded bg-muted/60 text-muted-foreground"
-                                    title="Drag to reorder"
-                                  >
-                                    <GripVertical className="h-3.5 w-3.5" />
-                                  </div>
-                                  <div
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all border ${
-                                      snapshot.isDragging ? 'shadow-lg rotate-1' : 'hover:shadow-md'
-                                    } ${
-                                      library.type === 'overexpression' ? 'bg-overexpression text-overexpression-foreground border-overexpression/30' :
-                                      library.type === 'knockout' ? 'bg-knockout text-knockout-foreground border-knockout/30' :
-                                      library.type === 'knockdown' ? 'bg-knockdown text-knockdown-foreground border-knockdown/30' :
-                                      'bg-card text-card-foreground border-border'
-                                    }`}
-                                  >
-                                    <span className="opacity-80">
-                                      {library.type === 'knockdown' ? '↓' : library.type === 'knockout' ? '✖' : library.type === 'knockin' ? '→' : '↑'}
-                                    </span>
-                                    <span className="truncate max-w-[180px]">{library.name}</span>
-                                    <span className="text-xs opacity-80 ml-1">
-                                      ({getFolderCount(library.id)})
-                                    </span>
-                                    <Select
-                                      value={library.type}
-                                      onValueChange={(v) =>
-                                        onLibraryTypeChange(
-                                          library.id,
-                                          v as 'overexpression' | 'knockout' | 'knockdown' | 'knockin'
-                                        )
-                                      }
-                                    >
-                                      <SelectTrigger className="h-7 w-[9rem] bg-background/60 text-foreground border-border">
-                                        <SelectValue placeholder="Type" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="overexpression">Overexpression</SelectItem>
-                                        <SelectItem value="knockin">Knockin</SelectItem>
-                                        <SelectItem value="knockout">Knockout</SelectItem>
-                                        <SelectItem value="knockdown">Knockdown</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onRemoveLibrary(library.id);
-                                      }}
-                                      className="ml-1 h-6 w-6 p-0 opacity-80 hover:opacity-100"
-                                      title="Remove from syntax"
-                                    >
-                                      <X className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </div>
-                                  {/* Draw arrows between libraries */}
-                                  {index < orderedSyntax.length - 1 && (
-                                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                  )}
-                                </div>
-                              )}
-                            </Draggable>
-
-                            {/* Insert a visual separator between gene-like and KO/KD groups */}
-                            {index === geneLikeCount - 1 && koKdCount > 0 && (
-                              <div className="flex items-center gap-2 px-2">
-                                <span className="text-xs text-muted-foreground">STOP</span>
-                                <span className="text-xs text-muted-foreground">▸</span>
-                                <span className="text-xs text-muted-foreground">Triplex</span>
-                                <span className="text-xs text-muted-foreground">▸</span>
-                                <span className="text-xs text-muted-foreground">Adaptor</span>
-                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        
-                      </>
+                      constantSyntax.map((library, index) => renderSyntaxDraggable(library, index))
                     )}
                     {provided.placeholder}
                   </div>
                 )}
               </Droppable>
+            </section>
+
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium">Variable Libraries (combinatorial slots)</label>
+                <span className="text-xs text-muted-foreground">Drag to reorder and mix library types</span>
+              </div>
+              <Droppable droppableId="variables-syntax" direction="horizontal">
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className={`flex flex-wrap gap-2 min-h-[96px] rounded-md border border-dashed p-3 transition-all ${
+                      snapshot.isDraggingOver ? 'border-primary bg-primary/10' : 'border-border'
+                    }`}
+                  >
+                    {variableSyntax.length === 0 ? (
+                      <span className="text-sm text-muted-foreground">
+                        Add libraries to explore combinatorial diversity. Mix knock-outs, knock-downs, knock-ins, or expression libraries.
+                      </span>
+                    ) : (
+                      variableSyntax.map((library, index) => renderSyntaxDraggable(library, index))
+                    )}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </section>
+          </div>
+
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Construct Preview</label>
+              <span className="text-xs text-muted-foreground">Constants lead, variables expand the search space</span>
+            </div>
+            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-background p-4">
+              {renderConstructPreview()}
             </div>
           </div>
-          <Button 
-            className="mt-4 w-full" 
+
+          <Button
+            className="mt-6 w-full"
             onClick={handleManualGenerate}
-            disabled={librarySyntax.length === 0}
+            disabled={generationOrder.length === 0}
           >
-            Generate All Combinations from Library Syntax
+            Generate All Combinations from Syntax
           </Button>
         </Card>
       </DragDropContext>
     </div>
-  )
-  }
+  );
+}

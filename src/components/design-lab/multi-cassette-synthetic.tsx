@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Sparkles, Upload, Plus } from 'lucide-react';
-import type { Module, SyntheticGene } from '@/lib/types';
+import type { Module, SyntheticGene, LibrarySyntaxAddOptions } from '@/lib/types';
 import { planLibrariesFromPrompt, type PlannedLibrary } from '@/lib/llm/libraryPlanner';
 import { SyntheticDomainImporter } from './synthetic-domain-importer';
 import { toast } from 'sonner';
@@ -15,7 +15,7 @@ interface MultiCassetteSyntheticProps {
   setFolders: (updater: any) => void;
   customModules: Module[];
   setCustomModules: (updater: any) => void;
-  onAddLibrary: (libraryId: string, type?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => void;
+  onAddLibrary: (libraryId: string, options?: LibrarySyntaxAddOptions) => void;
   setSelectedFolderId?: (id: string) => void;
   maxPerLibrary?: number;
 }
@@ -171,7 +171,7 @@ export function MultiCassetteSynthetic(props: MultiCassetteSyntheticProps) {
       const plan = plans[i];
       const folderId = newFolders[i]?.id;
       if (folderId) {
-        onAddLibrary(folderId, plan.type);
+        onAddLibrary(folderId, { type: plan.type });
       }
     }
 

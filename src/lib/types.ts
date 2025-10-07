@@ -47,11 +47,19 @@ export interface Linker {
 
 export type ConstructItem = Module | Linker
 
+export type LibrarySyntaxMode = 'constant' | 'variable';
+
+export interface LibrarySyntaxAddOptions {
+  type?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin';
+  mode?: LibrarySyntaxMode;
+}
+
 export interface LibrarySyntax {
   id: string;
   name: string;
   modules?: Module[]; // Made optional to match usage in the code
   type: 'overexpression' | 'knockout' | 'knockdown' | 'knockin';
+  mode?: LibrarySyntaxMode; // Multi-construct syntax placement (defaults to 'variable')
 }
 
 export interface EnsemblModule extends Module {
@@ -61,4 +69,3 @@ export interface EnsemblModule extends Module {
   canonicalTranscriptId?: string;
   ensemblRelease?: string;
 } 
-

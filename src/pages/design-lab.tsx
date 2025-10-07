@@ -27,7 +27,7 @@ import { generateBarcode } from "@/lib/barcode-utils"
 import { predictTCellFunction } from "@/lib/llm/predictFunction"
 import { CodeHeading } from "@/components/ui/code-heading"
 
-import { Module, LibrarySyntax } from "@/lib/types"
+import { Module, LibrarySyntax, LibrarySyntaxMode, LibrarySyntaxAddOptions } from "@/lib/types"
 
 interface Cassette {
   id: string
@@ -95,7 +95,10 @@ const DesignLab = () => {
     if (loaded) {
       setCustomModules((loaded.customModules as unknown as Module[]) || [])
       setFolders((loaded.folders as unknown as any[]) || [{ id: 'total-library', name: 'Total Library', modules: [], open: true }])
-      setLibrarySyntax((loaded.librarySyntax as unknown as LibrarySyntax[]) || [])
+      setLibrarySyntax(((loaded.librarySyntax as unknown as LibrarySyntax[]) || []).map(entry => ({
+        ...entry,
+        mode: entry.mode ?? 'variable'
+      })))
       setCassetteBatch((loaded.cassetteBatch as unknown as Cassette[]) || [])
       setCassetteMode(loaded.cassetteMode || 'single')
       setInputMode(loaded.inputMode || 'manual')
@@ -160,7 +163,10 @@ const DesignLab = () => {
     return generateBarcode(12, Array.from(usedBarcodes))
   }, [barcodePool, usedBarcodes, generalPool, internalPool])
 
-  const handleAddLibrary = (libraryId: string, perturbationType?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => {
+  const handleAddLibrary = (
+    libraryId: string,
+    options?: LibrarySyntaxAddOptions
+  ) => {
     const library = folders.find(f => f.id === libraryId)
 
     // Enforce Total Library constraint: only add if all contained modules share a single perturbation type
@@ -175,9 +181,11 @@ const DesignLab = () => {
     }
 
     // Decide library type: explicit override > contained modules' uniform type > first module fallback
+    const placement: LibrarySyntaxMode = options?.mode ?? 'variable';
+
     let moduleType: 'overexpression' | 'knockout' | 'knockdown' | 'knockin' = 'overexpression';
-    if (perturbationType) {
-      moduleType = perturbationType;
+    if (options?.type) {
+      moduleType = options.type;
     } else if (moduleObjs.length > 0) {
       const t = moduleObjs[0].type
       if (t === 'overexpression' || t === 'knockout' || t === 'knockdown' || t === 'knockin') {
@@ -190,7 +198,8 @@ const DesignLab = () => {
     const newLibrary: LibrarySyntax = {
       id: `lib:${libraryId}:${randomUUID()}`,
       name: library?.name || libraryId,
-      type: moduleType
+      type: moduleType,
+      mode: placement,
     }
     setLibrarySyntax(prev => [...prev, newLibrary])
   }
@@ -478,7 +487,8 @@ const DesignLab = () => {
       const newLibraryItem: LibrarySyntax = {
         id: `lib:${folder.id}:${randomUUID()}`,
         name: folder.name,
-        type: moduleType as 'overexpression' | 'knockout' | 'knockdown' | 'knockin'
+        type: moduleType as 'overexpression' | 'knockout' | 'knockdown' | 'knockin',
+        mode: 'variable'
       }
       
       const newSyntax = Array.from(librarySyntax)

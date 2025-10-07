@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Sparkles, Loader2, Upload } from 'lucide-react';
-import type { Module } from '@/lib/types';
+import type { Module, LibrarySyntaxAddOptions } from '@/lib/types';
 import { planLibrariesFromPrompt, type PlannedLibrary, type LibraryPlanType } from '@/lib/llm/libraryPlanner';
 import { predictTCellFunction } from '@/lib/llm/predictFunction';
 import { toast } from 'sonner';
@@ -20,7 +20,7 @@ interface MultiCassetteNaturalProps {
   setFolders: (updater: any) => void;
   customModules: Module[];
   setCustomModules: (updater: any) => void;
-  onAddLibrary: (libraryId: string, type?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => void;
+  onAddLibrary: (libraryId: string, options?: LibrarySyntaxAddOptions) => void;
   setSelectedFolderId?: (id: string) => void; // ensure selector points at new folder
   maxPerLibrary?: number;
 }
@@ -222,7 +222,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
         const plan = plans[i];
         const folderId = newFolders[i]?.id;
         if (folderId) {
-          onAddLibrary(folderId, plan.type);
+          onAddLibrary(folderId, { type: plan.type });
         }
       }
 
