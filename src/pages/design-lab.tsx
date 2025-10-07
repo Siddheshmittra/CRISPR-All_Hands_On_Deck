@@ -353,6 +353,7 @@ const DesignLab = () => {
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return
+    try { window.dispatchEvent(new CustomEvent('syntax:shuffle')) } catch {}
 
     // Reorder within construct
     if (

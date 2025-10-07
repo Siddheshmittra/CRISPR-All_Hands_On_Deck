@@ -480,6 +480,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
   const handleDragEnd = (result: DropResult) => {
     const { destination, source } = result;
     if (!destination) return;
+    try { window.dispatchEvent(new CustomEvent('syntax:shuffle')) } catch {}
 
     const droppableIds: DroppableKey[] = ['constants-syntax', 'variables-syntax'];
     const sourceKey = source.droppableId as DroppableKey;

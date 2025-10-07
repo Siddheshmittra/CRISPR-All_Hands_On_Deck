@@ -327,6 +327,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return
+    try { window.dispatchEvent(new CustomEvent('syntax:shuffle')) } catch {}
 
     const items = Array.from(editingModules)
     const [reorderedItem] = items.splice(result.source.index, 1)

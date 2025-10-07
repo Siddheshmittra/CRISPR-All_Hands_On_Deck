@@ -81,6 +81,17 @@ export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps)
     }
   }, [visible, isAnimating])
 
+  // Listen for external triggers to replay the shuffle animation
+  React.useEffect(() => {
+    const onShuffle = () => {
+      if (isAnimating) return
+      lastStartRef.current = Date.now()
+      setVisible(true)
+    }
+    window.addEventListener('syntax:shuffle', onShuffle)
+    return () => window.removeEventListener('syntax:shuffle', onShuffle)
+  }, [isAnimating])
+
   // FLIP: animate position changes of letter chips
   React.useLayoutEffect(() => {
     const ids = LETTERS
