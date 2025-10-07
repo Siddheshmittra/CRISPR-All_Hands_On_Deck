@@ -28,7 +28,7 @@ export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps)
   const [visible, setVisible] = React.useState(false)
   const containerRef = React.useRef<HTMLHeadingElement | null>(null)
   const lastStartRef = React.useRef<number>(0)
-  const COOLDOWN_MS = 6000
+  const COOLDOWN_MS = 3000
 
   // Refs for FLIP animation
   const itemRefs = React.useRef<Map<string, HTMLSpanElement>>(new Map())
@@ -92,6 +92,17 @@ export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps)
     return () => window.removeEventListener('syntax:shuffle', onShuffle)
   }, [isAnimating])
 
+  // Fallback: autostart shortly after mount even if intersection doesn't fire
+  React.useEffect(() => {
+    const t = setTimeout(() => {
+      if (!isAnimating) {
+        lastStartRef.current = Date.now()
+        setVisible(true)
+      }
+    }, 400)
+    return () => clearTimeout(t)
+  }, [])
+
   // FLIP: animate position changes of letter chips
   React.useLayoutEffect(() => {
     const ids = LETTERS
@@ -123,7 +134,16 @@ export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps)
   }, [displayOrder])
 
   return (
-    <h2 ref={containerRef} className={className} aria-label="2. Syntax">
+    <h2
+      ref={containerRef}
+      className={className}
+      aria-label="2. Syntax"
+      onMouseEnter={() => {
+        if (isAnimating) return
+        lastStartRef.current = Date.now()
+        setVisible(true)
+      }}
+    >
       <span className="inline-block mr-2">2.</span>
       <span className="inline-flex gap-0.5">
         {displayOrder.map((letterIndex) => {
