@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { parseInstructions } from '@/lib/llm/llmParser';
+import { parseInstructions, EditInstruction } from '@/lib/llm/llmParser';
 import { dispatchEdits, DispatchWarning } from '@/lib/llm/dispatcher';
 import { Module } from '@/lib/types';
 import { TypedHeading } from '@/components/ui/typed-heading';
@@ -20,6 +20,7 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
   const [warnings, setWarnings] = useState<DispatchWarning[]>([]);
   const [previewModules, setPreviewModules] = useState<Module[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [originalInstructions, setOriginalInstructions] = useState<EditInstruction[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +33,7 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
     try {
       // Parse the instructions
       const instructions = await parseInstructions(input);
+      setOriginalInstructions(instructions);
       
       // Immediately dispatch to get both modules and warnings
       const { modules, warnings: editWarnings } = await dispatchEdits(instructions, { enforceTypeSource: true });
@@ -77,24 +79,28 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
     setIsLoading(true);
 
     try {
-      const instructions = [{
-        action: action as any,
-        target: alternative,
-        description: `${action} ${alternative}`,
-      }];
-
-      const { modules, warnings: followupWarnings } = await dispatchEdits(instructions, { enforceTypeSource: true });
-
-      if (modules.length > 0) {
-        // Add the successful module to the preview
-        setPreviewModules(prev => [...prev, ...modules]);
-      }
-
-      // Remove the current warning and add any new warnings
-      setWarnings(prev => {
-        const remaining = prev.filter((_, idx) => idx !== warningIndex);
-        return followupWarnings.length > 0 ? [...remaining, ...followupWarnings] : remaining;
+      // Find and replace the failed instruction with the alternative
+      const updatedInstructions = originalInstructions.map(inst => {
+        // Match the original failed target
+        if (warning.originalTarget && 
+            inst.target.trim().toUpperCase() === warning.originalTarget.trim().toUpperCase() &&
+            inst.action === action) {
+          return {
+            ...inst,
+            target: alternative,
+            description: `${action} ${alternative}`,
+          };
+        }
+        return inst;
       });
+
+      // Re-dispatch all instructions to maintain correct order
+      setOriginalInstructions(updatedInstructions);
+      const { modules, warnings: newWarnings } = await dispatchEdits(updatedInstructions, { enforceTypeSource: true });
+      
+      setPreviewModules(modules);
+      setWarnings(newWarnings);
+      
     } catch (error) {
       console.error('Error applying suggestion:', error);
       onError?.('Failed to apply suggestion. Please try again.');
@@ -106,6 +112,15 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
   const formatActionLabel = (action?: string) => {
     if (!action) return 'Add';
     return action.charAt(0).toUpperCase() + action.slice(1);
+  };
+
+  const formatModuleType = (module: Module) => {
+    // Synthetic genes and genes not naturally in the human genome should display as "Knock in"
+    if (module.isSynthetic || module.type === 'knockin') {
+      return 'Knock in';
+    }
+    // Format other types: overexpression -> Overexpression, knockout -> Knockout, etc.
+    return module.type.charAt(0).toUpperCase() + module.type.slice(1);
   };
 
   return (
@@ -158,8 +173,8 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
               <ul className="space-y-2">
                 {previewModules.map((module, index) => (
                   <li key={index} className="flex items-center justify-between">
-                    <span className="capitalize">
-                      <span className="font-medium">{module.type}</span> <code>{module.name}</code>
+                    <span>
+                      <span className="font-medium">{formatModuleType(module)}</span> <code>{module.name}</code>
                     </span>
                   </li>
                 ))}

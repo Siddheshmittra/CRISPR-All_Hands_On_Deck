@@ -11,7 +11,7 @@ const getSegmentStyle = (segment: AnnotatedSegment) => {
   switch (segment.type) {
     case 'module':
       switch (segment.action) {
-        case 'overexpression': return 'bg-blue-200 dark:bg-blue-900 text-blue-800 dark:text-blue-200';
+        case 'overexpression': return 'bg-lime-300 dark:bg-lime-800 text-lime-900 dark:text-lime-100';
         case 'knockout': return 'bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-200';
         case 'knockdown': return 'bg-yellow-200 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200';
         case 'knockin': return 'bg-knockin text-knockin-foreground';
