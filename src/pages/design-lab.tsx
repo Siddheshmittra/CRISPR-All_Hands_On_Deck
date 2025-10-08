@@ -139,7 +139,19 @@ const DesignLab = () => {
         ...entry,
         mode: entry.mode ?? 'variable'
       }))
-      setLibrarySyntax(reorderLibrarySyntax(hydratedSyntax))
+      const migratedSyntax = hydratedSyntax.map(entry => {
+        if ((entry.mode ?? 'variable') === 'constant' && entry.id.startsWith('const-lib-')) {
+          const moduleId = entry.id.replace('const-lib-', '')
+          return {
+            ...entry,
+            id: `const:${moduleId}:${randomUUID()}`,
+            name: entry.name?.replace(/^Const:\s*/, '') || entry.name,
+            mode: 'constant'
+          }
+        }
+        return entry
+      })
+      setLibrarySyntax(reorderLibrarySyntax(migratedSyntax))
       setCassetteBatch((loaded.cassetteBatch as unknown as Cassette[]) || [])
       setCassetteMode(loaded.cassetteMode || 'single')
       setInputMode(loaded.inputMode || 'manual')
@@ -429,8 +441,53 @@ const DesignLab = () => {
       return
     }
 
-    // Move from folder to construct
+    // Move from folder to construct or syntax
     const folderIds = folders.map(f => f.id)
+
+    if (
+      folderIds.includes(result.source.droppableId) &&
+      result.destination.droppableId === 'library-syntax'
+    ) {
+      const sourceFolderId = result.source.droppableId
+      const moduleId = result.draggableId
+      const module = customModules.find(m => m.id === moduleId)
+      if (!module) return
+
+      if (sourceFolderId !== CONSTANTS_FOLDER_ID) {
+        toast.message('Drag modules from the Constants folder to pin them as constants.')
+        return
+      }
+
+      const resolvedType: 'overexpression' | 'knockout' | 'knockdown' | 'knockin' =
+        ['overexpression', 'knockout', 'knockdown', 'knockin'].includes(module.type)
+          ? (module.type as 'overexpression' | 'knockout' | 'knockdown' | 'knockin')
+          : 'overexpression'
+
+      const alreadyPinned = librarySyntax.some(entry => {
+        if (entry.mode !== 'constant') return false
+        if (!entry.id.startsWith('const:')) return false
+        const [, existingId] = entry.id.split(':')
+        return existingId === moduleId
+      })
+
+      if (alreadyPinned) {
+        toast.message('Constant already added to syntax.')
+        return
+      }
+
+      const constantEntry: LibrarySyntax = {
+        id: `const:${moduleId}:${randomUUID()}`,
+        name: module.name,
+        type: resolvedType,
+        mode: 'constant',
+      }
+
+      setLibrarySyntax(prev => reorderLibrarySyntax([...prev, constantEntry]))
+      toast.success(`Pinned ${module.name} as constant`)
+      return
+    }
+
+    // Move from folder to construct
     if (
       folderIds.includes(result.source.droppableId) &&
       result.destination.droppableId === "construct"

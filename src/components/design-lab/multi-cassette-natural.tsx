@@ -59,6 +59,12 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
   });
   const initialGenesPerLibrary = Math.min(maxPerLibrary, Math.max(4, Math.round(maxPerLibrary / 2)));
   const [genesPerLibrary, setGenesPerLibrary] = useState(initialGenesPerLibrary);
+  const [perTypeGeneInputs, setPerTypeGeneInputs] = useState<Record<LibraryPlanType, string>>({
+    overexpression: '',
+    knockdown: '',
+    knockout: '',
+    knockin: '',
+  });
   const handleDomainsImported = (domains: SyntheticGene[]) => {
     setSyntheticDomains(prev => [...prev, ...domains]);
     setShowImporter(false);
@@ -101,12 +107,38 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
       return;
     }
 
+    const updatedInputs: Record<LibraryPlanType, string> = { ...perTypeGeneInputs };
+    const sanitizedGeneOverrides: Partial<Record<LibraryPlanType, number>> = {};
+    let hasInvalidGeneOverride = false;
+
+    perturbationTypes.forEach((type) => {
+      const raw = perTypeGeneInputs[type]?.trim();
+      if (!raw) return;
+      const parsed = Number.parseInt(raw, 10);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        hasInvalidGeneOverride = true;
+        return;
+      }
+      const clamped = Math.max(1, Math.min(maxPerLibrary, parsed));
+      sanitizedGeneOverrides[type] = clamped;
+      if (String(clamped) !== raw) {
+        updatedInputs[type] = String(clamped);
+      }
+    });
+
+    if (hasInvalidGeneOverride) {
+      toast.error('Enter valid gene counts for each perturbation override or leave the fields blank.');
+      setPerTypeGeneInputs(updatedInputs);
+      return;
+    }
+
+    setPerTypeGeneInputs(updatedInputs);
     setIsThinking(true);
     setPlans(null);
     try {
       console.log('Planning libraries for prompt:', prompt);
       const effectiveGenesPerLibrary = Math.max(1, Math.min(maxPerLibrary, Number.isFinite(genesPerLibrary) ? genesPerLibrary : maxPerLibrary));
-      const preferences = libraryMixMode === 'custom'
+      const basePreferences = libraryMixMode === 'custom'
         ? {
             libraryMix: 'custom' as const,
             typeCounts: sanitizedCounts,
@@ -118,13 +150,26 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
             genesPerLibrary: effectiveGenesPerLibrary,
           };
 
+      const preferences = Object.keys(sanitizedGeneOverrides).length > 0
+        ? { ...basePreferences, genesPerType: sanitizedGeneOverrides }
+        : basePreferences;
+
       const result = await planLibrariesFromPrompt(prompt, {
-        maxPerLibrary: effectiveGenesPerLibrary,
+        maxPerLibrary: maxPerLibrary,
         preferences,
       });
       console.log('Library planning result:', result);
-      const cappedResult = result.slice(0, MAX_TOTAL_LIBRARIES);
-      if (result.length > MAX_TOTAL_LIBRARIES) {
+
+      const normalizedPlans = Array.isArray(result)
+        ? result.filter((plan): plan is PlannedLibrary => {
+            if (!plan || typeof plan !== 'object') return false;
+            if (!plan.name || !plan.type || !Array.isArray(plan.geneSymbols)) return false;
+            return perturbationTypes.includes(plan.type);
+          })
+        : [];
+
+      const cappedResult = normalizedPlans.slice(0, MAX_TOTAL_LIBRARIES);
+      if (normalizedPlans.length > MAX_TOTAL_LIBRARIES) {
         toast.warning(`Showing the first ${MAX_TOTAL_LIBRARIES} libraries (hard cap).`);
       }
       setPlans(cappedResult);
@@ -165,13 +210,18 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
       const warnings: string[] = [];
 
       for (const plan of plans) {
-        const folderId = `lib-${slugify(plan.name)}-${uid()}`;
+        const safeName = plan?.name?.trim() || `${LIBRARY_LABELS[plan.type]} (${plan.type.toUpperCase()})`;
+        const slugBase = slugify(safeName) || `${plan.type}`;
+        const folderId = `lib-${slugBase}-${uid()}`;
         const moduleIds: string[] = [];
 
         // If this is a knockin plan and synthetic domains exist, try matching by name/tag first
         const knockinDomains: SyntheticGene[] = plan.type === 'knockin' ? syntheticDomains : [];
 
-        for (const gene of plan.geneSymbols) {
+        const geneSymbols = Array.isArray(plan.geneSymbols) ? plan.geneSymbols : [];
+        if (geneSymbols.length === 0) continue;
+
+        for (const gene of geneSymbols) {
           try {
             if (plan.type === 'knockin' && knockinDomains.length > 0) {
               const match = knockinDomains.find(domain =>
@@ -238,7 +288,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
 
         // Only create folder if it has modules
         if (moduleIds.length > 0) {
-          newFolders.push({ id: folderId, name: plan.name, modules: moduleIds, open: true });
+          newFolders.push({ id: folderId, name: safeName, modules: moduleIds, open: true });
         }
       }
 
@@ -410,6 +460,42 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
                 ))}
               </div>
             )}
+
+            <div className="mt-4 space-y-2">
+              <label className="text-sm font-medium text-muted-foreground block">Genes per library overrides</label>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {perturbationTypes.map((type) => (
+                  <div key={`genes-${type}`} className="space-y-1">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{LIBRARY_SHORT_LABELS[type]}</div>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={maxPerLibrary}
+                      placeholder={`Default: ${genesPerLibrary}`}
+                      value={perTypeGeneInputs[type] ?? ''}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (value === '') {
+                          setPerTypeGeneInputs((prev) => ({ ...prev, [type]: '' }));
+                          return;
+                        }
+                        const parsed = Number.parseInt(value, 10);
+                        if (Number.isNaN(parsed)) {
+                          toast.error('Enter a valid number.');
+                          return;
+                        }
+                        const clamped = Math.max(1, Math.min(maxPerLibrary, parsed));
+                        if (clamped !== parsed) {
+                          toast.message(`Clamped to ${clamped} (limit ${maxPerLibrary}).`);
+                        }
+                        setPerTypeGeneInputs((prev) => ({ ...prev, [type]: String(clamped) }));
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Leave blank to reuse the global genes-per-library target.</p>
+            </div>
           </CollapsibleContent>
         </Collapsible>
         <div className="flex gap-2">

@@ -141,9 +141,9 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     return librarySyntax.map(item => item.mode ? item : { ...item, mode: 'variable' });
   }, [librarySyntax]);
 
-  const constantSyntax = useMemo(() => normalizedSyntax.filter(item => item.mode === 'constant'), [normalizedSyntax]);
-  const variableSyntax = useMemo(() => normalizedSyntax.filter(item => item.mode !== 'constant'), [normalizedSyntax]);
-  const generationOrder = useMemo(() => [...constantSyntax, ...variableSyntax], [constantSyntax, variableSyntax]);
+  const orderedSyntax = useMemo(() => normalizedSyntax, [normalizedSyntax]);
+  const constantCount = useMemo(() => orderedSyntax.filter(item => item.mode === 'constant').length, [orderedSyntax]);
+  const variableCount = orderedSyntax.length - constantCount;
 
   // If legacy syntax entries lack a mode, promote them to parent state once
   useEffect(() => {
@@ -155,14 +155,14 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
 
   // Group counts for UI separators in preview
   const geneLikeCount = useMemo(
-    () => generationOrder.filter(l => l.type === 'overexpression' || l.type === 'knockin').length,
-    [generationOrder]
+    () => orderedSyntax.filter(l => l.type === 'overexpression' || l.type === 'knockin').length,
+    [orderedSyntax]
   );
-  const koKdCount = generationOrder.length - geneLikeCount;
+  const koKdCount = orderedSyntax.length - geneLikeCount;
 
   // Quick lookup for module counts per library (folder)
   const getFolderCount = (libraryId: string) => {
-    if (libraryId.startsWith('const-lib-')) {
+    if (libraryId.startsWith('const:')) {
       return 1;
     }
     const actualId = libraryId.startsWith('lib:') ? libraryId.split(':')[1] : libraryId;
@@ -253,7 +253,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
   const handleManualGenerate = async () => {
     if (!onAddCassettes || isGenerating) return;
 
-    if (generationOrder.length === 0) {
+    if (orderedSyntax.length === 0) {
       toast.error('Please add libraries to the syntax section first');
       return;
     }
@@ -264,11 +264,16 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     
       // Build module lists for each library in the syntax order
     const libraryModuleLists: Module[][] = [];
-    for (const libSyntax of generationOrder) {
-        // Handle virtual constant library entries: id starts with 'const-lib-<moduleId>'
-        if (libSyntax.id.startsWith('const-lib-')) {
-          const moduleId = libSyntax.id.replace('const-lib-', '')
-          const m = customModules.find(mm => mm.id === moduleId)
+    for (const libSyntax of orderedSyntax) {
+        // Handle single-module constants pinned from the Constants folder
+        if (libSyntax.mode === 'constant') {
+          let moduleId: string | null = null;
+          if (libSyntax.id.startsWith('const:')) {
+            const parts = libSyntax.id.split(':');
+            moduleId = parts[1] ?? null;
+          }
+
+          const m = moduleId ? customModules.find(mm => mm.id === moduleId) : null;
           if (!m) {
             toast.error(`Constant '${libSyntax.name}' not found.`)
             setIsGenerating(false); toast.dismiss(loadingToast); return;
@@ -475,64 +480,18 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
 
 
 
-  type DroppableKey = 'constants-syntax' | 'variables-syntax';
-
   const handleDragEnd = (result: DropResult) => {
     const { destination, source } = result;
     if (!destination) return;
+    if (source.droppableId !== 'library-syntax' || destination.droppableId !== 'library-syntax') return;
+    if (source.index === destination.index) return;
     try { window.dispatchEvent(new CustomEvent('syntax:shuffle')) } catch {}
 
-    const droppableIds: DroppableKey[] = ['constants-syntax', 'variables-syntax'];
-    const sourceKey = source.droppableId as DroppableKey;
-    const destKey = destination.droppableId as DroppableKey;
-
-    if (!droppableIds.includes(sourceKey) || !droppableIds.includes(destKey)) {
-      return;
-    }
-
-    if (sourceKey === destKey && source.index === destination.index) {
-      return;
-    }
-
-    const lists: Record<DroppableKey, LibrarySyntax[]> = {
-      'constants-syntax': [...constantSyntax],
-      'variables-syntax': [...variableSyntax],
-    };
-
-    const moving = lists[sourceKey][source.index];
-    if (!moving) return;
-
-    if (destKey === 'constants-syntax' && !moving.id.startsWith('const-lib-')) {
-      toast.error('Only single-gene entries can be pinned as constants.');
-      return;
-    }
-
-    lists[sourceKey].splice(source.index, 1);
-
-    const updatedItem: LibrarySyntax = {
-      ...moving,
-      mode: destKey === 'constants-syntax' ? 'constant' : 'variable',
-    };
-
-    lists[destKey].splice(destination.index, 0, updatedItem);
-
-    const recombined = [...lists['constants-syntax'], ...lists['variables-syntax']];
-
-    // Validate syntax rules: OE/KI must precede KO/KD in the combined order
-    const isGeneLike = (type: string) => type === 'overexpression' || type === 'knockin';
-    const isKoKd = (type: string) => type === 'knockout' || type === 'knockdown';
-
-    let foundKoKd = false;
-    for (const entry of recombined) {
-      if (isKoKd(entry.type)) {
-        foundKoKd = true;
-      } else if (isGeneLike(entry.type) && foundKoKd) {
-        toast.error('Syntax rule: Overexpression/Knock-in libraries must come before Knockout/Knockdown libraries.');
-        return;
-      }
-    }
-
-    onReorderLibraries(recombined);
+    const items = Array.from(orderedSyntax);
+    const [moved] = items.splice(source.index, 1);
+    if (!moved) return;
+    items.splice(destination.index, 0, moved);
+    onReorderLibraries(items);
   };
 
   const getTypeClasses = (type: LibrarySyntax['type']) => {
@@ -613,7 +572,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
   );
 
   const renderConstructPreview = () => {
-    if (generationOrder.length === 0) {
+    if (orderedSyntax.length === 0) {
       return (
         <span className="text-sm text-muted-foreground">
           Add constants and variable libraries above to define the multi-construct syntax.
@@ -623,7 +582,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
 
     return (
       <div className="flex flex-wrap items-center gap-2">
-        {generationOrder.map((library, index) => (
+        {orderedSyntax.map((library, index) => (
           <div key={`preview-${library.id}`} className="flex items-center gap-2">
             <div className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium border ${getTypeClasses(library.type)}`}>
               <span className="opacity-80 text-base">{getTypeIcon(library.type)}</span>
@@ -641,9 +600,9 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                 <span className="text-xs text-muted-foreground">Triplex</span>
                 <span className="text-xs text-muted-foreground">▸</span>
                 <span className="text-xs text-muted-foreground">Adaptor</span>
-                {index < generationOrder.length - 1 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
+                {index < orderedSyntax.length - 1 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
               </div>
-            ) : index < generationOrder.length - 1 ? (
+            ) : index < orderedSyntax.length - 1 ? (
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
             ) : null}
           </div>
@@ -668,67 +627,25 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
 
           <div className="grid gap-4 md:grid-cols-2 mb-6">
             <div>
-              <label className="block mb-1 text-sm font-medium">Add Library or Constant Gene to Syntax</label>
+              <label className="block mb-1 text-sm font-medium">Add Library to Syntax</label>
               <div className="flex gap-2">
                 <select
                   value={selectedLibrary}
                   onChange={e => setSelectedLibrary(e.target.value)}
                   className="h-9 px-2 flex-1 rounded-md border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
                 >
-                  {eligibleLibraries.map(folder => (
-                    <option key={folder.id} value={folder.id}>{folder.name}</option>
-                  ))}
-                  {(() => {
-                    // Restrict constant selection to the dedicated constants folder
-                    const constantsFolder = folders.find(f => f.id === 'constants-library');
-                    const constantsModules = constantsFolder ? constantsFolder.modules.map((mid: string) => {
-                      const mod = customModules.find(m => m.id === mid);
-                      if (!mod) return null;
-                      const virtualId = `const:${mod.id}`;
-                      return <option key={virtualId} value={virtualId}>{`Constant: ${mod.name}`}</option>;
-                    }) : [];
-
-                    // Debug logging to help validate available constants
-                    console.log('Constants folder modules:', constantsFolder?.modules);
-
-                    return constantsModules;
-                  })()}
+                  {eligibleLibraries.length === 0 ? (
+                    <option value="" disabled>No eligible libraries</option>
+                  ) : (
+                    eligibleLibraries.map(folder => (
+                      <option key={folder.id} value={folder.id}>{folder.name}</option>
+                    ))
+                  )}
                 </select>
                 <Button
                   size="sm"
                   onClick={() => {
-                    console.log('Add button clicked, selectedLibrary:', selectedLibrary);
-                    if (selectedLibrary.startsWith('const:')) {
-                      const moduleId = selectedLibrary.replace('const:', '');
-                      console.log('Adding constant, moduleId:', moduleId);
-                      const mod = customModules.find(m => m.id === moduleId);
-                      console.log('Found module:', mod);
-                      if (!mod) {
-                        console.error('Module not found:', moduleId);
-                        toast.error('Module not found');
-                        return;
-                      }
-                      const virtualLibId = `const-lib-${moduleId}`;
-                      if (normalizedSyntax.some(l => l.id === virtualLibId)) {
-                        toast.message('Constant already added.');
-                        return;
-                      }
-                      const newItem: LibrarySyntax = {
-                        id: virtualLibId,
-                        name: `Const: ${mod.name}`,
-                        type: (mod.type as LibrarySyntax['type']) || 'overexpression',
-                        mode: 'constant',
-                      };
-                      console.log('Adding new constant item:', newItem);
-                      const merged = [...normalizedSyntax, newItem];
-                      const regrouped = [
-                        ...merged.filter(entry => entry.mode === 'constant'),
-                        ...merged.filter(entry => entry.mode !== 'constant'),
-                      ];
-                      onReorderLibraries(regrouped);
-                      toast.success(`Added ${mod.name} as constant`);
-                      return;
-                    }
+                    if (!selectedLibrary) return;
                     onAddLibrary(selectedLibrary);
                   }}
                   disabled={!selectedLibrary}
@@ -736,17 +653,20 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                To pin a constant, add it to the Constants folder and drag the module into the syntax below.
+              </p>
             </div>
 
             <div className="flex flex-col items-start gap-2 md:items-end md:text-right">
               <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                Constants: {constantSyntax.length} • Variable slots: {variableSyntax.length}
+                Constants: {constantCount} • Variable slots: {variableCount}
               </span>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={variableSyntax.length <= 1}
+                  disabled={variableCount <= 1}
                   onClick={() => {
                     const shuffle = <T,>(arr: T[]) => {
                       const copy = [...arr];
@@ -756,9 +676,11 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                       }
                       return copy;
                     };
-                    const randomized = shuffle(variableSyntax);
+                    const constants = orderedSyntax.filter(item => item.mode === 'constant');
+                    const variables = orderedSyntax.filter(item => item.mode !== 'constant');
+                    const randomized = shuffle(variables);
                     onReorderLibraries([
-                      ...constantSyntax,
+                      ...constants,
                       ...randomized,
                     ]);
                   }}
@@ -770,7 +692,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                   variant="outline"
                   size="sm"
                   onClick={() => onReorderLibraries([])}
-                  disabled={generationOrder.length === 0}
+                  disabled={orderedSyntax.length === 0}
                 >
                   Reset
                 </Button>
@@ -778,61 +700,32 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
             </div>
           </div>
 
-          <div className="grid gap-4">
-            <section>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Constants (fixed across every construct)</label>
-                <span className="text-xs text-muted-foreground">Drag to reorder</span>
-              </div>
-              <Droppable droppableId="constants-syntax" direction="horizontal">
-                {(provided, snapshot) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className={`flex flex-wrap gap-2 min-h-[72px] rounded-md border border-dashed p-3 transition-all ${
-                      snapshot.isDraggingOver ? 'border-primary bg-primary/10' : 'border-border'
-                    }`}
-                  >
-                    {constantSyntax.length === 0 ? (
-                      <span className="text-sm text-muted-foreground">
-                        Select single-gene entries from the Constants folder to lock them into every construct.
-                      </span>
-                    ) : (
-                      constantSyntax.map((library, index) => renderSyntaxDraggable(library, index))
-                    )}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </section>
-
-            <section>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Variable Libraries (combinatorial slots)</label>
-                <span className="text-xs text-muted-foreground">Drag to reorder and mix library types</span>
-              </div>
-              <Droppable droppableId="variables-syntax" direction="horizontal">
-                {(provided, snapshot) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className={`flex flex-wrap gap-2 min-h-[96px] rounded-md border border-dashed p-3 transition-all ${
-                      snapshot.isDraggingOver ? 'border-primary bg-primary/10' : 'border-border'
-                    }`}
-                  >
-                    {variableSyntax.length === 0 ? (
-                      <span className="text-sm text-muted-foreground">
-                        Add libraries to explore combinatorial diversity. Mix knock-outs, knock-downs, knock-ins, or expression libraries.
-                      </span>
-                    ) : (
-                      variableSyntax.map((library, index) => renderSyntaxDraggable(library, index))
-                    )}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </section>
-          </div>
+          <section>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Syntax (constants first, variables follow)</label>
+              <span className="text-xs text-muted-foreground">Drag to reorder. Drop modules from the Constants folder to pin them.</span>
+            </div>
+            <Droppable droppableId="library-syntax" direction="horizontal">
+              {(provided, snapshot) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className={`flex flex-wrap gap-2 min-h-[96px] rounded-md border border-dashed p-3 transition-all ${
+                    snapshot.isDraggingOver ? 'border-primary bg-primary/10' : 'border-border'
+                  }`}
+                >
+                  {orderedSyntax.length === 0 ? (
+                    <span className="text-sm text-muted-foreground">
+                      Drag libraries here to define combinatorial slots. Drop individual modules from the Constants folder to keep them fixed across every construct.
+                    </span>
+                  ) : (
+                    orderedSyntax.map((library, index) => renderSyntaxDraggable(library, index))
+                  )}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </section>
 
           <div className="mt-6">
             <div className="flex items-center justify-between mb-2">
@@ -847,7 +740,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
           <Button
             className="mt-6 w-full"
             onClick={handleManualGenerate}
-            disabled={generationOrder.length === 0}
+            disabled={orderedSyntax.length === 0}
           >
             Generate All Combinations from Syntax
           </Button>

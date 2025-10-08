@@ -18,6 +18,7 @@ export interface PlanningPreferences {
   typeCounts?: Partial<Record<LibraryPlanType, number>>;
   totalLibraries?: number;
   genesPerLibrary?: number;
+  genesPerType?: Partial<Record<LibraryPlanType, number>>;
 }
 
 export interface PlanLibrariesOptions {
@@ -100,6 +101,21 @@ function buildPreferenceMessage(preferences?: PlanningPreferences, maxPerLibrary
     lines.push(`Keep each library to about ${targetGenes} genes (never exceed ${targetGenes}).`);
   } else if (maxPerLibrary) {
     lines.push(`Never exceed ${maxPerLibrary} genes per library.`);
+  }
+
+  if (preferences.genesPerType) {
+    const overrides = Object.entries(preferences.genesPerType)
+      .map(([type, rawValue]) => ({
+        type,
+        value: typeof rawValue === 'number' ? rawValue : Number(rawValue),
+      }))
+      .filter(({ value }) => Number.isFinite(value) && value > 0);
+    if (overrides.length > 0) {
+      overrides.forEach(({ type, value }) => {
+        const rounded = Math.max(1, Math.round(value));
+        lines.push(`For ${type} libraries, aim for about ${rounded} genes (never exceed ${rounded}).`);
+      });
+    }
   }
 
   if (lines.length === 0) return null;
