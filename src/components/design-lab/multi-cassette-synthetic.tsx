@@ -27,18 +27,23 @@ export function MultiCassetteSynthetic(props: MultiCassetteSyntheticProps) {
   const [plans, setPlans] = useState<PlannedLibrary[] | null>(null);
   const [syntheticDomains, setSyntheticDomains] = useState<SyntheticGene[]>([]);
   const [showImporter, setShowImporter] = useState(false);
+  const MAX_TOTAL_LIBRARIES = 15;
 
   const handlePlan = async () => {
     if (!prompt.trim()) return;
     setIsThinking(true);
     setPlans(null);
-    
+
     try {
       // Enhanced planning that considers synthetic domains
       const result = await planLibrariesFromPrompt(prompt, { maxPerLibrary });
-      setPlans(result);
+      const cappedResult = result.slice(0, MAX_TOTAL_LIBRARIES);
+      if (result.length > MAX_TOTAL_LIBRARIES) {
+        toast.warning(`Showing the first ${MAX_TOTAL_LIBRARIES} libraries (hard cap).`);
+      }
+      setPlans(cappedResult);
       
-      if (result.length === 0) {
+      if (cappedResult.length === 0) {
         toast.message('No actionable libraries found from the prompt');
       }
     } catch (e: any) {

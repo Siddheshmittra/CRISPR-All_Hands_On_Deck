@@ -39,6 +39,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
   const [libraryMixMode, setLibraryMixMode] = useState<'random' | 'custom'>('random');
   const [randomLibraryCount, setRandomLibraryCount] = useState(2);
   const perturbationTypes: LibraryPlanType[] = ['overexpression', 'knockdown', 'knockout', 'knockin'];
+  const MAX_TOTAL_LIBRARIES = 15;
   const [customTypeCounts, setCustomTypeCounts] = useState<Record<LibraryPlanType, number>>({
     overexpression: 1,
     knockdown: 0,
@@ -65,19 +66,35 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
       return;
     }
 
+    let totalCustomRequested = 0;
+    const sanitizedCounts: Partial<Record<LibraryPlanType, number>> = {};
+    if (libraryMixMode === 'custom') {
+      perturbationTypes.forEach(type => {
+        const raw = Math.floor(customTypeCounts[type] ?? 0);
+        if (raw > 0) {
+          sanitizedCounts[type] = raw;
+          totalCustomRequested += raw;
+        }
+      });
+    }
+
+    const requestedTotal = libraryMixMode === 'custom'
+      ? totalCustomRequested
+      : Math.max(1, randomLibraryCount);
+
+    if (requestedTotal > MAX_TOTAL_LIBRARIES) {
+      toast.error(`You can request up to ${MAX_TOTAL_LIBRARIES} libraries at once. Adjust your counts before planning.`);
+      if (libraryMixMode === 'random' && randomLibraryCount > MAX_TOTAL_LIBRARIES) {
+        setRandomLibraryCount(MAX_TOTAL_LIBRARIES);
+      }
+      return;
+    }
+
     setIsThinking(true);
     setPlans(null);
     try {
       console.log('Planning libraries for prompt:', prompt);
       const effectiveGenesPerLibrary = Math.max(1, Math.min(maxPerLibrary, Number.isFinite(genesPerLibrary) ? genesPerLibrary : maxPerLibrary));
-      const sanitizedCounts: Partial<Record<LibraryPlanType, number>> = {};
-      perturbationTypes.forEach(type => {
-        const raw = Math.floor(customTypeCounts[type] ?? 0);
-        if (raw > 0) {
-          sanitizedCounts[type] = raw;
-        }
-      });
-
       const preferences = libraryMixMode === 'custom'
         ? {
             libraryMix: 'custom' as const,
@@ -86,7 +103,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
           }
         : {
             libraryMix: 'random' as const,
-            totalLibraries: Math.max(1, randomLibraryCount),
+            totalLibraries: requestedTotal,
             genesPerLibrary: effectiveGenesPerLibrary,
           };
 
@@ -95,11 +112,15 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
         preferences,
       });
       console.log('Library planning result:', result);
-      setPlans(result);
-      if (result.length === 0) {
+      const cappedResult = result.slice(0, MAX_TOTAL_LIBRARIES);
+      if (result.length > MAX_TOTAL_LIBRARIES) {
+        toast.warning(`Showing the first ${MAX_TOTAL_LIBRARIES} libraries (hard cap).`);
+      }
+      setPlans(cappedResult);
+      if (cappedResult.length === 0) {
         toast.message('No actionable libraries found from the prompt. Try being more specific about gene types or functions.');
       } else {
-        toast.success(`Found ${result.length} library plan(s)`);
+        toast.success(`Found ${cappedResult.length} library plan${cappedResult.length === 1 ? '' : 's'}`);
       }
     } catch (e: any) {
       console.error('Library planning error:', e);
@@ -109,8 +130,11 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
     }
   };
 
-  const customHasCounts = Object.values(customTypeCounts).some(count => count > 0);
-  const canRequestLibraries = libraryMixMode === 'random' ? randomLibraryCount > 0 : customHasCounts;
+  const totalCustomRequested = Object.values(customTypeCounts).reduce((acc, count) => acc + Math.max(0, Math.floor(count ?? 0)), 0);
+  const customHasCounts = totalCustomRequested > 0;
+  const totalRequested = libraryMixMode === 'custom' ? totalCustomRequested : Math.max(1, randomLibraryCount);
+  const withinLibraryCap = totalRequested <= MAX_TOTAL_LIBRARIES;
+  const canRequestLibraries = (libraryMixMode === 'random' ? randomLibraryCount > 0 : customHasCounts) && withinLibraryCap;
 
   const slugify = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
   const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -351,7 +375,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
             <Input
               type="number"
               min={1}
-              max={12}
+              max={MAX_TOTAL_LIBRARIES}
               value={randomLibraryCount}
               onChange={(event) => {
                 const next = Number.parseInt(event.target.value, 10);
@@ -359,10 +383,10 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
                   setRandomLibraryCount(1);
                   return;
                 }
-                setRandomLibraryCount(Math.max(1, Math.min(12, next)));
+                setRandomLibraryCount(Math.max(1, Math.min(MAX_TOTAL_LIBRARIES, next)));
               }}
             />
-            <p className="text-xs text-muted-foreground">Planner will aim for this many libraries, mixing types based on your prompt.</p>
+            <p className="text-xs text-muted-foreground">Planner will aim for this many libraries (hard cap {MAX_TOTAL_LIBRARIES}), mixing types based on your prompt.</p>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -379,14 +403,23 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
                   <Input
                     type="number"
                     min={0}
-                    max={12}
+                    max={MAX_TOTAL_LIBRARIES}
                     value={customTypeCounts[type] ?? 0}
                     onChange={(event) => {
                       const next = Number.parseInt(event.target.value, 10);
-                      setCustomTypeCounts((prev) => ({
-                        ...prev,
-                        [type]: Number.isNaN(next) ? 0 : Math.max(0, Math.min(12, next)),
-                      }));
+                      setCustomTypeCounts((prev) => {
+                        const clamped = Number.isNaN(next) ? 0 : Math.max(0, Math.min(MAX_TOTAL_LIBRARIES, Math.floor(next)));
+                        const nextCounts = {
+                          ...prev,
+                          [type]: clamped,
+                        };
+                        const total = Object.values(nextCounts).reduce((sum, value) => sum + Math.max(0, Math.floor(value ?? 0)), 0);
+                        if (total > MAX_TOTAL_LIBRARIES) {
+                          toast.error(`Limit of ${MAX_TOTAL_LIBRARIES} libraries reached. Reduce other counts first.`);
+                          return prev;
+                        }
+                        return nextCounts;
+                      });
                     }}
                   />
                 </div>
