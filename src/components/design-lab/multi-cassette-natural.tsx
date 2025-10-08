@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Sparkles, Loader2, Upload } from 'lucide-react';
 import type { Module, LibrarySyntaxAddOptions } from '@/lib/types';
 import { planLibrariesFromPrompt, type PlannedLibrary, type LibraryPlanType } from '@/lib/llm/libraryPlanner';
-import { predictTCellFunction } from '@/lib/llm/predictFunction';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { SyntheticDomainImporter } from './synthetic-domain-importer';
@@ -45,9 +44,6 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
   const [prompt, setPrompt] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [plans, setPlans] = useState<PlannedLibrary[] | null>(null);
-  const [predictedSentence, setPredictedSentence] = useState<string>('');
-  const [predictedSources, setPredictedSources] = useState<Array<{ title: string; url: string }>>([]);
-  const [isPredicting, setIsPredicting] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
   const [syntheticDomains, setSyntheticDomains] = useState<SyntheticGene[]>([]);
   const [isApplying, setIsApplying] = useState(false);
@@ -294,35 +290,6 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
     }
   };
 
-  const handlePredict = async () => {
-    // Get all modules from Total Library to predict function
-    const totalLibrary = folders.find(f => f.id === 'total-library');
-    if (!totalLibrary || totalLibrary.modules.length === 0) {
-      toast.error('No modules available for prediction');
-      return;
-    }
-    
-    const modulesToPredict = customModules.filter(m => totalLibrary.modules.includes(m.id));
-    if (modulesToPredict.length === 0) {
-      toast.error('No modules available for prediction');
-      return;
-    }
-    
-    setIsPredicting(true);
-    try {
-      const result = await predictTCellFunction(modulesToPredict);
-      setPredictedSentence(result.sentence);
-      setPredictedSources(result.sources || []);
-      toast.success('Prediction generated successfully');
-    } catch (error) {
-      console.error('Prediction error:', error);
-      setPredictedSentence('Prediction failed.');
-      setPredictedSources([]);
-      toast.error('Failed to generate prediction. Please try again.');
-    } finally {
-      setIsPredicting(false);
-    }
-  };
 
   // Minimal toggle summary removed to keep UI compact
 
@@ -506,53 +473,6 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
         )}
       </div>
 
-      {/* Predict function section for multi-construct natural mode */}
-      {customModules.length > 0 && (
-        <div className="mt-6 border-t pt-6">
-          <h3 className="text-lg font-semibold mb-2">Predicted Function / Predicted Cellular Program</h3>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="text-sm">
-                {predictedSentence ? (
-                  <span>{predictedSentence}</span>
-                ) : (
-                  <span className="text-muted-foreground">No prediction yet.</span>
-                )}
-              </div>
-              {predictedSources && predictedSources.length > 0 && (
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  {predictedSources.map((source, i) => (
-                    <li key={i} className="text-sm">
-                      <a href={source.url} target="_blank" rel="noreferrer" className="underline">
-                        {source.title}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <p className="text-xs text-muted-foreground mt-2">
-                Prediction based on all modules in Total Library ({customModules.length} modules)
-              </p>
-            </div>
-            <div>
-              <Button
-                onClick={handlePredict}
-                disabled={isPredicting || customModules.length === 0}
-                className="px-3 py-2"
-              >
-                {isPredicting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Predicting...
-                  </>
-                ) : (
-                  'Predict'
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Embedded Planned Libraries inside the same block */}
       <LibraryViewer folders={folders} customModules={customModules} embedded />
     </Card>
