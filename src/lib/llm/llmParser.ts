@@ -31,6 +31,8 @@ Each instruction object:
 Rules:
 - Standardize actions to: overexpress, knockdown, knockout, knockin
 - If action is unclear, default to overexpress
+- IMPORTANT: If user explicitly mentions "KI", "knockin", or "knock-in", preserve this as knockin action
+- For fusion genes or synthetic constructs (e.g., "MYD88-CD40"), use knockin action
 - Ignore any text that doesn't contain genetic modifications
 - Always return { "instructions": [] } if nothing is found.`;
 
@@ -132,10 +134,10 @@ export async function parseInstructions(text: string): Promise<EditInstruction[]
 
     // Normalize possible variations from the LLM
     const normalizeAction = (value?: string): EditAction => {
-      const v = (value || '').toLowerCase().replace(/\s+/g, '');
+      const v = (value || '').toLowerCase().replace(/\s+/g, '').replace(/-/g, '');
       if (['ko','knockout','knockoutgene','gene_knockout','delete'].includes(v)) return 'knockout';
       if (['kd','knockdown','silence','repress','reduce','downregulate','downregulation','decrease','suppress'].includes(v)) return 'knockdown';
-      if (['ki','knockin','insert','integration'].includes(v)) return 'knockin';
+      if (['ki','knockin','knock-in','insert','integration'].includes(v)) return 'knockin';
       if (['oe','overexpress','upregulate','upregulation','increase','express'].includes(v)) return 'overexpress';
       return 'overexpress';
     };

@@ -34,7 +34,13 @@ export async function createModule(edit: EditInstruction): Promise<Module> {
   const syntheticHit = syntheticGenes.find(g => {
     const idMatch = g.id?.toUpperCase() === upper;
     const nameMatch = g.name?.toUpperCase() === upper;
-    return idMatch || nameMatch;
+    
+    // Also check for common variations (dash vs slash, spaces, etc.)
+    const normalizedName = g.name?.toUpperCase().replace(/[-/]/g, '');
+    const normalizedTargetVariation = upper.replace(/[-/]/g, '');
+    const variationMatch = normalizedName === normalizedTargetVariation;
+    
+    return idMatch || nameMatch || variationMatch;
   });
 
   if (syntheticHit) {
@@ -60,7 +66,14 @@ export async function createModule(edit: EditInstruction): Promise<Module> {
   // If LLM suggested knockin, decide between synthetic knock-in vs natural OE.
   if (moduleType === 'knockin') {
     const targetUpper = (edit.target || '').trim().toUpperCase();
-    const syntheticHitForKnockin = syntheticGenes.find(g => g.name.toUpperCase() === targetUpper);
+    const syntheticHitForKnockin = syntheticGenes.find(g => {
+      const nameMatch = g.name.toUpperCase() === targetUpper;
+      // Also check for common variations (dash vs slash, spaces, etc.)
+      const normalizedName = g.name?.toUpperCase().replace(/[-/]/g, '');
+      const normalizedTargetVariation = targetUpper.replace(/[-/]/g, '');
+      const variationMatch = normalizedName === normalizedTargetVariation;
+      return nameMatch || variationMatch;
+    });
     if (!syntheticHitForKnockin) {
       // Natural gene → treat as overexpression (KI used colloquially)
       try {
