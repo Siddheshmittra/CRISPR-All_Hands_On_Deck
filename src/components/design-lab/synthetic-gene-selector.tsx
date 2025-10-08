@@ -11,6 +11,7 @@ import { searchSyntheticGenes, syntheticGeneCategories } from "@/lib/synthetic-g
 import { SyntheticGene } from "@/lib/types"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 // 2A self-cleaving peptide sequences
 const TWO_A_SEQUENCES = {
@@ -41,7 +42,7 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
   const [twoAType] = useState<keyof typeof TWO_A_SEQUENCES>('T2A')
   const [activeGeneId, setActiveGeneId] = useState<string | null>(null)
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>(() => (
-    Object.fromEntries(syntheticGeneCategories.map(category => [category.id, false]))
+    Object.fromEntries(syntheticGeneCategories.map(category => [category.id, true]))
   ))
   const [expandedReferences, setExpandedReferences] = useState<Record<string, boolean>>({})
 
@@ -139,14 +140,52 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
           </RadioGroup>
         </div>
 
-        {/* Name */}
-        <div>
-          <Label className="font-semibold">Name</Label>
-          <Input placeholder="e.g. GFP" value={sequenceName} onChange={(e) => setSequenceName(e.target.value)} />
+        {/* Name - Styled differently from search */}
+        <div className="space-y-2">
+          <Label className="text-base font-bold text-foreground">Name</Label>
+          <Input 
+            placeholder="e.g. GFP" 
+            value={sequenceName} 
+            onChange={(e) => setSequenceName(e.target.value)}
+            className="bg-muted/30 border-2 font-semibold text-base h-11"
+          />
+        </div>
+
+        {/* Quick Add Common Genes */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-muted-foreground">Quick Add</Label>
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSequenceName("GFP")
+                setCustomSequence("ATGGTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTGCCCATCCTGGTCGAGCTGGACGGCGACGTAAACGGCCACAAGTTCAGCGTGTCCGGCGAGGGCGAGGGCGATGCCACCTACGGCAAGCTGACCCTGAAGTTCATCTGCACCACCGGCAAGCTGCCCGTGCCCTGGCCCACCCTCGTGACCACCCTGACCTACGGCGTGCAGTGCTTCAGCCGCTACCCCGACCACATGAAGCAGCACGACTTCTTCAAGTCCGCCATGCCCGAAGGCTACGTCCAGGAGCGCACCATCTTCTTCAAGGACGACGGCAACTACAAGACCCGCGCCGAGGTGAAGTTCGAGGGCGACACCCTGGTGAACCGCATCGAGCTGAAGGGCATCGACTTCAAGGAGGACGGCAACATCCTGGGGCACAAGCTGGAGTACAACTACAACAGCCACAACGTCTATATCATGGCCGACAAGCAGAAGAACGGCATCAAGGTGAACTTCAAGATCCGCCACAACATCGAGGACGGCAGCGTGCAGCTCGCCGACCACTACCAGCAGAACACCCCCATCGGCGACGGCCCCGTGCTGCTGCCCGACAACCACTACCTGAGCACCCAGTCCGCCCTGAGCAAAGACCCCAACGAGAAGCGCGATCACATGGTCCTGCTGGAGTTCGTGACCGCCGCCGGGATCACTCTCGGCATGGACGAGCTGTACAAG")
+                toast.success("GFP sequence loaded")
+              }}
+              className="gap-1"
+            >
+              <Plus className="h-3 w-3" />
+              GFP
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSequenceName("RFP")
+                setCustomSequence("ATGGCCTCCTCCGAGGACGTCATCAAGGAGTTCATGCGCTTCAAGGTGCGCATGGAGGGCTCCGTGAACGGCCACGAGTTCGAGATCGAGGGCGAGGGCGAGGGCCGCCCCTACGAGGGCACCCAGACCGCCAAGCTGAAGGTGACCAAGGGCGGCCCCCTGCCCTTCGCCTGGGACATCCTGTCCCCTCAGTTCATGTACGGCTCCAAGGCCTACGTGAAGCACCCCGCCGACATCCCCGACTACTTGAAGCTGTCCTTCCCCGAGGGCTTCAAGTGGGAGCGCGTGATGAACTTCGAGGACGGCGGCGTGGTGACCGTGACCCAGGACTCCTCCCTGCAGGACGGCGAGTTCATCTACAAGGTGAAGCTGCGCGGCACCAACTTCCCCTCCGACGGCCCCGTAATGCAGAAGAAGACCATGGGCTGGGAGGCCTCCACCGAGCGGATGTACCCCGAGGACGGCGCCCTGAAGGGCGAGATCAAGCAGAGGCTGAAGCTGAAGGACGGCGGCCACTACGACGCCGAGGTCAAGACCACCTACAAGGCCAAGAAGCCCGTGCAGCTGCCCGGCGCCTACAACGTCAACATCAAGCTGGACATCACCTCCCACAACGAGGACTACACCATCGTGGAACAGTACGAGCGCGCCGAGGGCCGCCACTCCACCGGCGGC")
+                toast.success("RFP sequence loaded")
+              }}
+              className="gap-1"
+            >
+              <Plus className="h-3 w-3" />
+              RFP
+            </Button>
+          </div>
         </div>
 
         {/* Custom Sequence Input */}
-        <div className="border rounded-lg p-4">
+        <div className="border rounded-lg p-4 bg-card">
           <Label className="font-semibold">Custom Sequence</Label>
           <Textarea
             placeholder="Enter your custom synthetic gene sequence (DNA)..."
@@ -163,7 +202,7 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
         </div>
 
         {/* Search and Category Filter */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 pt-2 border-t">
           <div className="flex gap-2">
             <div className="flex-1">
               <div className="relative">
@@ -172,7 +211,7 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
                   placeholder="Search knock-in library..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 bg-background"
                 />
               </div>
             </div>
