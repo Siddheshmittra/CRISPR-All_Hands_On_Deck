@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Search, Plus, X, ChevronDown } from "lucide-react"
-import { searchSyntheticGenes, syntheticGeneCategories } from "@/lib/synthetic-genes"
+import { searchSyntheticGenes, syntheticGeneCategories, syntheticGenes } from "@/lib/synthetic-genes"
 import { SyntheticGene } from "@/lib/types"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
@@ -83,6 +83,17 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
     onCustomSequence(sequence, name, opts)
   }
 
+  const loadTemplateByName = (name: string) => {
+    const gene = syntheticGenes.find(g => g.name.toLowerCase() === name.toLowerCase())
+    if (!gene) {
+      toast.error(`${name} template not found`)
+      return
+    }
+    setSequenceName(gene.name)
+    setCustomSequence(gene.sequence)
+    toast.success(`${gene.name} sequence loaded`)
+  }
+
   // Clicking a gene populates the editor fields and highlights it for quick edits
 
   const handleGeneSelect = (gene: SyntheticGene) => {
@@ -152,18 +163,23 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
           />
         </div>
 
-        {/* Quick Add Common Genes */}
+        {/* Quick Add Common Genes */
         <div className="space-y-2">
           <Label className="text-sm font-medium text-muted-foreground">Quick Add</Label>
           <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                setSequenceName("GFP")
-                setCustomSequence("ATGGTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTGCCCATCCTGGTCGAGCTGGACGGCGACGTAAACGGCCACAAGTTCAGCGTGTCCGGCGAGGGCGAGGGCGATGCCACCTACGGCAAGCTGACCCTGAAGTTCATCTGCACCACCGGCAAGCTGCCCGTGCCCTGGCCCACCCTCGTGACCACCCTGACCTACGGCGTGCAGTGCTTCAGCCGCTACCCCGACCACATGAAGCAGCACGACTTCTTCAAGTCCGCCATGCCCGAAGGCTACGTCCAGGAGCGCACCATCTTCTTCAAGGACGACGGCAACTACAAGACCCGCGCCGAGGTGAAGTTCGAGGGCGACACCCTGGTGAACCGCATCGAGCTGAAGGGCATCGACTTCAAGGAGGACGGCAACATCCTGGGGCACAAGCTGGAGTACAACTACAACAGCCACAACGTCTATATCATGGCCGACAAGCAGAAGAACGGCATCAAGGTGAACTTCAAGATCCGCCACAACATCGAGGACGGCAGCGTGCAGCTCGCCGACCACTACCAGCAGAACACCCCCATCGGCGACGGCCCCGTGCTGCTGCCCGACAACCACTACCTGAGCACCCAGTCCGCCCTGAGCAAAGACCCCAACGAGAAGCGCGATCACATGGTCCTGCTGGAGTTCGTGACCGCCGCCGGGATCACTCTCGGCATGGACGAGCTGTACAAG")
-                toast.success("GFP sequence loaded")
-              }}
+              onClick={() => loadTemplateByName("BFP")}
+              className="gap-1"
+            >
+              <Plus className="h-3 w-3" />
+              BFP
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => loadTemplateByName("GFP")}
               className="gap-1"
             >
               <Plus className="h-3 w-3" />
@@ -172,11 +188,16 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                setSequenceName("RFP")
-                setCustomSequence("ATGGCCTCCTCCGAGGACGTCATCAAGGAGTTCATGCGCTTCAAGGTGCGCATGGAGGGCTCCGTGAACGGCCACGAGTTCGAGATCGAGGGCGAGGGCGAGGGCCGCCCCTACGAGGGCACCCAGACCGCCAAGCTGAAGGTGACCAAGGGCGGCCCCCTGCCCTTCGCCTGGGACATCCTGTCCCCTCAGTTCATGTACGGCTCCAAGGCCTACGTGAAGCACCCCGCCGACATCCCCGACTACTTGAAGCTGTCCTTCCCCGAGGGCTTCAAGTGGGAGCGCGTGATGAACTTCGAGGACGGCGGCGTGGTGACCGTGACCCAGGACTCCTCCCTGCAGGACGGCGAGTTCATCTACAAGGTGAAGCTGCGCGGCACCAACTTCCCCTCCGACGGCCCCGTAATGCAGAAGAAGACCATGGGCTGGGAGGCCTCCACCGAGCGGATGTACCCCGAGGACGGCGCCCTGAAGGGCGAGATCAAGCAGAGGCTGAAGCTGAAGGACGGCGGCCACTACGACGCCGAGGTCAAGACCACCTACAAGGCCAAGAAGCCCGTGCAGCTGCCCGGCGCCTACAACGTCAACATCAAGCTGGACATCACCTCCCACAACGAGGACTACACCATCGTGGAACAGTACGAGCGCGCCGAGGGCCGCCACTCCACCGGCGGC")
-                toast.success("RFP sequence loaded")
-              }}
+              onClick={() => loadTemplateByName("mCherry")}
+              className="gap-1"
+            >
+              <Plus className="h-3 w-3" />
+              mCherry
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => loadTemplateByName("RFP")}
               className="gap-1"
             >
               <Plus className="h-3 w-3" />
