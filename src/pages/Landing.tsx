@@ -59,7 +59,7 @@ const Landing = () => {
 
   return (
     <div className="bg-background">
-      <div className="min-h-screen grid place-items-center px-4 sm:px-6 lg:px-8 relative">
+      <div className="min-h-screen grid place-items-center px-4 sm:px-6 lg:px-8 relative bg-background dark:bg-card">
         {/* Theme toggle removed here (now global floating) */}
 
         <div className="text-center">
@@ -114,4 +114,3 @@ const Landing = () => {
 }
 
 export default Landing
-
