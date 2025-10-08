@@ -103,8 +103,8 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       value: 'knockin', 
       label: 'KI*',
       icon: '→',
-      className: 'bg-[hsl(220,35%,65%)] hover:bg-[hsl(220,35%,55%)] text-white font-semibold',
-      outlineClassName: 'text-[hsl(220,35%,65%)] border-[hsl(220,35%,65%)] hover:bg-[hsl(220,35%,65%)]/20 hover:text-[hsl(220,35%,65%)] font-medium'
+      className: 'bg-[hsl(201,62%,65%)] hover:bg-[hsl(201,62%,55%)] text-white font-semibold',
+      outlineClassName: 'text-[hsl(201,62%,65%)] border-[hsl(201,62%,65%)] hover:bg-[hsl(201,62%,65%)]/20 hover:text-[hsl(201,62%,65%)] font-medium'
     },
   ]
 
@@ -146,7 +146,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       case 'knockdown':
         return 'bg-[hsl(32,75%,49%)] text-white border-transparent';
       case 'knockin':
-        return 'bg-[hsl(220,35%,65%)] text-foreground border-transparent';
+        return 'bg-[hsl(201,62%,65%)] text-foreground border-transparent';
       default:
         return '';
     }

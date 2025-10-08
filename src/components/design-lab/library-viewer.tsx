@@ -52,6 +52,7 @@ export function LibraryViewer({ folders, customModules, showTotal = false, embed
                           m.type === 'knockout' ? 'bg-knockout/90 text-knockout-foreground border-knockout/30' :
                           m.type === 'knockdown' ? 'bg-knockdown/90 text-knockdown-foreground border-knockdown/30' :
                           m.type === 'knockin' ? 'bg-knockin/90 text-knockin-foreground border-knockin/30' :
+                          m.type === 'synthetic' ? 'bg-knockin/90 text-knockin-foreground border-knockin/30' :
                           'bg-card text-card-foreground border-border'
                         }`}
                         title={`${m.name} [${m.type}]`}
@@ -84,6 +85,5 @@ export function LibraryViewer({ folders, customModules, showTotal = false, embed
     </Card>
   )
 }
-
 
 

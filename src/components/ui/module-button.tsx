@@ -16,7 +16,7 @@ const moduleButtonVariants = cva(
         knockout: "bg-knockout/90 text-knockout-foreground border-knockout/30 hover:bg-knockout hover:shadow-knockout/20 hover:shadow-md transition-all duration-200 shadow-sm",
         knockdown: "bg-knockdown/90 text-knockdown-foreground border-knockdown/30 hover:bg-knockdown hover:shadow-knockdown/20 hover:shadow-md transition-all duration-200 shadow-sm",
         knockin: "bg-knockin/90 text-knockin-foreground border-knockin/30 hover:bg-knockin hover:shadow-knockin/20 hover:shadow-md transition-all duration-200 shadow-sm",
-        synthetic: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800",
+        synthetic: "bg-knockin/90 text-knockin-foreground border-knockin/30 hover:bg-knockin hover:shadow-knockin/20 hover:shadow-md transition-all duration-200 shadow-sm",
         hardcoded: "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
       },
       size: {

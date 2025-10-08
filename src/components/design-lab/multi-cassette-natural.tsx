@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Sparkles, Loader2, Upload, SlidersHorizontal } from 'lucide-react';
+import { Sparkles, Loader2, Upload } from 'lucide-react';
 import type { Module, LibrarySyntaxAddOptions } from '@/lib/types';
 import { planLibrariesFromPrompt, type PlannedLibrary, type LibraryPlanType } from '@/lib/llm/libraryPlanner';
 import { predictTCellFunction } from '@/lib/llm/predictFunction';
@@ -14,7 +14,7 @@ import type { SyntheticGene } from '@/lib/types';
 import { LibraryViewer } from '@/components/design-lab/library-viewer';
 import { TypedHeading } from '@/components/ui/typed-heading';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const LIBRARY_LABELS: Record<LibraryPlanType, string> = {
   overexpression: 'Overexpression libraries',
@@ -324,21 +324,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
     }
   };
 
-  const customMixSummary = perturbationTypes
-    .map((type) => {
-      const count = customTypeCounts[type] ?? 0;
-      if (count <= 0) return null;
-      return `${count} ${LIBRARY_SHORT_LABELS[type]}`;
-    })
-    .filter(Boolean) as string[];
-
-  const plannerSummary = libraryMixMode === 'random'
-    ? `Auto mix • ~${randomLibraryCount} ${randomLibraryCount === 1 ? 'library' : 'libraries'}`
-    : customMixSummary.length > 0
-      ? `Custom mix • ${customMixSummary.join(' · ')}`
-      : 'Custom mix • Set counts';
-
-  const advancedSummary = `${plannerSummary} • ${genesPerLibrary} genes/library`;
+  // Minimal toggle summary removed to keep UI compact
 
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -369,27 +355,14 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
             className="min-h-[100px]"
           />
         </div>
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="advanced" className="border-none">
-            <AccordionTrigger className="group flex-1 items-center rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 via-transparent to-transparent px-4 py-3 text-left text-sm font-semibold text-foreground shadow-sm transition-colors hover:no-underline data-[state=open]:rounded-b-none data-[state=open]:border-primary/40 data-[state=open]:from-primary/10">
-              <span className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary transition group-data-[state=open]:bg-primary group-data-[state=open]:text-primary-foreground">
-                  <SlidersHorizontal className="h-4 w-4" />
-                </span>
-                <span className="flex flex-col items-start">
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground transition group-data-[state=open]:text-primary-foreground">Advanced</span>
-                  <span className="text-sm font-semibold text-foreground transition group-data-[state=open]:text-primary-foreground">Fine-tune planner</span>
-                </span>
-              </span>
-              <span className="ml-4 hidden text-xs text-muted-foreground transition group-data-[state=open]:text-primary-foreground sm:inline">
-                {advancedSummary}
-              </span>
-            </AccordionTrigger>
-            <AccordionContent className="rounded-b-xl border border-t-0 border-primary/20 bg-background/95 px-4 pb-5 pt-4 shadow-sm">
-              <div className="flex flex-col gap-3 text-xs text-muted-foreground sm:hidden">
-                <span className="font-semibold text-foreground">{advancedSummary}</span>
-              </div>
-              <div className="mt-2 grid gap-4 sm:grid-cols-2">
+        <Collapsible>
+          <div>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm">Advanced</Button>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Perturbation mix</label>
                   <Select value={libraryMixMode} onValueChange={(value) => setLibraryMixMode(value as 'random' | 'custom')}>
@@ -419,9 +392,9 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
                     }}
                   />
                 </div>
-              </div>
-              {libraryMixMode === 'random' ? (
-                <div className="mt-5 space-y-2 sm:max-w-xs">
+            </div>
+            {libraryMixMode === 'random' ? (
+              <div className="mt-4 space-y-2 sm:max-w-xs">
                   <label className="text-sm font-medium text-muted-foreground">Approximate library count</label>
                   <Input
                     type="number"
@@ -438,41 +411,40 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
                     }}
                   />
                   <p className="text-xs text-muted-foreground">Planner will aim for this many libraries (hard cap {MAX_TOTAL_LIBRARIES}), mixing types based on your prompt.</p>
-                </div>
-              ) : (
-                <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  {perturbationTypes.map((type) => (
-                    <div key={type} className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">{LIBRARY_LABELS[type]}</label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={MAX_TOTAL_LIBRARIES}
-                        value={customTypeCounts[type] ?? 0}
-                        onChange={(event) => {
-                          const next = Number.parseInt(event.target.value, 10);
-                          setCustomTypeCounts((prev) => {
-                            const clamped = Number.isNaN(next) ? 0 : Math.max(0, Math.min(MAX_TOTAL_LIBRARIES, Math.floor(next)));
-                            const nextCounts = {
-                              ...prev,
-                              [type]: clamped,
-                            };
-                            const total = Object.values(nextCounts).reduce((sum, value) => sum + Math.max(0, Math.floor(value ?? 0)), 0);
-                            if (total > MAX_TOTAL_LIBRARIES) {
-                              toast.error(`Limit of ${MAX_TOTAL_LIBRARIES} libraries reached. Reduce other counts first.`);
-                              return prev;
-                            }
-                            return nextCounts;
-                          });
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {perturbationTypes.map((type) => (
+                  <div key={type} className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">{LIBRARY_LABELS[type]}</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={MAX_TOTAL_LIBRARIES}
+                      value={customTypeCounts[type] ?? 0}
+                      onChange={(event) => {
+                        const next = Number.parseInt(event.target.value, 10);
+                        setCustomTypeCounts((prev) => {
+                          const clamped = Number.isNaN(next) ? 0 : Math.max(0, Math.min(MAX_TOTAL_LIBRARIES, Math.floor(next)));
+                          const nextCounts = {
+                            ...prev,
+                            [type]: clamped,
+                          };
+                          const total = Object.values(nextCounts).reduce((sum, value) => sum + Math.max(0, Math.floor(value ?? 0)), 0);
+                          if (total > MAX_TOTAL_LIBRARIES) {
+                            toast.error(`Limit of ${MAX_TOTAL_LIBRARIES} libraries reached. Reduce other counts first.`);
+                            return prev;
+                          }
+                          return nextCounts;
+                        });
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
         <div className="flex gap-2">
           <Button
             onClick={handlePlan}

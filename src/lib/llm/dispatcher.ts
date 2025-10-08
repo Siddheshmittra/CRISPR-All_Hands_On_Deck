@@ -106,7 +106,8 @@ function getColorForType(type: string): string {
     overexpression: 'bg-blue-100 text-blue-800',
     knockdown: 'bg-yellow-100 text-yellow-800',
     knockout: 'bg-red-100 text-red-800',
-    knockin: 'bg-green-100 text-green-800',
+    knockin: 'bg-knockin text-knockin-foreground',
+    synthetic: 'bg-knockin text-knockin-foreground',
   };
   return colors[type] || 'bg-gray-100 text-gray-800';
 }

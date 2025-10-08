@@ -52,8 +52,8 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
       value: 'knockin', 
       label: 'KI*', 
       icon: '→',
-      className: 'bg-[hsl(220,35%,65%)] hover:bg-[hsl(220,35%,55%)] text-white font-semibold',
-      outlineClassName: 'text-[hsl(220,35%,65%)] border-[hsl(220,35%,65%)] hover:bg-[hsl(220,35%,65%)]/20 hover:text-[hsl(220,35%,65%)] font-medium'
+      className: 'bg-[hsl(201,62%,65%)] hover:bg-[hsl(201,62%,55%)] text-white font-semibold',
+      outlineClassName: 'text-[hsl(201,62%,65%)] border-[hsl(201,62%,65%)] hover:bg-[hsl(201,62%,65%)]/20 hover:text-[hsl(201,62%,65%)] font-medium'
     },
   ]
 
@@ -369,7 +369,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
                             style={{
                               backgroundColor: selectedType === 'overexpression' ? 'hsl(66,70%,47%)' : 
                                             selectedType === 'knockout' ? 'hsl(13,95%,59%)' :
-                                            selectedType === 'knockdown' ? 'hsl(32,75%,49%)' : 'hsl(220,35%,65%)',
+                                            selectedType === 'knockdown' ? 'hsl(32,75%,49%)' : 'hsl(201,62%,65%)',
                               color: selectedType === 'knockout' || selectedType === 'knockdown' ? 'white' : 'hsl(0 0% 98%)'
                             }}
                           >

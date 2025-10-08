@@ -105,7 +105,7 @@ export const Header = () => {
                         if (i >= idxHandsStart && i < idxHandsEnd) cls = "text-[hsl(66,70%,47%)] dark:text-[hsl(66,70%,55%)] italic"
                         else if (i >= idxOnStart && i < idxOnEnd) cls = "text-[hsl(13,95%,59%)] dark:text-[hsl(13,95%,65%)] italic"
                         else if (i >= idxDeckStart && i < idxDeckEnd) cls = "text-[hsl(32,75%,49%)] dark:text-[hsl(32,75%,55%)] italic"
-                        else if (i === idxBang) cls = "text-[hsl(220,35%,65%)] dark:text-[hsl(220,35%,70%)] italic"
+                        else if (i === idxBang) cls = "text-[hsl(210,55%,55%)] dark:text-[hsl(210,55%,65%)] italic"
                         else if (i < idxPrefixEnd) cls = "text-foreground"
                         chars.push(<span key={i} className={cls}>{display[i]}</span>)
                       }
