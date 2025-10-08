@@ -91,7 +91,7 @@ export function EncodingSequence({ items, className }: EncodingSequenceProps) {
         return (
           <div key={key} className="flex items-center gap-3">
             {chip}
-            {!isLast && <span className="text-lg text-muted-foreground">→</span>}
+            {!isLast && <span className="font-mono text-lg text-muted-foreground">→</span>}
           </div>
         )
       })}
