@@ -1,4 +1,5 @@
 import React from "react"
+import RothDark from "@/lib/Rothlabdark.png"
 // ThemeToggle is globally floating; don't render in header
 
 const NUCLEOTIDES = ["A", "C", "G", "T"]
@@ -68,11 +69,19 @@ export const Header = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div>
-              <img 
-                src="/images/Roth.png" 
-                alt="Roth Lab Logo" 
+              {/* Light logo */}
+              <img
+                src="/images/Roth.png"
+                alt="Roth Lab Logo"
                 width={260}
-                className="object-contain"
+                className="object-contain block dark:hidden"
+              />
+              {/* Dark logo */}
+              <img
+                src={RothDark}
+                alt="Roth Lab Logo (Dark)"
+                width={260}
+                className="object-contain hidden dark:block"
               />
             </div>
             <div className="flex items-center gap-4">

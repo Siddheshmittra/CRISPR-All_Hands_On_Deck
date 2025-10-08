@@ -294,12 +294,17 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
         </div>
 
         {showSyntheticSelector && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 sm:p-6 z-50">
-            <SyntheticGeneSelector
-              onGeneSelect={handleSyntheticGeneSelect}
-              onCustomSequence={handleCustomSequence}
-              onClose={() => setShowSyntheticSelector(false)}
-            />
+          <div
+            className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 sm:p-6 z-50"
+            onClick={() => setShowSyntheticSelector(false)}
+          >
+            <div onClick={(e) => e.stopPropagation()}>
+              <SyntheticGeneSelector
+                onGeneSelect={handleSyntheticGeneSelect}
+                onCustomSequence={handleCustomSequence}
+                onClose={() => setShowSyntheticSelector(false)}
+              />
+            </div>
           </div>
         )}
 
