@@ -128,8 +128,7 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
   // No separate confirmation dialog now; the main form handles submission
 
   return (
-    <>
-      <Card className="p-6 w-full max-w-[90vw] sm:max-w-[820px] max-h-[85vh] overflow-y-auto">
+    <Card className="p-6 w-full max-w-[90vw] sm:max-w-[820px] max-h-[85vh] overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Select Synthetic Gene for Knock-in</h3>
         <Button variant="ghost" size="sm" onClick={onClose}>
@@ -431,6 +430,5 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
         </div>
       </div>
     </Card>
-    </>
   )
-} 
+}

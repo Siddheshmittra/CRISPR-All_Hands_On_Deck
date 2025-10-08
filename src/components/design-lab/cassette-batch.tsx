@@ -5,6 +5,7 @@ import { Trash2, Download, Edit3, Check, X, GripVertical, ScanBarcode, Loader2, 
 import { toast } from "sonner"
 import { Module, AnnotatedSegment } from "@/lib/types"
 import { SequenceViewer } from "./sequence-viewer"
+import { EncodingSequence } from "./encoding-sequence"
 import { generateGenbank } from "@/lib/genbank"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
@@ -565,13 +566,14 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
       <div className="space-y-4">
         {currentCassettes.map((cassette, index) => (
           <div key={cassette.id} className="p-4 bg-muted rounded-lg">
-            <div className="flex flex-col gap-2 mb-3">
-              <div className="flex items-center justify-between">
-                <div className="font-semibold">
-                  {cassette.modules.length > 0 
-                    ? cassette.modules.map(m => m.name || 'Unnamed').join(' + ')
-                    : `Construct ${index + 1}`
-                  }
+            <div className="flex flex-col gap-3 mb-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex-1 min-w-[220px]">
+                  {cassette.modules.length > 0 ? (
+                    <EncodingSequence items={cassette.modules} />
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Construct {index + 1}</span>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   {onUpdateCassette && (

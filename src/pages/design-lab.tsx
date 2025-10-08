@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/card"
 import { CassetteBatch } from "@/components/design-lab/cassette-batch"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { SimpleModuleSelector } from "@/components/design-lab/simple-module-selector"
+import { EncodingSequence } from "@/components/design-lab/encoding-sequence"
 // Removed standalone LibraryViewer import; now embedded inside MultiCassetteNatural
 import { Trash2 } from "lucide-react"
 import React from "react"
@@ -735,21 +736,10 @@ const DesignLab = () => {
 
                 {/* 3. Encoding box */}
                 {cassetteMode !== 'multi' && (
-                  <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <CodeHeading text="3. Encoding" className="text-xl font-bold text-gray-900 dark:text-white mb-2" />
+                  <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                    <CodeHeading text="3. Encoding" className="text-xl font-bold text-gray-900 dark:text-white" />
                     {constructWithLinkers.length > 0 ? (
-                      <p className="text-sm font-mono break-all">
-                        {constructWithLinkers.map((item: any) => {
-                          if (item.type === 'linker') return item.name
-                          const type = item.type as Module['type']
-                          const abbrev =
-                            type === 'overexpression' ? 'OE' :
-                            type === 'knockdown' ? 'KD' :
-                            type === 'knockout' ? 'KO' :
-                            type === 'knockin' ? 'KI' : type
-                          return `${item.name} (${abbrev})`
-                        }).join(' → ')}
-                      </p>
+                      <EncodingSequence items={constructWithLinkers} />
                     ) : (
                       <p className="text-sm text-muted-foreground">Add elements in Syntax to see the encoding string.</p>
                     )}
