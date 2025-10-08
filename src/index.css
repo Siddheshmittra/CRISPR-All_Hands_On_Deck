@@ -157,4 +157,65 @@ All colors MUST be HSL.
   .card h2, .card h3 {
     font-weight: 700; /* Bold card titles */
   }
+
+  .dark {
+    /* Dark mode color distribution */
+    --background: 222 47% 11%; /* #0f1419 - Dark background */
+    --foreground: 0 0% 95%; /* Light text */
+
+    --card: 222 47% 15%; /* #1a2028 - Dark cards */
+    --card-foreground: 0 0% 95%;
+
+    --popover: 222 47% 15%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 210 55% 55%; /* #6ab2d3 - Sky blue (more vibrant in dark) */
+    --primary-foreground: 0 0% 8%;
+    
+    --primary-light: 210 55% 65%; /* Lighter sky blue */
+    --primary-dark: 218 65% 45%; /* Brighter than light mode dark */
+
+    --secondary: 32 75% 55%; /* #db9c3d - Brighter orange for dark mode */
+    --secondary-foreground: 0 0% 8%;
+
+    --muted: 217 33% 17%; /* #1e2936 - Dark blue-gray */
+    --muted-foreground: 210 25% 70%;
+
+    --accent: 13 95% 65%; /* #fc7f5b - Brighter coral for visibility */
+    --accent-foreground: 0 0% 8%;
+
+    --destructive: 13 95% 65%; /* Brighter coral */
+    --destructive-foreground: 0 0% 8%;
+
+    --border: 217 33% 25%; /* #2a3847 - Subtle dark borders */
+    --input: 217 33% 17%; /* Dark inputs */
+    --ring: 210 55% 55%;
+
+    /* Dark mode gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(218 65% 45%), hsl(210 55% 65%));
+    --gradient-surface: linear-gradient(135deg, hsl(222 47% 15% / 0.95), hsl(217 33% 17% / 0.95));
+    
+    /* Dark mode shadows */
+    --shadow-module: 0 2px 8px hsl(0 0% 0% / 0.4);
+    --shadow-elevated: 0 20px 40px -12px hsl(0 0% 0% / 0.6);
+
+    --sidebar-background: 217 33% 17%; /* #1e2936 - Dark sidebar */
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 210 55% 55%; /* Sky blue */
+    --sidebar-primary-foreground: 0 0% 95%;
+    --sidebar-accent: 208 55% 45%; /* Darker blue accent */
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 217 33% 25%;
+    --sidebar-ring: 210 55% 55%;
+
+    /* Perturbation Type Colors - adjusted for dark mode visibility */
+    --overexpression: 66 70% 55%; /* Brighter lime green */
+    --overexpression-foreground: 0 0% 8%;
+    --knockout: 13 95% 65%; /* Brighter coral red */
+    --knockout-foreground: 0 0% 8%;
+    --knockdown: 32 75% 55%; /* Brighter orange */
+    --knockdown-foreground: 0 0% 8%;
+    --knockin: 220 35% 70%; /* Brighter periwinkle */
+    --knockin-foreground: 0 0% 8%;
+  }
 }

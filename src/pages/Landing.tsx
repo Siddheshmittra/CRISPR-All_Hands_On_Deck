@@ -1,6 +1,6 @@
 import React from "react"
-import { Link } from "react-router-dom"
 import { ChevronDown } from "lucide-react"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import Index from "./Index"
 
 const NUCLEOTIDES = ["A", "C", "G", "T"]
@@ -58,8 +58,13 @@ const Landing = () => {
   const designRef = React.useRef<HTMLDivElement | null>(null)
 
   return (
-    <div className="bg-white">
+    <div className="bg-background">
       <div className="min-h-screen grid place-items-center px-4 sm:px-6 lg:px-8 relative">
+        {/* Theme Toggle - Positioned at top right */}
+        <div className="absolute top-6 right-6 z-50">
+          <ThemeToggle />
+        </div>
+
         <div className="text-center">
           <div className="text-5xl sm:text-6xl font-extrabold tracking-tight">
             <span className="font-mono select-none">
@@ -76,12 +81,12 @@ const Landing = () => {
 
                 const result: JSX.Element[] = []
                 for (let i = 0; i < display.length; i++) {
-                  let cls = "text-gray-900"
-                  if (i >= idxHandsStart && i < idxHandsEnd) cls = "text-[hsl(66,70%,47%)] italic"
-                  else if (i >= idxOnStart && i < idxOnEnd) cls = "text-[hsl(13,95%,59%)] italic"
-                  else if (i >= idxDeckStart && i < idxDeckEnd) cls = "text-[hsl(32,75%,49%)] italic"
-                  else if (i === idxBang) cls = "text-[hsl(220,35%,65%)] italic"
-                  else if (i < idxPrefixEnd) cls = "text-gray-900"
+                  let cls = "text-foreground"
+                  if (i >= idxHandsStart && i < idxHandsEnd) cls = "text-[hsl(66,70%,47%)] dark:text-[hsl(66,70%,55%)] italic"
+                  else if (i >= idxOnStart && i < idxOnEnd) cls = "text-[hsl(13,95%,59%)] dark:text-[hsl(13,95%,65%)] italic"
+                  else if (i >= idxDeckStart && i < idxDeckEnd) cls = "text-[hsl(32,75%,49%)] dark:text-[hsl(32,75%,55%)] italic"
+                  else if (i === idxBang) cls = "text-[hsl(220,35%,65%)] dark:text-[hsl(220,35%,70%)] italic"
+                  else if (i < idxPrefixEnd) cls = "text-foreground"
                   result.push(
                     <span key={i} className={cls}>
                       {display[i]}
@@ -97,7 +102,7 @@ const Landing = () => {
         <button
          
           onClick={() => designRef.current?.scrollIntoView({ behavior: "smooth" })}
-          className="absolute bottom-8 inline-flex flex-col items-center text-gray-500 hover:text-gray-700 transition"
+          className="absolute bottom-8 inline-flex flex-col items-center text-muted-foreground hover:text-foreground transition"
         >
          
           <ChevronDown className="h-6 w-6 animate-bounce" />
