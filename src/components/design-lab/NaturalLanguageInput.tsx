@@ -18,7 +18,7 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [warnings, setWarnings] = useState<DispatchWarning[]>([]);
-  const [preview, setPreview] = useState<{action: string, target: string}[]>([]);
+  const [previewModules, setPreviewModules] = useState<Module[]>([]);
   const [showPreview, setShowPreview] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,13 +27,18 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
 
     setIsLoading(true);
     setWarnings([]);
+    setPreviewModules([]);
     
     try {
-      // First, parse the instructions
+      // Parse the instructions
       const instructions = await parseInstructions(input);
       
-      // Show preview of what will be created
-      setPreview(instructions.map(({ action, target }) => ({ action, target })));
+      // Immediately dispatch to get both modules and warnings
+      const { modules, warnings: editWarnings } = await dispatchEdits(instructions, { enforceTypeSource: true });
+      
+      // Store modules and warnings
+      setPreviewModules(modules);
+      setWarnings(editWarnings);
       setShowPreview(true);
       
     } catch (error) {
@@ -45,37 +50,22 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
   };
 
   const handleConfirm = async () => {
-    if (preview.length === 0) return;
-    
-    setIsLoading(true);
+    if (previewModules.length === 0) return;
     
     try {
-      // Convert preview back to instructions format
-      const instructions = preview.map(({ action, target }) => ({
-        action: action as any,
-        target,
-        description: `${action} ${target}`
-      }));
+      // Add all successful modules to the design
+      onModulesGenerated(previewModules);
       
-      // Dispatch the edits to create modules with strict source validation
-      const { modules, warnings: editWarnings } = await dispatchEdits(instructions, { enforceTypeSource: true });
-      
-      if (editWarnings.length > 0) {
-        setWarnings(editWarnings);
-      }
-      
-      if (modules.length > 0) {
-        onModulesGenerated(modules);
-        // Keep the input but hide preview
-        setPreview([]);
+      // Keep the preview open so users can still work with alternatives
+      // Clear the input only if there are no warnings
+      if (warnings.length === 0) {
+        setPreviewModules([]);
         setShowPreview(false);
       }
       
     } catch (error) {
-      console.error('Error generating modules:', error);
-      onError?.('Failed to generate modules. Please try again.');
-    } finally {
-      setIsLoading(false);
+      console.error('Error adding modules:', error);
+      onError?.('Failed to add modules. Please try again.');
     }
   };
 
@@ -96,20 +86,11 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
       const { modules, warnings: followupWarnings } = await dispatchEdits(instructions, { enforceTypeSource: true });
 
       if (modules.length > 0) {
-        onModulesGenerated(modules);
-        setPreview(prev => prev.map(item => {
-          if (
-            warning.originalTarget &&
-            item.action === action &&
-            item.target.trim().toUpperCase() === warning.originalTarget.trim().toUpperCase()
-          ) {
-            return { ...item, target: alternative };
-          }
-          return item;
-        }));
-        setShowPreview(true);
+        // Add the successful module to the preview
+        setPreviewModules(prev => [...prev, ...modules]);
       }
 
+      // Remove the current warning and add any new warnings
       setWarnings(prev => {
         const remaining = prev.filter((_, idx) => idx !== warningIndex);
         return followupWarnings.length > 0 ? [...remaining, ...followupWarnings] : remaining;
@@ -171,69 +152,59 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
 
       {showPreview && (
         <div className="space-y-4">
-          <div className="rounded-md border p-4">
-            <h4 className="mb-3 text-sm font-medium">Preview</h4>
-            {preview.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No directly actionable edits were detected from this prompt. If you want to try
-                more complex or multi‑gene requests, try the Multi‑Construct natural language mode.
-              </p>
-            ) : (
+          {previewModules.length > 0 && (
+            <div className="rounded-md border p-4">
+              <h4 className="mb-3 text-sm font-medium">Preview</h4>
               <ul className="space-y-2">
-                {preview.map((item, index) => (
+                {previewModules.map((module, index) => (
                   <li key={index} className="flex items-center justify-between">
                     <span className="capitalize">
-                      <span className="font-medium">{item.action}</span> <code>{item.target}</code>
+                      <span className="font-medium">{module.type}</span> <code>{module.name}</code>
                     </span>
                   </li>
                 ))}
               </ul>
-            )}
-          </div>
-          
-          <div className="flex justify-end">
-            <Button onClick={handleConfirm} disabled={isLoading || preview.length === 0}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                'Confirm & Add to Design'
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
+            </div>
+          )}
 
-      {warnings.length > 0 && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Warning</AlertTitle>
-          <AlertDescription className="space-y-4">
-            {warnings.map((warning, i) => (
-              <div key={i} className="space-y-2">
-                <p>{warning.message}</p>
-                {warning.alternatives && warning.alternatives.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">Try instead:</span>
-                    {warning.alternatives.map((alternative) => (
-                      <Button
-                        key={alternative}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSuggestionClick(i, alternative)}
-                        disabled={isLoading}
-                      >
-                        {formatActionLabel(warning.action)} {alternative}
-                      </Button>
-                    ))}
+          {warnings.length > 0 && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Warning</AlertTitle>
+              <AlertDescription className="space-y-4">
+                {warnings.map((warning, i) => (
+                  <div key={i} className="space-y-2">
+                    <p>{warning.message}</p>
+                    {warning.alternatives && warning.alternatives.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Try instead:</span>
+                        {warning.alternatives.map((alternative) => (
+                          <Button
+                            key={alternative}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSuggestionClick(i, alternative)}
+                            disabled={isLoading}
+                          >
+                            {formatActionLabel(warning.action)} {alternative}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
-          </AlertDescription>
-        </Alert>
+                ))}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {previewModules.length > 0 && (
+            <div className="flex justify-end">
+              <Button onClick={handleConfirm} disabled={isLoading}>
+                Confirm & Add to Design
+              </Button>
+            </div>
+          )}
+        </div>
       )}
       </div>
     </Card>
