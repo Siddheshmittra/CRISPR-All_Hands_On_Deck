@@ -226,6 +226,32 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   }
 
   // Handler for unified gene search component
+  const addModuleToSelectedFolder = (moduleId: string, forcedFolderId?: string | null) => {
+    const targetFolderId = forcedFolderId ?? selectedFolderId;
+    if (!targetFolderId || targetFolderId === 'total-library') return;
+
+    setFolders(prevFolders =>
+      prevFolders.map(folder => {
+        if (folder.id !== targetFolderId) return folder;
+        if (folder.modules.includes(moduleId)) return folder;
+        return { ...folder, modules: [...folder.modules, moduleId] };
+      })
+    );
+  };
+
+  const removeModuleFromFolder = (moduleId: string, forcedFolderId?: string | null) => {
+    const targetFolderId = forcedFolderId ?? selectedFolderId;
+    if (!targetFolderId || targetFolderId === 'total-library') return;
+
+    setFolders(prevFolders =>
+      prevFolders.map(folder => {
+        if (folder.id !== targetFolderId) return folder;
+        if (!folder.modules.includes(moduleId)) return folder;
+        return { ...folder, modules: folder.modules.filter(id => id !== moduleId) };
+      })
+    );
+  };
+
   const handleUnifiedModuleAdd = async (module: Module) => {
     try {
       // For knockin modules, show synthetic gene selector
@@ -237,6 +263,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       
       // Add module to the library
       onCustomModulesChange([...customModules, module])
+      addModuleToSelectedFolder(module.id)
       toast.success(`Added ${module.name} to library`)
     } catch (error) {
       console.error("Error adding module:", error)
@@ -248,6 +275,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     if (!selectedSuggestion || addingModule) return
     
     const geneId = selectedSuggestion.symbol
+    const targetFolderId = selectedFolderId
     setAddingModule(true)
     setIsLibraryLoading(true)
     setAddingGenes(prev => ({ ...prev, [geneId]: true }))
@@ -276,6 +304,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       // Add the module immediately with loading state (for optimistic UI updates)
       const nextCustomModules = [...customModules, newModule]
       onCustomModulesChange(nextCustomModules)
+      addModuleToSelectedFolder(newModule.id, targetFolderId)
 
       // Enrich the module in the background
       try {
@@ -294,6 +323,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         // Remove the optimistic module and warn the user when type-specific sequence is unavailable
         const cleanedModules = nextCustomModules.filter(m => m.id !== newModule.id)
         onCustomModulesChange(cleanedModules)
+        removeModuleFromFolder(newModule.id, targetFolderId)
 
         const baseMessage = error instanceof Error ? error.message : 'Sequence enrichment failed'
         const normalized = baseMessage.toLowerCase()
@@ -326,6 +356,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     }
     
     onCustomModulesChange([...customModules, newModule])
+    addModuleToSelectedFolder(newModule.id)
     setShowSyntheticSelector(false)
     setSelectedSuggestion(null)
     setSearchTerm("")
@@ -345,6 +376,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     }
     
     onCustomModulesChange([...customModules, newModule])
+    addModuleToSelectedFolder(newModule.id)
     setShowSyntheticSelector(false)
     setSelectedSuggestion(null)
     setSearchTerm("")
