@@ -173,6 +173,11 @@ export const UnifiedGeneSearch = ({
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex-1">
                     <div className="font-medium">{gene.symbol}</div>
+                    {gene.alternateNames && gene.alternateNames.length > 0 && (
+                      <div className="text-xs text-blue-600 dark:text-blue-400 mb-1 font-medium">
+                        Also known as: {gene.alternateNames.join(', ')}
+                      </div>
+                    )}
                     <div className="text-sm text-muted-foreground truncate">
                       {gene.description || 'No description available'}
                     </div>

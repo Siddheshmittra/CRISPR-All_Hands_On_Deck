@@ -40,6 +40,17 @@ const heuristicAlternatives: Record<string, string[]> = {
   P53: ['TP53'],
   PD1: ['PDCD1'],
   'PD-1': ['PDCD1'],
+  TNFRSF4: ['OX40', 'ACT35'],
+  OX40: ['TNFRSF4'],
+  ACT35: ['TNFRSF4'],
+  TNFRSF9: ['4-1BB', 'CD137'],
+  '4-1BB': ['TNFRSF9', 'CD137'],
+  CD137: ['TNFRSF9', '4-1BB'],
+  TNFRSF18: ['GITR', 'CD357'],
+  GITR: ['TNFRSF18', 'CD357'],
+  CD357: ['TNFRSF18', 'GITR'],
+  TNFRSF5: ['CD40'],
+  CD40: ['TNFRSF5'],
 };
 
 const ENSEMBL = 'https://rest.ensembl.org';
@@ -194,32 +205,74 @@ async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   return r.json() as Promise<T>;
 }
 
-export async function searchEnsembl(query: string): Promise<Array<{ symbol: string; description: string; sequence: string }>> {
+export async function searchEnsembl(query: string): Promise<Array<{ symbol: string; description: string; sequence: string; alternateNames: string[] }>> {
   if (query.length < 2) return [];
   
-  const searchHGNC = async (): Promise<Array<{ symbol: string; description: string; sequence: string }>> => {
+  const searchHGNC = async (): Promise<Array<{ symbol: string; description: string; sequence: string; alternateNames: string[] }>> => {
     try {
-      const response = await fetch(`https://rest.genenames.org/search/${encodeURIComponent(query)}`, {
+      // First try the search API to get basic results
+      const searchResponse = await fetch(`https://rest.genenames.org/search/${encodeURIComponent(query)}?rows=5`, {
         headers: { "Accept": "application/json" }
       });
       
-      if (!response.ok) throw new Error(`HGNC API responded with status ${response.status}`);
+      if (!searchResponse.ok) throw new Error(`HGNC search API responded with status ${searchResponse.status}`);
       
-      const data = await response.json();
-      const hits = data.response?.docs || [];
+      const searchData = await searchResponse.json();
+      const hits = searchData.response?.docs || [];
       
-      return hits.slice(0, 5).map((hit: any) => ({
-        symbol: hit.symbol,
-        description: hit.name || `Human gene ${hit.symbol}`,
-        sequence: ""
-      }));
+      // For each hit, fetch detailed information including aliases
+      const detailedResults = await Promise.all(
+        hits.slice(0, 5).map(async (hit: any) => {
+          try {
+            const fetchResponse = await fetch(`https://rest.genenames.org/fetch/symbol/${hit.symbol}`, {
+              headers: { "Accept": "application/json" }
+            });
+            
+            if (fetchResponse.ok) {
+              const fetchData = await fetchResponse.json();
+              const detailedHit = fetchData.response?.docs?.[0];
+              
+              if (detailedHit) {
+                return {
+                  symbol: detailedHit.symbol,
+                  description: detailedHit.name || `Human gene ${detailedHit.symbol}`,
+                  sequence: "",
+                  alternateNames: [
+                    ...(detailedHit.alias_symbol || []),
+                    ...(detailedHit.prev_symbol || []),
+                    ...(heuristicAlternatives[detailedHit.symbol] || [])
+                  ].filter((name: string) => name && name.trim() && name !== detailedHit.symbol)
+                };
+              }
+            }
+            
+            // Fallback to basic info if fetch fails
+            return {
+              symbol: hit.symbol,
+              description: hit.name || `Human gene ${hit.symbol}`,
+              sequence: "",
+              alternateNames: heuristicAlternatives[hit.symbol] || []
+            };
+          } catch (fetchError) {
+            console.warn(`Failed to fetch details for ${hit.symbol}:`, fetchError);
+            return {
+              symbol: hit.symbol,
+              description: hit.name || `Human gene ${hit.symbol}`,
+              sequence: "",
+              alternateNames: heuristicAlternatives[hit.symbol] || []
+            };
+          }
+        })
+      );
+      
+      return detailedResults;
     } catch (error) {
       console.warn('HGNC search failed, falling back to direct Ensembl search:', error);
       throw error; // This will trigger the fallback to Ensembl search
     }
   };
   
-  const searchDirectEnsembl = async (): Promise<Array<{ symbol: string; description: string; sequence: string }>> => {
+  const searchDirectEnsembl = async (): Promise<Array<{ symbol: string; description: string; sequence: string; alternateNames: string[] }>> => {
     try {
       const response = await fetch(
         `https://rest.ensembl.org/lookup/symbol/homo_sapiens/${encodeURIComponent(query)}?expand=1`,
@@ -239,7 +292,8 @@ export async function searchEnsembl(query: string): Promise<Array<{ symbol: stri
         return Object.values(data).slice(0, 5).map((gene: any) => ({
           symbol: gene.display_name,
           description: gene.description || `Human gene ${gene.display_name}`,
-          sequence: ""
+          sequence: "",
+          alternateNames: []
         }));
       }
       
@@ -247,7 +301,8 @@ export async function searchEnsembl(query: string): Promise<Array<{ symbol: stri
       return [{
         symbol: gene.display_name,
         description: gene.description || `Human gene ${gene.display_name}`,
-        sequence: ""
+        sequence: "",
+        alternateNames: []
       }];
     } catch (error) {
       console.error('Direct Ensembl search failed:', error);
