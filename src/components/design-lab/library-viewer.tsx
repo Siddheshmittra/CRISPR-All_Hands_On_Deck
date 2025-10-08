@@ -30,17 +30,17 @@ export function LibraryViewer({ folders, customModules, showTotal = false, embed
           const isOpen = openIds[folder.id] ?? true
           const mods = getModules(folder.id)
           return (
-            <div key={folder.id} className="rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div key={folder.id} className="rounded-lg border border-border bg-card shadow-sm">
               <div
-                className="flex items-center cursor-pointer px-3 py-2 select-none hover:bg-gray-50"
+                className="flex items-center cursor-pointer px-3 py-2 select-none hover:bg-muted/50"
                 onClick={() => setOpenIds(prev => ({ ...prev, [folder.id]: !isOpen }))}
               >
                 <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
-                <div className="font-semibold mr-2 truncate text-gray-800">{folder.name}</div>
+                <div className="font-semibold mr-2 truncate text-foreground">{folder.name}</div>
                 <Badge variant="secondary">{mods.length}</Badge>
               </div>
               {isOpen && (
-                <div className="flex flex-wrap gap-2 p-3 bg-gray-50/60 border-t border-gray-200 rounded-b-lg">
+                <div className="flex flex-wrap gap-2 p-3 bg-muted/60 border-t border-border rounded-b-lg">
                   {mods.length === 0 ? (
                     <div className="text-sm text-muted-foreground">No modules</div>
                   ) : (

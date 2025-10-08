@@ -1406,7 +1406,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                 <div ref={provided.innerRef} {...provided.droppableProps}>
                   {/* Ensure a dedicated Constants folder exists */}
                   {(!folders.some(f => f.id === CONSTANTS_FOLDER_ID)) && (
-                    <div className="mb-3 rounded-lg border border-gray-200 bg-white shadow-sm">
+                    <div className="mb-3 rounded-lg border border-border bg-card shadow-sm">
                       <div className="flex items-center px-3 py-2 select-none">
                         <span className="font-semibold">Constants</span>
                         <Badge variant="secondary" className="ml-2">0</Badge>
@@ -1420,11 +1420,11 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className={`mb-3 rounded-lg border border-gray-200 bg-white transition-all shadow-sm ${snapshot.isDragging ? 'shadow-lg' : ''}`}
+                          className={`mb-3 rounded-lg border border-border bg-card transition-all shadow-sm ${snapshot.isDragging ? 'shadow-lg' : ''}`}
                         >
                           <div
                             {...provided.dragHandleProps}
-                            className="flex items-center cursor-pointer px-3 py-2 select-none hover:bg-gray-50"
+                            className="flex items-center cursor-pointer px-3 py-2 select-none hover:bg-muted/50"
                             onClick={() => handleToggleFolder(folder.id)}
                           >
                             <ChevronDown className={`h-4 w-4 mr-1 transition-transform ${folder.open ? '' : '-rotate-90'}`} />
@@ -1483,7 +1483,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                                 <div
                                   ref={provided.innerRef}
                                   {...provided.droppableProps}
-                                  className={`flex flex-wrap gap-2 p-3 bg-gray-50/60 border-t border-gray-200 rounded-b-lg min-h-[56px] transition-all ${snapshot.isDraggingOver ? 'bg-primary/5 ring-1 ring-primary/20' : ''}`}
+                                  className={`flex flex-wrap gap-2 p-3 bg-muted/60 border-t border-border rounded-b-lg min-h-[56px] transition-all ${snapshot.isDraggingOver ? 'bg-primary/5 ring-1 ring-primary/20' : ''}`}
                                 >
                                   {customModules
                                     .filter(m => folder.modules.includes(m.id))
@@ -1524,11 +1524,11 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           </div>
 
           {!isLibraryLoading && importReport && importReport.issues.length > 0 && (
-            <aside className="w-full shrink-0 rounded-lg border border-gray-200 bg-white shadow-sm lg:w-72 xl:w-80">
+            <aside className="w-full shrink-0 rounded-lg border border-border bg-card shadow-sm lg:w-72 xl:w-80">
               <div className="p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">Import notes</p>
+                    <p className="text-sm font-semibold text-foreground">Import notes</p>
                     <p className="text-xs text-muted-foreground">
                       {importReport.folderName} • {importReport.errorCount} error{importReport.errorCount === 1 ? '' : 's'}, {importReport.warningCount} warning{importReport.warningCount === 1 ? '' : 's'} • {(importReport.durationMs / 1000).toFixed(importReport.durationMs > 2000 ? 1 : 2)}s
                     </p>
@@ -1578,9 +1578,9 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       {/* Library Conversion Dialog */}
       {convertingFolderId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+          <div className="bg-card p-6 rounded-lg shadow-lg max-w-md w-full mx-4 border border-border">
             <h3 className="text-lg font-semibold mb-4">Convert Library Type</h3>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Convert all modules in "{folders.find(f => f.id === convertingFolderId)?.name}" to:
             </p>
             <div className="space-y-2 mb-6">
@@ -1601,7 +1601,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             <div className="flex gap-2 justify-end">
               <button
                 onClick={handleCancelConversion}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                className="px-4 py-2 text-muted-foreground border border-border rounded hover:bg-muted/50"
               >
                 Cancel
               </button>

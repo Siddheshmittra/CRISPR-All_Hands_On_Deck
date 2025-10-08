@@ -1,4 +1,5 @@
 import React from "react"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 const NUCLEOTIDES = ["A", "C", "G", "T"]
 
@@ -62,8 +63,8 @@ export const Header = () => {
       {/* Sentinel used to detect when header becomes sticky */}
       <div ref={sentinelRef} aria-hidden className="h-px w-full" />
       <div className="w-full sticky top-0 z-50" ref={containerRef}>
-      {/* White top bar with logo */}
-      <div className="bg-white w-full py-6 px-8 border-b border-gray-200">
+      {/* Top bar with logo */}
+      <div className="bg-card w-full py-6 px-8 border-b border-border">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div>
@@ -75,9 +76,10 @@ export const Header = () => {
               />
             </div>
             <div className="flex items-center gap-4">
+              <ThemeToggle />
               {stuck && (
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-gray-900 font-mono select-none">
+                  <div className="text-3xl font-bold text-foreground font-mono select-none">
                     {(() => {
                       const full = title
                       const idxPrefixEnd = "CRISPR-All ".length
@@ -91,12 +93,12 @@ export const Header = () => {
 
                       const chars: JSX.Element[] = []
                       for (let i = 0; i < display.length; i++) {
-                        let cls = "text-gray-900"
-                        if (i >= idxHandsStart && i < idxHandsEnd) cls = "text-[hsl(66,70%,47%)] italic"
-                        else if (i >= idxOnStart && i < idxOnEnd) cls = "text-[hsl(13,95%,59%)] italic"
-                        else if (i >= idxDeckStart && i < idxDeckEnd) cls = "text-[hsl(32,75%,49%)] italic"
-                        else if (i === idxBang) cls = "text-[hsl(220,35%,65%)] italic"
-                        else if (i < idxPrefixEnd) cls = "text-gray-900"
+                        let cls = "text-foreground"
+                        if (i >= idxHandsStart && i < idxHandsEnd) cls = "text-[hsl(66,70%,47%)] dark:text-[hsl(66,70%,55%)] italic"
+                        else if (i >= idxOnStart && i < idxOnEnd) cls = "text-[hsl(13,95%,59%)] dark:text-[hsl(13,95%,65%)] italic"
+                        else if (i >= idxDeckStart && i < idxDeckEnd) cls = "text-[hsl(32,75%,49%)] dark:text-[hsl(32,75%,55%)] italic"
+                        else if (i === idxBang) cls = "text-[hsl(220,35%,65%)] dark:text-[hsl(220,35%,70%)] italic"
+                        else if (i < idxPrefixEnd) cls = "text-foreground"
                         chars.push(<span key={i} className={cls}>{display[i]}</span>)
                       }
                       return chars
