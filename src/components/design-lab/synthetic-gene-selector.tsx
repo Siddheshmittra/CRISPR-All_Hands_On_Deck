@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, X } from "lucide-react"
+import { Search, Plus, X, ChevronDown } from "lucide-react"
 import { searchSyntheticGenes, syntheticGeneCategories } from "@/lib/synthetic-genes"
 import { SyntheticGene } from "@/lib/types"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -40,6 +40,10 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
   const [add2ASequence, setAdd2ASequence] = useState(true)
   const [twoAType] = useState<keyof typeof TWO_A_SEQUENCES>('T2A')
   const [activeGeneId, setActiveGeneId] = useState<string | null>(null)
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>(() => (
+    Object.fromEntries(syntheticGeneCategories.map(category => [category.id, false]))
+  ))
+  const [expandedReferences, setExpandedReferences] = useState<Record<string, boolean>>({})
 
   const categoryOptions = [
     { id: 'all', label: 'All Types' },
@@ -92,6 +96,20 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
     } else {
       onGeneSelect(gene, { add2ASequence: false })
     }
+  }
+
+  const toggleCategory = (categoryId: string) => {
+    setCollapsedCategories(prev => ({
+      ...prev,
+      [categoryId]: !prev[categoryId],
+    }))
+  }
+
+  const toggleReferences = (geneId: string) => {
+    setExpandedReferences(prev => ({
+      ...prev,
+      [geneId]: !prev[geneId],
+    }))
   }
 
   // No separate confirmation dialog now; the main form handles submission
@@ -187,114 +205,167 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
               )}
             </div>
           ) : (
-            groupedGenes.map(group => (
-              <div key={group.category.id} className="space-y-3">
-                <div className="sticky top-0 z-10 bg-white/95 pb-1 backdrop-blur dark:bg-neutral-950/80">
-                  <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{group.category.label}</h4>
-                </div>
-                <div className="space-y-3">
-                  {group.genes.map(gene => (
-                    <Card
-                      key={gene.id}
-                      className={cn(
-                        "p-4 transition-all border cursor-pointer",
-                        activeGeneId === gene.id
-                          ? "border-primary/80 shadow-md bg-primary/5 dark:bg-primary/10"
-                          : "hover:border-primary/40 hover:shadow-sm"
-                      )}
-                      onClick={() => handleGeneSelect(gene)}
-                    >
-                      <div className="flex flex-col gap-3">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="space-y-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h5 className="text-base font-semibold leading-tight">{gene.name}</h5>
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "text-xs font-semibold capitalize",
-                                  TYPE_BADGE_STYLES[gene.category] ?? "bg-muted text-muted-foreground"
+            groupedGenes.map(group => {
+              const geneCount = group.genes.length
+              const isCollapsed = collapsedCategories[group.category.id] ?? false
+
+              return (
+                <div key={group.category.id} className="rounded-lg border border-muted bg-background/70 shadow-sm">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-3 rounded-t-lg bg-muted/50 px-4 py-3 text-left transition hover:bg-muted/70 dark:bg-muted/40"
+                    onClick={() => toggleCategory(group.category.id)}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-background text-xs font-semibold text-primary shadow-inner">
+                        {group.category.label.slice(0, 2).toUpperCase()}
+                      </span>
+                      {group.category.label}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[11px] uppercase tracking-wide">
+                        {geneCount} {geneCount === 1 ? 'template' : 'templates'}
+                      </Badge>
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 text-muted-foreground transition-transform",
+                          isCollapsed ? "-rotate-90" : "rotate-0"
+                        )}
+                      />
+                    </span>
+                  </button>
+
+                  {!isCollapsed && (
+                    <div className="space-y-3 border-t border-muted/60 px-4 py-4">
+                      {group.genes.map(gene => {
+                        const references = gene.references ?? []
+                        const referencesOpen = expandedReferences[gene.id] ?? false
+
+                        return (
+                          <Card
+                            key={gene.id}
+                            className={cn(
+                              "p-4 transition-all border cursor-pointer",
+                              activeGeneId === gene.id
+                                ? "border-primary/80 shadow-md bg-primary/5 dark:bg-primary/10"
+                                : "hover:border-primary/40 hover:shadow-sm"
+                            )}
+                            onClick={() => handleGeneSelect(gene)}
+                          >
+                            <div className="flex flex-col gap-3">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="space-y-2">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <h5 className="text-base font-semibold leading-tight">{gene.name}</h5>
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        "text-xs font-semibold capitalize",
+                                        TYPE_BADGE_STYLES[gene.category] ?? "bg-muted text-muted-foreground"
+                                      )}
+                                    >
+                                      {gene.knockinTypeLabel || gene.category}
+                                    </Badge>
+                                    {gene.sequenceLength && (
+                                      <Badge variant="outline" className="text-xs">
+                                        {gene.sequenceLength.toLocaleString()} bp
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {gene.description && (
+                                    <p className="text-sm text-muted-foreground leading-relaxed">
+                                      {gene.description}
+                                    </p>
+                                  )}
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    handleAddGeneToConstruct(gene)
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Add
+                                </Button>
+                              </div>
+
+                              <div className="grid gap-1 text-xs text-muted-foreground">
+                                {gene.sequenceDerivation && (
+                                  <div>
+                                    <span className="font-semibold text-foreground">Derivation:</span> {gene.sequenceDerivation}
+                                  </div>
                                 )}
-                              >
-                                {gene.knockinTypeLabel || gene.category}
-                              </Badge>
-                              {gene.sequenceLength && (
-                                <Badge variant="outline" className="text-xs">
-                                  {gene.sequenceLength.toLocaleString()} bp
-                                </Badge>
+                                {gene.notes && (
+                                  <div>
+                                    <span className="font-semibold text-foreground">Notes:</span> {gene.notes}
+                                  </div>
+                                )}
+                              </div>
+
+                              {gene.sequence && (
+                                <div className="text-xs text-muted-foreground">
+                                  <span className="font-semibold text-foreground">Sequence (first 60 bp):</span>
+                                  <div className="font-mono mt-1 break-all rounded-md bg-muted/50 px-3 py-2">
+                                    {gene.sequence.slice(0, 60)}{gene.sequence.length > 60 ? '…' : ''}
+                                  </div>
+                                </div>
+                              )}
+
+                              {references.length > 0 && (
+                                <div className="border-t border-dashed pt-3">
+                                  <button
+                                    type="button"
+                                    className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground transition hover:bg-muted/60"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      toggleReferences(gene.id)
+                                    }}
+                                  >
+                                    <span className="flex items-center gap-2">
+                                      References
+                                      <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                                        {references.length}
+                                      </Badge>
+                                    </span>
+                                    <ChevronDown
+                                      className={cn(
+                                        "h-4 w-4 transition-transform",
+                                        referencesOpen ? "rotate-0" : "-rotate-90"
+                                      )}
+                                    />
+                                  </button>
+                                  {referencesOpen && (
+                                    <div className="mt-2 flex flex-col gap-1">
+                                      {references.map((reference, index) => (
+                                        <a
+                                          key={`${gene.id}-ref-${index}`}
+                                          href={reference.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center gap-2 text-xs text-primary hover:underline"
+                                          onClick={(event) => event.stopPropagation()}
+                                        >
+                                          <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                                            {reference.source === 'patent' ? 'Patent' : 'PubMed'}
+                                          </Badge>
+                                          <span>{reference.raw}</span>
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               )}
                             </div>
-                            {gene.description && (
-                              <p className="text-sm text-muted-foreground leading-relaxed">
-                                {gene.description}
-                              </p>
-                            )}
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              handleAddGeneToConstruct(gene)
-                            }}
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Add
-                          </Button>
-                        </div>
-
-                        <div className="grid gap-1 text-xs text-muted-foreground">
-                          {gene.sequenceDerivation && (
-                            <div>
-                              <span className="font-semibold text-foreground">Derivation:</span> {gene.sequenceDerivation}
-                            </div>
-                          )}
-                          {gene.notes && (
-                            <div>
-                              <span className="font-semibold text-foreground">Notes:</span> {gene.notes}
-                            </div>
-                          )}
-                        </div>
-
-                        {gene.sequence && (
-                          <div className="text-xs text-muted-foreground">
-                            <span className="font-semibold text-foreground">Sequence (first 60 bp):</span>
-                            <div className="font-mono mt-1 break-all rounded-md bg-muted/50 px-3 py-2">
-                              {gene.sequence.slice(0, 60)}{gene.sequence.length > 60 ? '…' : ''}
-                            </div>
-                          </div>
-                        )}
-
-                        {gene.references && gene.references.length > 0 && (
-                          <div className="border-t border-dashed pt-3">
-                            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                              References
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              {gene.references.map((reference, index) => (
-                                <a
-                                  key={`${gene.id}-ref-${index}`}
-                                  href={reference.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 text-xs text-primary hover:underline"
-                                  onClick={(event) => event.stopPropagation()}
-                                >
-                                  <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-                                    {reference.source === 'patent' ? 'Patent' : 'PubMed'}
-                                  </Badge>
-                                  <span>{reference.raw}</span>
-                                </a>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </Card>
-                  ))}
+                          </Card>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       </div>
