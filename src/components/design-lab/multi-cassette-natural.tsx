@@ -329,7 +329,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <TypedHeading text="1. Desired Genetic Perturbations (Libraries)" className="text-xl font-bold text-gray-900 dark:text-white" />
+        <TypedHeading text="1. Desired Genetic Perturbations (Pooled)" className="text-xl font-bold text-gray-900 dark:text-white" />
         <Dialog open={showImporter} onOpenChange={setShowImporter}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">

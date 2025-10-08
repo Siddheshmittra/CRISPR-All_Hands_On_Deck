@@ -681,23 +681,47 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                     <option key={folder.id} value={folder.id}>{folder.name}</option>
                   ))}
                   {(() => {
+                    // Show all single modules that can be added as constants
+                    // First, show modules from constants folder
                     const constantsFolder = folders.find(f => f.id === 'constants-library');
-                    if (!constantsFolder) return null;
-                    return constantsFolder.modules.map((mid: string) => {
+                    const constantsModules = constantsFolder ? constantsFolder.modules.map((mid: string) => {
                       const mod = customModules.find(m => m.id === mid);
                       if (!mod) return null;
                       const virtualId = `const:${mod.id}`;
                       return <option key={virtualId} value={virtualId}>{`Constant: ${mod.name}`}</option>;
-                    });
+                    }) : [];
+                    
+                    // Then show all other single modules that aren't already in syntax
+                    const usedModuleIds = new Set(normalizedSyntax.filter(l => l.id.startsWith('const-lib-')).map(l => l.id.replace('const-lib-', '')));
+                    const otherModules = customModules
+                      .filter(mod => !usedModuleIds.has(mod.id) && !normalizedSyntax.some(l => l.id.startsWith('const-lib-') && l.id.endsWith(mod.id)))
+                      .map(mod => {
+                        const virtualId = `const:${mod.id}`;
+                        return <option key={virtualId} value={virtualId}>{`Constant: ${mod.name}`}</option>;
+                      });
+                    
+                    // Debug logging
+                    console.log('Available modules for constants:', customModules.map(m => ({ id: m.id, name: m.name })));
+                    console.log('Constants folder modules:', constantsFolder?.modules);
+                    console.log('Used module IDs:', Array.from(usedModuleIds));
+                    
+                    return [...constantsModules, ...otherModules];
                   })()}
                 </select>
                 <Button
                   size="sm"
                   onClick={() => {
+                    console.log('Add button clicked, selectedLibrary:', selectedLibrary);
                     if (selectedLibrary.startsWith('const:')) {
                       const moduleId = selectedLibrary.replace('const:', '');
+                      console.log('Adding constant, moduleId:', moduleId);
                       const mod = customModules.find(m => m.id === moduleId);
-                      if (!mod) return;
+                      console.log('Found module:', mod);
+                      if (!mod) {
+                        console.error('Module not found:', moduleId);
+                        toast.error('Module not found');
+                        return;
+                      }
                       const virtualLibId = `const-lib-${moduleId}`;
                       if (normalizedSyntax.some(l => l.id === virtualLibId)) {
                         toast.message('Constant already added.');
@@ -709,12 +733,14 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                         type: (mod.type as LibrarySyntax['type']) || 'overexpression',
                         mode: 'constant',
                       };
+                      console.log('Adding new constant item:', newItem);
                       const merged = [...normalizedSyntax, newItem];
                       const regrouped = [
                         ...merged.filter(entry => entry.mode === 'constant'),
                         ...merged.filter(entry => entry.mode !== 'constant'),
                       ];
                       onReorderLibraries(regrouped);
+                      toast.success(`Added ${mod.name} as constant`);
                       return;
                     }
                     onAddLibrary(selectedLibrary);
