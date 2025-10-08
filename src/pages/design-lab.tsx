@@ -439,7 +439,14 @@ const DesignLab = () => {
         )
         
         // Add the cloned module to customModules
-        const clonedModule = { ...moduleToClone, id: uniqueId }
+        const clonedModule: Module = {
+          ...moduleToClone,
+          id: uniqueId,
+          metadata: {
+            ...moduleToClone.metadata,
+            clonedFromModuleId: moduleToClone.id,
+          },
+        }
         setCustomModules(prev => [...prev, clonedModule])
         return
       }
@@ -567,20 +574,24 @@ const DesignLab = () => {
 
   // Ensure Total Library always exists and contains all modules
   React.useEffect(() => {
+    const baseModuleIds = customModules
+      .filter(module => !module.metadata?.clonedFromModuleId)
+      .map(module => module.id)
+
     setFolders(currentFolders => {
       const totalLibrary = currentFolders.find(f => f.id === 'total-library')
       if (!totalLibrary) {
         return [{
           id: 'total-library',
           name: 'Total Library',
-          modules: customModules.map(m => m.id),
+          modules: baseModuleIds,
           open: true
         }, ...currentFolders]
       }
-      // Update Total Library to include all modules
+      // Update Total Library to include only base modules
       return currentFolders.map(folder => 
         folder.id === 'total-library'
-          ? { ...folder, modules: customModules.map(m => m.id) }
+          ? { ...folder, modules: baseModuleIds }
           : folder
       )
     })

@@ -14,6 +14,7 @@ import type { SyntheticGene } from '@/lib/types';
 import { LibraryViewer } from '@/components/design-lab/library-viewer';
 import { TypedHeading } from '@/components/ui/typed-heading';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface MultiCassetteNaturalProps {
   folders: Array<{ id: string; name: string; modules: string[]; open?: boolean }>;
@@ -338,95 +339,102 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
             className="min-h-[100px]"
           />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">Perturbation mix</label>
-            <Select value={libraryMixMode} onValueChange={(value) => setLibraryMixMode(value as 'random' | 'custom')}>
-              <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Select mix" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="random">Let the planner mix perturbation types</SelectItem>
-                <SelectItem value="custom">Specify counts for each perturbation type</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">Genes per library (max {maxPerLibrary})</label>
-            <Input
-              type="number"
-              min={1}
-              max={maxPerLibrary}
-              value={genesPerLibrary}
-              onChange={(event) => {
-                const next = Number.parseInt(event.target.value, 10);
-                if (Number.isNaN(next)) {
-                  setGenesPerLibrary(1);
-                  return;
-                }
-                setGenesPerLibrary(Math.max(1, Math.min(maxPerLibrary, next)));
-              }}
-            />
-          </div>
-        </div>
-        {libraryMixMode === 'random' ? (
-          <div className="space-y-2 sm:max-w-xs">
-            <label className="text-sm font-medium text-muted-foreground">Approximate library count</label>
-            <Input
-              type="number"
-              min={1}
-              max={MAX_TOTAL_LIBRARIES}
-              value={randomLibraryCount}
-              onChange={(event) => {
-                const next = Number.parseInt(event.target.value, 10);
-                if (Number.isNaN(next)) {
-                  setRandomLibraryCount(1);
-                  return;
-                }
-                setRandomLibraryCount(Math.max(1, Math.min(MAX_TOTAL_LIBRARIES, next)));
-              }}
-            />
-            <p className="text-xs text-muted-foreground">Planner will aim for this many libraries (hard cap {MAX_TOTAL_LIBRARIES}), mixing types based on your prompt.</p>
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {perturbationTypes.map((type) => {
-              const labelMap: Record<LibraryPlanType, string> = {
-                overexpression: 'Overexpression libraries',
-                knockdown: 'Knockdown libraries',
-                knockout: 'Knockout libraries',
-                knockin: 'Knockin libraries',
-              };
-              return (
-                <div key={type} className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">{labelMap[type]}</label>
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="advanced">
+            <AccordionTrigger>Advanced</AccordionTrigger>
+            <AccordionContent>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Perturbation mix</label>
+                  <Select value={libraryMixMode} onValueChange={(value) => setLibraryMixMode(value as 'random' | 'custom')}>
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Select mix" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="random">Let the planner mix perturbation types</SelectItem>
+                      <SelectItem value="custom">Specify counts for each perturbation type</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Genes per library (max {maxPerLibrary})</label>
                   <Input
                     type="number"
-                    min={0}
-                    max={MAX_TOTAL_LIBRARIES}
-                    value={customTypeCounts[type] ?? 0}
+                    min={1}
+                    max={maxPerLibrary}
+                    value={genesPerLibrary}
                     onChange={(event) => {
                       const next = Number.parseInt(event.target.value, 10);
-                      setCustomTypeCounts((prev) => {
-                        const clamped = Number.isNaN(next) ? 0 : Math.max(0, Math.min(MAX_TOTAL_LIBRARIES, Math.floor(next)));
-                        const nextCounts = {
-                          ...prev,
-                          [type]: clamped,
-                        };
-                        const total = Object.values(nextCounts).reduce((sum, value) => sum + Math.max(0, Math.floor(value ?? 0)), 0);
-                        if (total > MAX_TOTAL_LIBRARIES) {
-                          toast.error(`Limit of ${MAX_TOTAL_LIBRARIES} libraries reached. Reduce other counts first.`);
-                          return prev;
-                        }
-                        return nextCounts;
-                      });
+                      if (Number.isNaN(next)) {
+                        setGenesPerLibrary(1);
+                        return;
+                      }
+                      setGenesPerLibrary(Math.max(1, Math.min(maxPerLibrary, next)));
                     }}
                   />
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+              {libraryMixMode === 'random' ? (
+                <div className="space-y-2 sm:max-w-xs mt-4">
+                  <label className="text-sm font-medium text-muted-foreground">Approximate library count</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={MAX_TOTAL_LIBRARIES}
+                    value={randomLibraryCount}
+                    onChange={(event) => {
+                      const next = Number.parseInt(event.target.value, 10);
+                      if (Number.isNaN(next)) {
+                        setRandomLibraryCount(1);
+                        return;
+                      }
+                      setRandomLibraryCount(Math.max(1, Math.min(MAX_TOTAL_LIBRARIES, next)));
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">Planner will aim for this many libraries (hard cap {MAX_TOTAL_LIBRARIES}), mixing types based on your prompt.</p>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mt-4">
+                  {perturbationTypes.map((type) => {
+                    const labelMap: Record<LibraryPlanType, string> = {
+                      overexpression: 'Overexpression libraries',
+                      knockdown: 'Knockdown libraries',
+                      knockout: 'Knockout libraries',
+                      knockin: 'Knockin libraries',
+                    };
+                    return (
+                      <div key={type} className="space-y-2">
+                        <label className="text-sm font-medium text-muted-foreground">{labelMap[type]}</label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={MAX_TOTAL_LIBRARIES}
+                          value={customTypeCounts[type] ?? 0}
+                          onChange={(event) => {
+                            const next = Number.parseInt(event.target.value, 10);
+                            setCustomTypeCounts((prev) => {
+                              const clamped = Number.isNaN(next) ? 0 : Math.max(0, Math.min(MAX_TOTAL_LIBRARIES, Math.floor(next)));
+                              const nextCounts = {
+                                ...prev,
+                                [type]: clamped,
+                              };
+                              const total = Object.values(nextCounts).reduce((sum, value) => sum + Math.max(0, Math.floor(value ?? 0)), 0);
+                              if (total > MAX_TOTAL_LIBRARIES) {
+                                toast.error(`Limit of ${MAX_TOTAL_LIBRARIES} libraries reached. Reduce other counts first.`);
+                                return prev;
+                              }
+                              return nextCounts;
+                            });
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
         <div className="flex gap-2">
           <Button
             onClick={handlePlan}

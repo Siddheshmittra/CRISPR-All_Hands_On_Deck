@@ -121,6 +121,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
   const eligibleLibraries = useMemo(() => {
     const CONSTANTS_FOLDER_ID = 'constants-library'
     const result = folders.filter(folder => {
+      if (folder.id === CONSTANTS_FOLDER_ID) return false
       if (folder.id !== 'total-library') return true
       const moduleObjs = (folder.modules || []).map((id: string) => customModules.find(m => m.id === id)).filter(Boolean)
       const uniqueTypes = new Set(moduleObjs.map((m: any) => m?.type))

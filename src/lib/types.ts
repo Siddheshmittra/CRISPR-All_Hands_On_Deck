@@ -8,6 +8,7 @@ export interface AnnotatedSegment {
 export interface ModuleMetadata {
   has2ASequence?: boolean;
   twoAType?: string;
+  clonedFromModuleId?: string;
 }
 
 export interface Module {
