@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, ArrowRight, X, GripVertical } from "lucide-react"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { toast } from "sonner"
@@ -550,6 +549,19 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     return '↑';
   };
 
+  const getTypeLabel = (type: LibrarySyntax['type']) => {
+    switch (type) {
+      case 'knockdown':
+        return 'Knockdown';
+      case 'knockout':
+        return 'Knockout';
+      case 'knockin':
+        return 'Knockin';
+      default:
+        return 'Overexpression';
+    }
+  };
+
   const renderSyntaxDraggable = (library: LibrarySyntax, index: number) => (
     <Draggable key={library.id} draggableId={library.id} index={index}>
       {(provided, snapshot) => (
@@ -577,25 +589,11 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                 {library.mode === 'constant' ? 'Constant' : 'Variable'} • {getFolderCount(library.id)} {getFolderCount(library.id) === 1 ? 'module' : 'modules'}
               </span>
             </div>
-            <Select
-              value={library.type}
-              onValueChange={(v) =>
-                onLibraryTypeChange(
-                  library.id,
-                  v as 'overexpression' | 'knockout' | 'knockdown' | 'knockin'
-                )
-              }
+            <span
+              className="text-xs font-semibold tracking-wide uppercase px-2.5 py-1 rounded-md border border-border/70 bg-background/70 text-foreground/90"
             >
-              <SelectTrigger className="h-7 w-[8.5rem] bg-background/60 text-foreground border-border">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="overexpression">Overexpression</SelectItem>
-                <SelectItem value="knockin">Knockin</SelectItem>
-                <SelectItem value="knockout">Knockout</SelectItem>
-                <SelectItem value="knockdown">Knockdown</SelectItem>
-              </SelectContent>
-            </Select>
+              {getTypeLabel(library.type)}
+            </span>
             <Button
               size="sm"
               variant="ghost"
@@ -681,8 +679,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                     <option key={folder.id} value={folder.id}>{folder.name}</option>
                   ))}
                   {(() => {
-                    // Show all single modules that can be added as constants
-                    // First, show modules from constants folder
+                    // Restrict constant selection to the dedicated constants folder
                     const constantsFolder = folders.find(f => f.id === 'constants-library');
                     const constantsModules = constantsFolder ? constantsFolder.modules.map((mid: string) => {
                       const mod = customModules.find(m => m.id === mid);
@@ -690,22 +687,11 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
                       const virtualId = `const:${mod.id}`;
                       return <option key={virtualId} value={virtualId}>{`Constant: ${mod.name}`}</option>;
                     }) : [];
-                    
-                    // Then show all other single modules that aren't already in syntax
-                    const usedModuleIds = new Set(normalizedSyntax.filter(l => l.id.startsWith('const-lib-')).map(l => l.id.replace('const-lib-', '')));
-                    const otherModules = customModules
-                      .filter(mod => !usedModuleIds.has(mod.id) && !normalizedSyntax.some(l => l.id.startsWith('const-lib-') && l.id.endsWith(mod.id)))
-                      .map(mod => {
-                        const virtualId = `const:${mod.id}`;
-                        return <option key={virtualId} value={virtualId}>{`Constant: ${mod.name}`}</option>;
-                      });
-                    
-                    // Debug logging
-                    console.log('Available modules for constants:', customModules.map(m => ({ id: m.id, name: m.name })));
+
+                    // Debug logging to help validate available constants
                     console.log('Constants folder modules:', constantsFolder?.modules);
-                    console.log('Used module IDs:', Array.from(usedModuleIds));
-                    
-                    return [...constantsModules, ...otherModules];
+
+                    return constantsModules;
                   })()}
                 </select>
                 <Button

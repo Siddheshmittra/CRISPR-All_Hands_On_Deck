@@ -403,7 +403,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
 
       // Build header: base, tokens (in syntax order), and final_sequence last
       // Include a dedicated barcode column (and optional index if available)
-      const baseHeader = ['cassette_id', 'barcode', 'barcode_index', 'modules', 'final_length']
+      const baseHeader = ['cassette_id', 'barcode', 'barcode_index', 'modules', 'gene_modules', 'final_length']
       const header: string[] = [...baseHeader]
       for (const token of orderedTokens) {
         if (token.kind === 'component') header.push(`${token.key}_${token.occurrence}_sequence`)
@@ -425,6 +425,10 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
         const segments = perCassetteSegments[idx]
         const finalSeq = segments.map(s => s.sequence).join('')
         const modulesStr = cassette.modules.map(m => `${m.name} [${m.type}]`).join(' + ')
+        const geneModulesStr = cassette.modules
+          .filter(m => m.type !== 'hardcoded')
+          .map(m => `${m.name} [${m.type}]`)
+          .join(' + ')
         // Parse barcode index when tagged as INDEX|SEQUENCE; keep sequence in barcode column
         let barcodeValue = cassette.barcode || ''
         let barcodeIndex = ''
@@ -460,6 +464,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
           esc(barcodeValue),
           esc(barcodeIndex),
           esc(modulesStr),
+          esc(geneModulesStr),
           String(finalSeq.length)
         ]
 

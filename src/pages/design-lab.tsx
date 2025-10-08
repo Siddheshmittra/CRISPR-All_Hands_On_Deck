@@ -30,6 +30,45 @@ import { CodeHeading } from "@/components/ui/code-heading"
 
 import { Module, LibrarySyntax, LibrarySyntaxMode, LibrarySyntaxAddOptions } from "@/lib/types"
 
+const reorderLibrarySyntax = (entries: LibrarySyntax[]): LibrarySyntax[] => {
+  const constants: LibrarySyntax[] = []
+  const geneLike: LibrarySyntax[] = []
+  const koKd: LibrarySyntax[] = []
+  const remainder: LibrarySyntax[] = []
+
+  for (const entry of entries) {
+    if (entry.mode === 'constant') {
+      constants.push(entry)
+    } else if (entry.type === 'overexpression' || entry.type === 'knockin') {
+      geneLike.push(entry)
+    } else if (entry.type === 'knockout' || entry.type === 'knockdown') {
+      koKd.push(entry)
+    } else {
+      remainder.push(entry)
+    }
+  }
+
+  return [...constants, ...geneLike, ...koKd, ...remainder]
+}
+
+const reorderModulesForSyntax = <T extends Module>(modules: T[]): T[] => {
+  const geneLike: T[] = []
+  const koKd: T[] = []
+  const remainder: T[] = []
+
+  for (const module of modules) {
+    if (module.type === 'overexpression' || module.type === 'knockin' || module.type === 'synthetic') {
+      geneLike.push(module)
+    } else if (module.type === 'knockout' || module.type === 'knockdown') {
+      koKd.push(module)
+    } else {
+      remainder.push(module)
+    }
+  }
+
+  return [...geneLike, ...koKd, ...remainder]
+}
+
 interface Cassette {
   id: string
   modules: Module[]
@@ -96,10 +135,11 @@ const DesignLab = () => {
     if (loaded) {
       setCustomModules((loaded.customModules as unknown as Module[]) || [])
       setFolders((loaded.folders as unknown as any[]) || [{ id: 'total-library', name: 'Total Library', modules: [], open: true }])
-      setLibrarySyntax(((loaded.librarySyntax as unknown as LibrarySyntax[]) || []).map(entry => ({
+      const hydratedSyntax = ((loaded.librarySyntax as unknown as LibrarySyntax[]) || []).map(entry => ({
         ...entry,
         mode: entry.mode ?? 'variable'
-      })))
+      }))
+      setLibrarySyntax(reorderLibrarySyntax(hydratedSyntax))
       setCassetteBatch((loaded.cassetteBatch as unknown as Cassette[]) || [])
       setCassetteMode(loaded.cassetteMode || 'single')
       setInputMode(loaded.inputMode || 'manual')
@@ -202,16 +242,16 @@ const DesignLab = () => {
       type: moduleType,
       mode: placement,
     }
-    setLibrarySyntax(prev => [...prev, newLibrary])
+    setLibrarySyntax(prev => reorderLibrarySyntax([...prev, newLibrary]))
   }
 
   const handleRemoveLibrary = (libraryId: string) => {
-    setLibrarySyntax(prev => prev.filter(l => l.id !== libraryId))
+    setLibrarySyntax(prev => reorderLibrarySyntax(prev.filter(l => l.id !== libraryId)))
   }
 
   const handleLibraryTypeChange = (libraryId: string, type: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => {
     // Update the library type in librarySyntax
-    setLibrarySyntax(prev => prev.map(l => l.id === libraryId ? { ...l, type } : l))
+    setLibrarySyntax(prev => reorderLibrarySyntax(prev.map(l => l.id === libraryId ? { ...l, type } : l)))
     
     // Find the library to get its modules
     const actualFolderId = libraryId.startsWith('lib:') ? libraryId.split(':')[1] : libraryId
@@ -229,7 +269,7 @@ const DesignLab = () => {
   }
 
   const handleReorderLibraries = (newOrder: LibrarySyntax[]) => {
-    setLibrarySyntax(newOrder);
+    setLibrarySyntax(reorderLibrarySyntax(newOrder));
   }
 
   const handleModuleSelect = async (module: Module) => {
@@ -245,11 +285,11 @@ const DesignLab = () => {
       // Only enrich if the module doesn't already have a sequence
       if (!newModule.sequence) {
         const enrichedModule = await enrichModuleWithSequence(newModule);
-        setSelectedModules(prev => [...prev, enrichedModule])
-        setConstructModules(prev => [...prev, enrichedModule])
+        setSelectedModules(prev => reorderModulesForSyntax([...prev, enrichedModule]))
+        setConstructModules(prev => reorderModulesForSyntax([...prev, enrichedModule]))
       } else {
-        setSelectedModules(prev => [...prev, newModule])
-        setConstructModules(prev => [...prev, newModule])
+        setSelectedModules(prev => reorderModulesForSyntax([...prev, newModule]))
+        setConstructModules(prev => reorderModulesForSyntax([...prev, newModule]))
       }
     } catch (error) {
       console.error('Failed to enrich module:', error);
@@ -258,13 +298,13 @@ const DesignLab = () => {
   }
 
   const handleModuleDeselect = (moduleId: string) => {
-    setSelectedModules(prev => prev.filter(m => m.id !== moduleId))
-    setConstructModules(prev => prev.filter(m => m.id !== moduleId))
+    setSelectedModules(prev => reorderModulesForSyntax(prev.filter(m => m.id !== moduleId)))
+    setConstructModules(prev => reorderModulesForSyntax(prev.filter(m => m.id !== moduleId)))
   }
 
   const handleModuleRemove = (moduleId: string) => {
-    setConstructModules(prev => prev.filter(m => m.id !== moduleId))
-    setSelectedModules(prev => prev.filter(m => m.id !== moduleId))
+    setConstructModules(prev => reorderModulesForSyntax(prev.filter(m => m.id !== moduleId)))
+    setSelectedModules(prev => reorderModulesForSyntax(prev.filter(m => m.id !== moduleId)))
   }
 
   const handleModuleClick = (module: Module) => {
@@ -276,9 +316,10 @@ const DesignLab = () => {
   }
 
   const handleAddCassette = (modules: Module[], barcode?: string) => {
+    const orderedModules = reorderModulesForSyntax(modules)
     const newCassette: Cassette = {
       id: `cassette-${randomUUID()}`,
-      modules: modules.map(module => ({
+      modules: orderedModules.map(module => ({
         ...module,
         id: `${module.id}-${randomUUID()}` // Ensure module IDs are also unique
       })),
@@ -292,11 +333,12 @@ const DesignLab = () => {
   }
 
   const handleUpdateCassette = (cassetteId: string, modules: Module[], barcode?: string) => {
+    const normalizedModules = reorderModulesForSyntax(modules)
     setCassetteBatch(prev => prev.map(cassette => 
       cassette.id === cassetteId 
         ? { 
             ...cassette, 
-            modules,
+            modules: normalizedModules,
             barcode: barcode?.trim() || cassette.barcode 
           }
         : cassette
@@ -381,7 +423,9 @@ const DesignLab = () => {
         }
       }
       
-      setConstructModules(items)
+      const normalized = reorderModulesForSyntax(items)
+      setConstructModules(normalized)
+      setSelectedModules(normalized)
       return
     }
 
@@ -399,8 +443,8 @@ const DesignLab = () => {
       // Create a unique ID for this instance
       const uniqueId = `${module.id}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
       const newModule = { ...module, id: uniqueId }
-      setConstructModules(prev => [...prev, newModule])
-      setSelectedModules(prev => [...prev, newModule])
+      setConstructModules(prev => reorderModulesForSyntax([...prev, newModule]))
+      setSelectedModules(prev => reorderModulesForSyntax([...prev, newModule]))
       return
     }
 
@@ -502,7 +546,7 @@ const DesignLab = () => {
       
       const newSyntax = Array.from(librarySyntax)
       newSyntax.splice(result.destination.index, 0, newLibraryItem)
-      setLibrarySyntax(newSyntax)
+      setLibrarySyntax(reorderLibrarySyntax(newSyntax))
       return
     }
 
@@ -546,7 +590,7 @@ const DesignLab = () => {
         const items = Array.from(librarySyntax)
         const [reorderedItem] = items.splice(sourceLibraryIndex, 1)
         items.splice(destLibraryIndex, 0, reorderedItem)
-        setLibrarySyntax(items)
+        setLibrarySyntax(reorderLibrarySyntax(items))
         return
       }
       
@@ -562,8 +606,9 @@ const DesignLab = () => {
     ) {
       const items = Array.from(constructModules)
       items.splice(result.source.index, 1)
-      setConstructModules(items)
-      setSelectedModules(items)
+      const normalized = reorderModulesForSyntax(items)
+      setConstructModules(normalized)
+      setSelectedModules(normalized)
     }
   }
 
