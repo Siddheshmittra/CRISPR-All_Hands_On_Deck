@@ -1261,7 +1261,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
         </div>
       )}
       <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-        <TypedHeading text="1. Desired Genetic Perturbations (Libraries)" className="text-xl font-bold text-gray-900 dark:text-white mb-4" />
+        <TypedHeading text="1. Desired Genetic Perturbations (Pooled)" className="text-xl font-bold text-gray-900 dark:text-white mb-4" />
 
       {/* Perturbation Type - button selector */}
       <div className="mb-5 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">

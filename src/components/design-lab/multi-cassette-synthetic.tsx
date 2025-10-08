@@ -185,7 +185,7 @@ export function MultiCassetteSynthetic(props: MultiCassetteSyntheticProps) {
 
   return (
     <Card className="p-6">
-      <TypedHeading text="1. Desired Genetic Perturbations (Libraries)" className="text-xl font-bold text-gray-900 dark:text-white mb-4" />
+      <TypedHeading text="1. Desired Genetic Perturbations (Pooled)" className="text-xl font-bold text-gray-900 dark:text-white mb-4" />
       
       <div className="space-y-4">
         {/* Synthetic Domains Management */}

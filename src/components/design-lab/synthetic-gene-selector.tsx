@@ -127,6 +127,26 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
 
   // No separate confirmation dialog now; the main form handles submission
 
+  const quickAddTemplates = ["BFP", "GFP", "mCherry", "RFP"]
+
+  const customSequenceSection = (
+    <div className="border rounded-lg p-4 bg-card">
+      <Label className="font-semibold">Custom Sequence</Label>
+      <Textarea
+        placeholder="Enter your custom synthetic gene sequence (DNA)..."
+        value={customSequence}
+        onChange={(e) => setCustomSequence(e.target.value)}
+        className="h-32 font-mono text-xs mt-2"
+      />
+      <div className="flex gap-2 mt-3">
+        <Button onClick={handleCustomSequenceSubmit} disabled={!customSequence.trim()}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Sequence
+        </Button>
+      </div>
+    </div>
+  )
+
   return (
     <Card className="p-6 w-full max-w-[90vw] sm:max-w-[820px] max-h-[85vh] overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
@@ -162,65 +182,26 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
           />
         </div>
 
-        {/* Quick Add Common Genes */
+        {/* Quick Add Common Genes */}
         <div className="space-y-2">
           <Label className="text-sm font-medium text-muted-foreground">Quick Add</Label>
           <div className="flex gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => loadTemplateByName("BFP")}
-              className="gap-1"
-            >
-              <Plus className="h-3 w-3" />
-              BFP
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => loadTemplateByName("GFP")}
-              className="gap-1"
-            >
-              <Plus className="h-3 w-3" />
-              GFP
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => loadTemplateByName("mCherry")}
-              className="gap-1"
-            >
-              <Plus className="h-3 w-3" />
-              mCherry
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => loadTemplateByName("RFP")}
-              className="gap-1"
-            >
-              <Plus className="h-3 w-3" />
-              RFP
-            </Button>
+            {quickAddTemplates.map(template => (
+              <Button
+                key={template}
+                variant="outline"
+                size="sm"
+                onClick={() => loadTemplateByName(template)}
+                className="gap-1"
+              >
+                <Plus className="h-3 w-3" />
+                {template}
+              </Button>
+            ))}
           </div>
         </div>
 
-        {/* Custom Sequence Input */}
-        <div className="border rounded-lg p-4 bg-card">
-          <Label className="font-semibold">Custom Sequence</Label>
-          <Textarea
-            placeholder="Enter your custom synthetic gene sequence (DNA)..."
-            value={customSequence}
-            onChange={(e) => setCustomSequence(e.target.value)}
-            className="h-32 font-mono text-xs mt-2"
-          />
-          <div className="flex gap-2 mt-3">
-            <Button onClick={handleCustomSequenceSubmit} disabled={!customSequence.trim()}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Sequence
-            </Button>
-          </div>
-        </div>
+        {customSequenceSection}
 
         {/* Search and Category Filter */}
         <div className="flex flex-col gap-3 pt-2 border-t">
