@@ -1,5 +1,5 @@
 import React from "react"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
+// ThemeToggle is globally floating; don't render in header
 
 const NUCLEOTIDES = ["A", "C", "G", "T"]
 
@@ -76,7 +76,6 @@ export const Header = () => {
               />
             </div>
             <div className="flex items-center gap-4">
-              <ThemeToggle />
               {stuck && (
                 <div className="text-right">
                   <div className="text-3xl font-bold text-foreground font-mono select-none">

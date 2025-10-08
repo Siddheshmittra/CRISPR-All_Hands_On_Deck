@@ -9,7 +9,7 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* ROTH-inspired Color Distribution - Blues dominant, oranges secondary */
-    --background: 35 35% 95%; /* #f6ede3 - Cream background */
+    --background: 0 0% 100%; /* Pure white background */
     --foreground: 0 0% 8%; /* Dark text for contrast */
 
     --card: 0 0% 100%; /* White cards */

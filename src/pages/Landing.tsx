@@ -1,6 +1,6 @@
 import React from "react"
 import { ChevronDown } from "lucide-react"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
+// Theme toggle floats globally; no local toggle here
 import Index from "./Index"
 
 const NUCLEOTIDES = ["A", "C", "G", "T"]
@@ -60,10 +60,7 @@ const Landing = () => {
   return (
     <div className="bg-background">
       <div className="min-h-screen grid place-items-center px-4 sm:px-6 lg:px-8 relative">
-        {/* Theme Toggle - Positioned at top right */}
-        <div className="absolute top-6 right-6 z-50">
-          <ThemeToggle />
-        </div>
+        {/* Theme toggle removed here (now global floating) */}
 
         <div className="text-center">
           <div className="text-5xl sm:text-6xl font-extrabold tracking-tight">
