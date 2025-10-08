@@ -13,9 +13,32 @@ interface RawKnockInEntry {
 
 const TYPE_CONFIG: Record<string, { id: string; label: string; order: number }> = {
   'Gene- Synthetic': { id: 'synthetic-gene', label: 'Synthetic Gene', order: 0 },
-  'CAR Specificity Domain': { id: 'car-specificity-domain', label: 'CAR Specificity Domain', order: 1 },
-  'CAR Signalling Domain': { id: 'car-signalling-domain', label: 'CAR Signalling Domain', order: 2 },
+  'CAR Specificity Domain': { id: 'car-specificity-domain', label: 'Specificity Domain', order: 1 },
+  'CAR Signalling Domain': { id: 'car-signalling-domain', label: 'Signalling Domain', order: 2 },
 }
+
+const REPORTER_CATEGORY = { id: 'reporter', label: 'Reporter', order: 3 }
+
+const REPORTER_TEMPLATES = [
+  {
+    name: 'GFP',
+    description: 'Enhanced green fluorescent protein reporter for tracking knock-in expression.',
+    sequence: `
+      ATGGTGAGCAAGGGCGAGGAGCTGTTCACCGGGGTGGTGCCCATCCTGGTCGAGCTGGACGGCGACGTAAACGGCCACAAGTTCAGCGTGTCCGGCGAGGGCGAGGGCGATGCCACCTACGGCAAGCTGACCCTGAAGTTCATCTGCACCACCGGCAAGCTGCCCGTGCCCTGGCCCACCCTCGTGACCACCCTGACCTACGGCGTGCAGTGCTTCAGCCGCTACCCCGACCACATGAAGCAGCACGACTTCTTCAAGTCCGCCATGCCCGAAGGCTACGTCCAGGAGCGCACCATCTTCTTCAAGGACGACGGCAACTACAAGACCCGCGCCGAGGTGAAGTTCGAGGGCGACACCCTGGTGAACCGCATCGAGCTGAAGGGCATCGACTTCAAGGAGGACGGCAACATCCTGGGGCACAAGCTGGAGTACAACTACAACAGCCACAACGTCTATATCATGGCCGACAAGCAGAAGAACGGCATCAAGGTGAACTTCAAGATCCGCCACAACATCGAGGACGGCAGCGTGCAGCTCGCCGACCACTACCAGCAGAACACCCCCATCGGCGACGGCCCCGTGCTGCTGCCCGACAACCACTACCTGAGCACCCAGTCCGCCCTGAGCAAAGACCCCAACGAGAAGCGCGATCACATGGTCCTGCTGGAGTTCGTGACCGCCGCCGGGATCACTCTCGGCATGGACGAGCTGTACAAG
+    `,
+    references: ['1994 - "Green fluorescent protein as a marker for gene expression"'],
+    notes: 'Human codon-optimized sequence without a stop codon so it can precede 2A linkers.',
+  },
+  {
+    name: 'RFP',
+    description: 'Monomeric red fluorescent protein reporter for multiplex assays.',
+    sequence: `
+      ATGGCCTCCTCCGAGGACGTCATCAAGGAGTTCATGCGCTTCAAGGTGCGCATGGAGGGCTCCGTGAACGGCCACGAGTTCGAGATCGAGGGCGAGGGCGAGGGCCGCCCCTACGAGGGCACCCAGACCGCCAAGCTGAAGGTGACCAAGGGCGGCCCCCTGCCCTTCGCCTGGGACATCCTGTCCCCTCAGTTCATGTACGGCTCCAAGGCCTACGTGAAGCACCCCGCCGACATCCCCGACTACTTGAAGCTGTCCTTCCCCGAGGGCTTCAAGTGGGAGCGCGTGATGAACTTCGAGGACGGCGGCGTGGTGACCGTGACCCAGGACTCCTCCCTGCAGGACGGCGAGTTCATCTACAAGGTGAAGCTGCGCGGCACCAACTTCCCCTCCGACGGCCCCGTAATGCAGAAGAAGACCATGGGCTGGGAGGCCTCCACCGAGCGGATGTACCCCGAGGACGGCGCCCTGAAGGGCGAGATCAAGCAGAGGCTGAAGCTGAAGGACGGCGGCCACTACGACGCCGAGGTCAAGACCACCTACAAGGCCAAGAAGCCCGTGCAGCTGCCCGGCGCCTACAACGTCAACATCAAGCTGGACATCACCTCCCACAACGAGGACTACACCATCGTGGAACAGTACGAGCGCGCCGAGGGCCGCCACTCCACCGGCGGC
+    `,
+    references: ['2002 - "Improved monomeric red, orange and yellow fluorescent proteins"'],
+    notes: 'Monomeric variant without terminal stop codon to remain in-frame with downstream elements.',
+  },
+]
 
 const slugify = (value: string, fallback: string): string => {
   const normalized = value
@@ -119,7 +142,30 @@ const toSyntheticGene = (entry: RawKnockInEntry, index: number): SyntheticGene =
 
 const knockInEntries = (rawKnockInLibrary as RawKnockInEntry[]).map(toSyntheticGene)
 
-export const syntheticGenes: SyntheticGene[] = knockInEntries.sort((a, b) => {
+const reporterEntries: SyntheticGene[] = REPORTER_TEMPLATES.map((template, index) => {
+  const cleanSequence = template.sequence.replace(/\s+/g, '').toUpperCase()
+  const references = (template.references ?? []).map(buildReference)
+  const baseId = slugify(template.name, `reporter-${index}`)
+
+  return {
+    id: `${REPORTER_CATEGORY.id}-${index}-${baseId}`,
+    name: template.name.trim(),
+    description: template.description?.trim() || `${template.name.trim()} reporter`,
+    sequence: cleanSequence,
+    category: REPORTER_CATEGORY.id,
+    tags: ['Reporter', 'knock-in'],
+    knockinType: 'Reporter',
+    knockinTypeLabel: REPORTER_CATEGORY.label,
+    knockinTypeOrder: REPORTER_CATEGORY.order,
+    sequenceLength: cleanSequence.length,
+    notes: template.notes?.trim(),
+    references,
+  }
+})
+
+const syntheticGeneEntries = [...knockInEntries, ...reporterEntries]
+
+export const syntheticGenes: SyntheticGene[] = syntheticGeneEntries.sort((a, b) => {
   if (a.knockinTypeOrder !== b.knockinTypeOrder) {
     return (a.knockinTypeOrder ?? 99) - (b.knockinTypeOrder ?? 99)
   }

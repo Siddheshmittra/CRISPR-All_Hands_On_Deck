@@ -10,7 +10,7 @@ const MODULE_COLORS = [
   "bg-[hsl(66,70%,70%)] text-white border-[hsl(66,70%,55%)]",
   "bg-[hsl(13,95%,65%)] text-white border-[hsl(13,95%,50%)]",
   "bg-[hsl(32,75%,60%)] text-white border-[hsl(32,75%,45%)]",
-  "bg-[hsl(220,35%,60%)] text-white border-[hsl(220,35%,45%)]",
+  "bg-[hsl(201,62%,65%)] text-white border-[hsl(201,62%,50%)]",
 ]
 
 type Offset = { x: number; y: number; rotate: number }
