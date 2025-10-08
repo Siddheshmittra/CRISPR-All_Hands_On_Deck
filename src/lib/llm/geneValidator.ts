@@ -11,6 +11,9 @@ const ALIAS_TO_OFFICIAL: Record<string, string> = {
   PD1: 'PDCD1',
   'PD-1': 'PDCD1',
   CD45RA: 'PTPRC', // isoform marker; canonical gene symbol
+  OX40: 'TNFRSF4',
+  '0X40': 'TNFRSF4',
+  'OX-40': 'TNFRSF4',
 };
 
 export function validateGenes(edits: { target: string }[]): {

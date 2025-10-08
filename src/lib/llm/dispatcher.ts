@@ -1,4 +1,4 @@
-import { EditInstruction } from './llmParser';
+import { EditInstruction, EditAction } from './llmParser';
 import { validateGenes } from './geneValidator';
 import { resolveGene, enrichModuleWithSequence, suggestGeneAlternatives } from '@/lib/ensembl';
 import { syntheticGenes } from '@/lib/synthetic-genes';
@@ -16,8 +16,45 @@ export function mapActionToModuleType(action: string): 'overexpression' | 'knock
   }
 }
 
+type TargetAlias = {
+  target: string;
+  action?: EditAction;
+};
+
+const TARGET_ALIAS_MAP: Record<string, TargetAlias> = {
+  '28Z': { target: 'CD28z', action: 'knockin' },
+  'CD28Z': { target: 'CD28z', action: 'knockin' },
+  'DEL28Z': { target: 'delCD28z', action: 'knockin' },
+  'DEL-CD28Z': { target: 'delCD28z', action: 'knockin' },
+  'DELCD28Z': { target: 'delCD28z', action: 'knockin' },
+  'OX40': { target: 'TNFRSF4', action: 'overexpress' },
+  '0X40': { target: 'TNFRSF4', action: 'overexpress' },
+};
+
+function resolveTargetAlias(rawTarget: string | undefined): TargetAlias | null {
+  if (!rawTarget) return null;
+  const trimmed = rawTarget.trim();
+  if (!trimmed) return null;
+
+  const directKey = trimmed.toUpperCase();
+  if (TARGET_ALIAS_MAP[directKey]) {
+    return TARGET_ALIAS_MAP[directKey];
+  }
+
+  const alphanumericKey = directKey.replace(/[^A-Z0-9]/g, '');
+  if (alphanumericKey && TARGET_ALIAS_MAP[alphanumericKey]) {
+    return TARGET_ALIAS_MAP[alphanumericKey];
+  }
+
+  return null;
+}
+
 export async function createModule(edit: EditInstruction): Promise<Module> {
-  let moduleType = mapActionToModuleType(edit.action);
+  const alias = resolveTargetAlias(edit.target);
+  const adjustedAction = alias?.action ?? edit.action;
+  const adjustedTarget = alias?.target ?? edit.target;
+
+  let moduleType = mapActionToModuleType(adjustedAction);
 
   // 2A peptide DNA sequences (same codon choices as manual mode)
   const TWO_A_SEQUENCES: Record<string, string> = {
@@ -29,7 +66,7 @@ export async function createModule(edit: EditInstruction): Promise<Module> {
   const DEFAULT_2A_TYPE = 'T2A';
 
   // First, check if the target corresponds to a known synthetic gene
-  const normalizedTarget = (edit.target || '').trim();
+  const normalizedTarget = (adjustedTarget || '').trim();
   const upper = normalizedTarget.toUpperCase();
   const syntheticHit = syntheticGenes.find(g => {
     const idMatch = g.id?.toUpperCase() === upper;
@@ -65,7 +102,7 @@ export async function createModule(edit: EditInstruction): Promise<Module> {
 
   // If LLM suggested knockin, decide between synthetic knock-in vs natural OE.
   if (moduleType === 'knockin') {
-    const targetUpper = (edit.target || '').trim().toUpperCase();
+    const targetUpper = normalizedTarget.toUpperCase();
     const syntheticHitForKnockin = syntheticGenes.find(g => {
       const nameMatch = g.name.toUpperCase() === targetUpper;
       // Also check for common variations (dash vs slash, spaces, etc.)
@@ -77,7 +114,7 @@ export async function createModule(edit: EditInstruction): Promise<Module> {
     if (!syntheticHitForKnockin) {
       // Natural gene → treat as overexpression (KI used colloquially)
       try {
-        await resolveGene(edit.target, 'homo_sapiens');
+        await resolveGene(adjustedTarget, 'homo_sapiens');
         moduleType = 'overexpression';
       } catch {
         // If not resolvable in Ensembl, leave as knockin so downstream can handle custom synthetic
@@ -91,7 +128,7 @@ export async function createModule(edit: EditInstruction): Promise<Module> {
         id: `generated-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: syntheticHitForKnockin.name,
         type: 'knockin',
-        description: edit.description || `knockin ${syntheticHitForKnockin.name}`,
+        description: edit.description || `${moduleType} ${syntheticHitForKnockin.name}`,
         sequence: finalSeq,
         isSynthetic: true,
         syntheticSequence: syntheticHitForKnockin.sequence,
@@ -106,9 +143,9 @@ export async function createModule(edit: EditInstruction): Promise<Module> {
 
   return {
     id: `generated-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    name: edit.target,
+    name: adjustedTarget,
     type: moduleType,
-    description: edit.description || `${moduleType} ${edit.target}`,
+    description: edit.description || `${moduleType} ${adjustedTarget}`,
     sequence: '', // Will be filled in later
     color: getColorForType(moduleType)
   };
