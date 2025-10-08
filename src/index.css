@@ -219,3 +219,18 @@ All colors MUST be HSL.
     --knockin-foreground: 0 0% 8%;
   }
 }
+
+@keyframes syntax-click {
+  0% {
+    transform: translateY(-18%) scale(0.88);
+  }
+  45% {
+    transform: translateY(12%) scale(1.05);
+  }
+  70% {
+    transform: translateY(-6%) scale(0.98);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
