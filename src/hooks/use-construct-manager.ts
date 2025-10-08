@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react'
 import { Module } from '@/lib/types'
-import { linkerOptions } from './use-linker-options'
 
 export type ConstructItem = Module | { id: string; type: 'linker'; name: string, sequence: string }
 
@@ -15,10 +14,8 @@ export function useConstructManager(initialModules: Module[] = []) {
       return constructModules
     }
 
-    // 1. Re-order so that KO/KD always come after OE/KI
-    const early = constructModules.filter(m => m.type === 'overexpression' || m.type === 'knockin')
-    const late  = constructModules.filter(m => m.type === 'knockout' || m.type === 'knockdown')
-    const ordered = [...early, ...late]
+    // Preserve user's explicit ordering; do NOT auto-reorder OE/KI vs OE/KI
+    const ordered = [...constructModules]
 
     // Helper to build linker items with stable-ish ids
     const createLinker = (base: string, idx: number, sequence = ""): ConstructItem => ({
@@ -27,9 +24,6 @@ export function useConstructManager(initialModules: Module[] = []) {
       name: base,
       sequence,
     })
-
-    // Default to T2A; other 2A options removed from UI
-    const t2aSeq = linkerOptions.find(l => l.id === 't2a')?.sequence ?? ""
 
     const result: ConstructItem[] = []
 

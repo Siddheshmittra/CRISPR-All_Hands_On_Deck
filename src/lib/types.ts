@@ -28,6 +28,12 @@ export interface Module {
   originalType?: "overexpression" | "knockout" | "knockdown" | "knockin" | "synthetic" | "hardcoded"; // Preserve original perturbation type when remapped by syntax
 }
 
+export interface SyntheticGeneReference {
+  raw: string;
+  url: string;
+  source: 'pubmed' | 'patent';
+}
+
 export interface SyntheticGene {
   id: string;
   name: string;
@@ -35,6 +41,13 @@ export interface SyntheticGene {
   sequence: string;
   category: string; // e.g., "fluorescent", "reporter", "therapeutic", "custom"
   tags: string[];
+  knockinType?: string;
+  knockinTypeLabel?: string;
+  knockinTypeOrder?: number;
+  sequenceLength?: number;
+  sequenceDerivation?: string;
+  notes?: string;
+  references?: SyntheticGeneReference[];
 }
 
 export interface Linker {

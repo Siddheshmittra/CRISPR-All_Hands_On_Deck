@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, X, Check, ChevronDown } from "lucide-react"
-import { searchSyntheticGenes, getSyntheticGenesByCategory, syntheticGenes } from "@/lib/synthetic-genes"
+import { Search, Plus, X } from "lucide-react"
+import { searchSyntheticGenes, syntheticGeneCategories } from "@/lib/synthetic-genes"
 import { SyntheticGene } from "@/lib/types"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { cn } from "@/lib/utils"
 
 // 2A self-cleaving peptide sequences
 const TWO_A_SEQUENCES = {
@@ -17,6 +18,12 @@ const TWO_A_SEQUENCES = {
   T2A: 'EGRGSLLTCGDVEENPGP',
   E2A: 'QCTNYALLKLAGDVESNPGP',
   F2A: 'VKQTLNFDLLKLAGDVESNPGP'
+}
+
+const TYPE_BADGE_STYLES: Record<string, string> = {
+  'synthetic-gene': 'bg-sky-100 text-sky-900 border-sky-200 dark:bg-sky-500/20 dark:text-sky-100 dark:border-sky-400/40',
+  'car-specificity-domain': 'bg-fuchsia-100 text-fuchsia-900 border-fuchsia-200 dark:bg-fuchsia-500/20 dark:text-fuchsia-100 dark:border-fuchsia-400/40',
+  'car-signalling-domain': 'bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-500/20 dark:text-amber-100 dark:border-amber-400/40',
 }
 
 interface SyntheticGeneSelectorProps {
@@ -29,25 +36,34 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [customSequence, setCustomSequence] = useState("")
-  const [showCustomInput, setShowCustomInput] = useState(false)
   const [sequenceName, setSequenceName] = useState("")
   const [add2ASequence, setAdd2ASequence] = useState(true)
   const [twoAType] = useState<keyof typeof TWO_A_SEQUENCES>('T2A')
+  const [activeGeneId, setActiveGeneId] = useState<string | null>(null)
 
-  const categories = [
-    { value: "all", label: "All Categories" },
-    { value: "fluorescent", label: "Fluorescent Proteins" },
-    { value: "reporter", label: "Reporter Genes" }
+  const categoryOptions = [
+    { id: 'all', label: 'All Types' },
+    ...syntheticGeneCategories.map(category => ({ id: category.id, label: category.label }))
   ]
 
-  const allGenes = searchSyntheticGenes(searchTerm).filter(g => g.category !== 'custom' && g.category !== 'placeholder')
-  const filteredGenes = selectedCategory === "all" 
-    ? allGenes
-    : getSyntheticGenesByCategory(selectedCategory).filter(gene => 
-        gene.category !== 'custom' &&
-        gene.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        gene.description.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+  const searchMatches = useMemo(() => searchSyntheticGenes(searchTerm), [searchTerm])
+
+  const groupedGenes = useMemo(() => {
+    const categoriesToDisplay = selectedCategory === 'all'
+      ? syntheticGeneCategories
+      : syntheticGeneCategories.filter(category => category.id === selectedCategory)
+
+    return categoriesToDisplay
+      .map(category => ({
+        category,
+        genes: searchMatches.filter(gene => gene.category === category.id)
+      }))
+      .filter(group => group.genes.length > 0)
+  }, [searchMatches, selectedCategory])
+
+  const totalMatches = groupedGenes.reduce((count, group) => count + group.genes.length, 0)
+
+  const selectedCategoryLabel = categoryOptions.find(option => option.id === selectedCategory)?.label ?? 'All Types'
 
   const handleCustomSequenceSubmit = () => {
     const sequence = customSequence.trim()
@@ -61,11 +77,21 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
     onCustomSequence(sequence, name, opts)
   }
 
-  // Clicking a gene populates the editor fields; final add still uses the custom submit
+  // Clicking a gene populates the editor fields and highlights it for quick edits
 
   const handleGeneSelect = (gene: SyntheticGene) => {
+    setActiveGeneId(gene.id)
     setSequenceName(gene.name)
     setCustomSequence(gene.sequence)
+  }
+
+  const handleAddGeneToConstruct = (gene: SyntheticGene) => {
+    handleGeneSelect(gene)
+    if (add2ASequence) {
+      onGeneSelect(gene, { add2ASequence: true, twoAType })
+    } else {
+      onGeneSelect(gene, { add2ASequence: false })
+    }
   }
 
   // No separate confirmation dialog now; the main form handles submission
@@ -119,57 +145,157 @@ export const SyntheticGeneSelector = ({ onGeneSelect, onCustomSequence, onClose 
         </div>
 
         {/* Search and Category Filter */}
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search synthetic genes..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search knock-in library..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                {categoryOptions.map(category => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map(category => (
-                <SelectItem key={category.value} value={category.value}>
-                  {category.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{totalMatches} {totalMatches === 1 ? 'match' : 'matches'}</span>
+            <span>Viewing {selectedCategoryLabel}</span>
+          </div>
         </div>
 
         {/* Gene List */}
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-2">
-          {filteredGenes.map(gene => (
-            <Card key={gene.id} className="p-4 hover:bg-muted/50 cursor-pointer" onClick={() => handleGeneSelect(gene)}>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold">{gene.name}</h4>
-                    <Badge variant="secondary" className="text-xs">{gene.category}</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">{gene.description}</p>
-                  <div className="flex flex-wrap gap-1">
-                    {gene.tags.map(tag => (
-                      <Badge key={tag} variant="outline" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-6 pr-1">
+          {groupedGenes.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+              <p className="font-medium">No knock-in templates found.</p>
+              {searchTerm && (
+                <p className="mt-1 text-xs text-muted-foreground/80">Try a different search term or clear the filter.</p>
+              )}
+            </div>
+          ) : (
+            groupedGenes.map(group => (
+              <div key={group.category.id} className="space-y-3">
+                <div className="sticky top-0 z-10 bg-white/95 pb-1 backdrop-blur dark:bg-neutral-950/80">
+                  <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{group.category.label}</h4>
                 </div>
-                <Button variant="ghost" size="sm">
-                  <Plus className="h-4 w-4" />
-                </Button>
+                <div className="space-y-3">
+                  {group.genes.map(gene => (
+                    <Card
+                      key={gene.id}
+                      className={cn(
+                        "p-4 transition-all border cursor-pointer",
+                        activeGeneId === gene.id
+                          ? "border-primary/80 shadow-md bg-primary/5 dark:bg-primary/10"
+                          : "hover:border-primary/40 hover:shadow-sm"
+                      )}
+                      onClick={() => handleGeneSelect(gene)}
+                    >
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h5 className="text-base font-semibold leading-tight">{gene.name}</h5>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-xs font-semibold capitalize",
+                                  TYPE_BADGE_STYLES[gene.category] ?? "bg-muted text-muted-foreground"
+                                )}
+                              >
+                                {gene.knockinTypeLabel || gene.category}
+                              </Badge>
+                              {gene.sequenceLength && (
+                                <Badge variant="outline" className="text-xs">
+                                  {gene.sequenceLength.toLocaleString()} bp
+                                </Badge>
+                              )}
+                            </div>
+                            {gene.description && (
+                              <p className="text-sm text-muted-foreground leading-relaxed">
+                                {gene.description}
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleAddGeneToConstruct(gene)
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add
+                          </Button>
+                        </div>
+
+                        <div className="grid gap-1 text-xs text-muted-foreground">
+                          {gene.sequenceDerivation && (
+                            <div>
+                              <span className="font-semibold text-foreground">Derivation:</span> {gene.sequenceDerivation}
+                            </div>
+                          )}
+                          {gene.notes && (
+                            <div>
+                              <span className="font-semibold text-foreground">Notes:</span> {gene.notes}
+                            </div>
+                          )}
+                        </div>
+
+                        {gene.sequence && (
+                          <div className="text-xs text-muted-foreground">
+                            <span className="font-semibold text-foreground">Sequence (first 60 bp):</span>
+                            <div className="font-mono mt-1 break-all rounded-md bg-muted/50 px-3 py-2">
+                              {gene.sequence.slice(0, 60)}{gene.sequence.length > 60 ? '…' : ''}
+                            </div>
+                          </div>
+                        )}
+
+                        {gene.references && gene.references.length > 0 && (
+                          <div className="border-t border-dashed pt-3">
+                            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                              References
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              {gene.references.map((reference, index) => (
+                                <a
+                                  key={`${gene.id}-ref-${index}`}
+                                  href={reference.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 text-xs text-primary hover:underline"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                                    {reference.source === 'patent' ? 'Patent' : 'PubMed'}
+                                  </Badge>
+                                  <span>{reference.raw}</span>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
               </div>
-            </Card>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </Card>
