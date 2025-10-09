@@ -161,6 +161,33 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
     return bcUpper + adjustedTail
   }
 
+  const integrateBarcodeWithAdapter = (barcodePlaceholder: string, adapterPlaceholder: string, bc?: string): { barcode: string, adapter: string } => {
+    if (!bc || !/^[ACGT]+$/i.test(bc)) {
+      return { 
+        barcode: barcodePlaceholder, 
+        adapter: adapterPlaceholder 
+      }
+    }
+    
+    const bcUpper = bc.toUpperCase()
+    const endsWithAGCG = bcUpper.endsWith('AGCG')
+    
+    // Remove AGCG from barcode if it ends with it
+    const cleanBarcode = endsWithAGCG ? bcUpper.slice(0, -4) : bcUpper
+    
+    // Replace N's in barcode placeholder with the clean barcode
+    const barcodeNMatch = barcodePlaceholder.match(/^N+/i)
+    const barcodeResult = barcodeNMatch 
+      ? cleanBarcode + barcodePlaceholder.slice(barcodeNMatch[0].length)
+      : barcodePlaceholder
+    
+    // Use adapter placeholder as-is (AGCG)
+    return {
+      barcode: barcodeResult,
+      adapter: adapterPlaceholder
+    }
+  }
+
   const generateAnnotatedSequence = async (rawModules: Module[], barcode?: string): Promise<AnnotatedSegment[]> => {
     // Apply library‐specific cassette syntax rules.
     // 1. Re-order so all OE/KI come before KO/KD
@@ -241,7 +268,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
         });
       } else if (firstKOIdx !== -1 && idx > firstKOIdx && (item.type === 'knockout' || item.type === 'knockdown')) {
         // Adaptor before subsequent KO/KD modules (after the first)
-        segments.push({ name: 'Adaptor', sequence: ADAPTOR_SEQUENCE, type: 'hardcoded' });
+        segments.push({ name: 'Adaptor (GTAA)', sequence: ADAPTOR_SEQUENCE, type: 'hardcoded' });
       }
 
       // Actual library module (single explicit perturbation annotation)
@@ -257,31 +284,43 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
         segments.push({ name: 'T2A', sequence: T2A_SEQUENCE, type: 'hardcoded' });
       }
 
-      // KI domain specific: add Internal Stuffer + Barcodes after each KI module
+      // KI domain specific: add Internal Stuffer + Barcodes + Barcode Adapter after each KI module
       if (item.type === 'knockin') {
         segments.push({
           name: 'Internal Stuffer',
           sequence: 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCG',
           type: 'hardcoded'
         });
+        const { barcode: barcodeSeq, adapter } = integrateBarcodeWithAdapter('NNNNNNNNNNN', 'AGCG', barcode);
         segments.push({
           name: 'Barcodes',
-          sequence: integrateBarcode('NNNNNNNNNNNAGCG', barcode),
+          sequence: barcodeSeq,
+          type: 'hardcoded'
+        });
+        segments.push({
+          name: 'Barcode Adapter',
+          sequence: adapter,
           type: 'hardcoded'
         });
       }
     }
 
-      // Rule 4 (modified): If no KI domain modules present, add global IS + BCs tail
+      // Rule 4 (modified): If no KI domain modules present, add global IS + BCs + Barcode Adapter tail
       if (!hasKnockinDomain && ordered.length > 0) {
         segments.push({
           name: 'Internal Stuffer',
           sequence: 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCG',
           type: 'hardcoded'
         });
+        const { barcode: barcodeSeq, adapter } = integrateBarcodeWithAdapter('NNNNNNNNNNN', 'AGCG', barcode);
         segments.push({
           name: 'Barcodes',
-          sequence: integrateBarcode('NNNNNNNNNNNAGCG', barcode),
+          sequence: barcodeSeq,
+          type: 'hardcoded'
+        });
+        segments.push({
+          name: 'Barcode Adapter',
+          sequence: adapter,
           type: 'hardcoded'
         });
       }
@@ -356,11 +395,12 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
           if (seg.name === 'STOP-Triplex-Adaptor') {
             expanded.push({ name: 'STOP', sequence: STOP_TAMPLEX_SEQUENCE, type: 'hardcoded' })
             expanded.push({ name: 'Triplex', sequence: TRIPLEX_SEQUENCE, type: 'hardcoded' })
-            expanded.push({ name: 'Adaptor', sequence: ADAPTOR_SEQUENCE, type: 'hardcoded' })
+            expanded.push({ name: 'Adaptor (GTAA)', sequence: ADAPTOR_SEQUENCE, type: 'hardcoded' })
           } else if (seg.name === 'Internal Stuffer-Barcode Array') {
-            // Split into Internal Stuffer + Barcodes
+            // Split into Internal Stuffer + Barcodes + Barcode Adapter
             expanded.push({ name: 'Internal Stuffer', sequence: 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCG', type: 'hardcoded' })
-            expanded.push({ name: 'Barcodes', sequence: 'NNNNNNNNNNNAGCG', type: 'hardcoded' })
+            expanded.push({ name: 'Barcodes', sequence: 'NNNNNNNNNNN', type: 'hardcoded' })
+            expanded.push({ name: 'Barcode Adapter', sequence: 'AGCG', type: 'hardcoded' })
           } else {
             expanded.push(seg)
           }

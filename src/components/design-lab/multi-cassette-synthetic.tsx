@@ -81,7 +81,7 @@ export function MultiCassetteSynthetic(props: MultiCassetteSyntheticProps) {
     const newModules: Module[] = [];
     const newFolders: Array<{ id: string; name: string; modules: string[]; open?: boolean }> = [];
     const totalLibraryIndex = folders.findIndex(f => f.id === 'total-library');
-    const totalLibrary = totalLibraryIndex >= 0 ? { ...folders[totalLibraryIndex] } : { id: 'total-library', name: 'Total Library', modules: [], open: true };
+    const totalLibrary = totalLibraryIndex >= 0 ? { ...folders[totalLibraryIndex] } : { id: 'total-library', name: 'Total Library', modules: [], open: false };
 
     for (const plan of plans) {
       const folderId = `lib-${slugify(plan.name)}-${uid()}`;
@@ -156,7 +156,7 @@ export function MultiCassetteSynthetic(props: MultiCassetteSyntheticProps) {
       }
 
       if (moduleIds.length > 0) {
-        newFolders.push({ id: folderId, name: plan.name, modules: moduleIds, open: true });
+        newFolders.push({ id: folderId, name: plan.name, modules: moduleIds, open: false });
       }
     }
 

@@ -69,6 +69,12 @@ const reorderModulesForSyntax = <T extends Module>(modules: T[]): T[] => {
   return [...geneLike, ...koKd, ...remainder]
 }
 
+const normalizeCassetteModules = <T extends Module>(modules: T[]): T[] => {
+  if (!modules || modules.length === 0) return []
+  const hasHardcoded = modules.some(module => module.type === 'hardcoded')
+  return hasHardcoded ? [...modules] : reorderModulesForSyntax(modules)
+}
+
 interface Cassette {
   id: string
   modules: Module[]
@@ -95,7 +101,7 @@ const DesignLab = () => {
     id: 'total-library',
     name: 'Total Library',
     modules: [],
-    open: true
+    open: false
   }])
   const [cassetteBatch, setCassetteBatch] = useState<Cassette[]>([])
   const [librarySyntax, setLibrarySyntax] = useState<LibrarySyntax[]>([])
@@ -134,7 +140,7 @@ const DesignLab = () => {
     const loaded = designLabSession.load()
     if (loaded) {
       setCustomModules((loaded.customModules as unknown as Module[]) || [])
-      setFolders((loaded.folders as unknown as any[]) || [{ id: 'total-library', name: 'Total Library', modules: [], open: true }])
+      setFolders((loaded.folders as unknown as any[]) || [{ id: 'total-library', name: 'Total Library', modules: [], open: false }])
       const hydratedSyntax = ((loaded.librarySyntax as unknown as LibrarySyntax[]) || []).map(entry => ({
         ...entry,
         mode: entry.mode ?? 'variable'
@@ -159,7 +165,7 @@ const DesignLab = () => {
       // Ensure Constants folder exists in loaded session
       setFolders(prev => {
         const hasConstants = (loaded.folders as any[]).some(f => f.id === CONSTANTS_FOLDER_ID)
-        return hasConstants ? (loaded.folders as any[]) : ([...((loaded.folders as any[]) || []), { id: CONSTANTS_FOLDER_ID, name: 'Constants', modules: [], open: true }])
+        return hasConstants ? (loaded.folders as any[]) : ([...((loaded.folders as any[]) || []), { id: CONSTANTS_FOLDER_ID, name: 'Constants', modules: [], open: false }])
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -328,7 +334,7 @@ const DesignLab = () => {
   }
 
   const handleAddCassette = (modules: Module[], barcode?: string) => {
-    const orderedModules = reorderModulesForSyntax(modules)
+    const orderedModules = normalizeCassetteModules(modules)
     const newCassette: Cassette = {
       id: `cassette-${randomUUID()}`,
       modules: orderedModules.map(module => ({
@@ -345,7 +351,7 @@ const DesignLab = () => {
   }
 
   const handleUpdateCassette = (cassetteId: string, modules: Module[], barcode?: string) => {
-    const normalizedModules = reorderModulesForSyntax(modules)
+    const normalizedModules = normalizeCassetteModules(modules)
     setCassetteBatch(prev => prev.map(cassette => 
       cassette.id === cassetteId 
         ? { 
@@ -688,7 +694,7 @@ const DesignLab = () => {
           id: 'total-library',
           name: 'Total Library',
           modules: baseModuleIds,
-          open: true
+          open: false
         }, ...currentFolders]
       }
       // Update Total Library to include only base modules

@@ -50,11 +50,11 @@ const HARDCODED_COMPONENTS = {
   },
   adaptor: {
     id: 'adaptor',
-    name: 'Adaptor',
+    name: 'Adaptor (GTAA)',
     type: 'hardcoded' as const,
     sequence: 'GTAA',
     color: 'bg-muted',
-    description: 'Adaptor sequence'
+    description: 'Adaptor sequence (GTAA)'
   },
   internalStuffer: {
     id: 'internal-stuffer',

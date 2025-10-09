@@ -39,6 +39,12 @@ export function useConstructManager(initialModules: Module[] = []) {
       // Insert STOP-Triplex-Adaptor immediately before first KO/KD (rule 3)
       if (idx === firstKOIdx && firstKOIdx !== -1) {
         result.push(createLinker('STOP-Triplex-Adaptor', idx, 'TGAgaattcgattcgtcagtagggttgtaaaggtttttcttttcctgagaaaacaaccttttgttttctcaggttttgctttttggcctttccctagctttaaaaaaaaaaaagcaaaactcaccgaggcagttccataggatggcaagatcctggtattggtctgcgaGTAA'))
+      } else if (
+        firstKOIdx !== -1 &&
+        idx > firstKOIdx &&
+        (mod.type === 'knockout' || mod.type === 'knockdown')
+      ) {
+        result.push(createLinker('Adaptor (GTAA)', idx, 'GTAA'))
       }
 
       // Actual module
@@ -53,9 +59,10 @@ export function useConstructManager(initialModules: Module[] = []) {
     })
 
     // Rule 4: always add Internal Stuffer-Barcode Array after the last module
-    // Split into Internal Stuffer + Barcodes to match updated hardcoded elements
+    // Split into Internal Stuffer + Barcodes + Barcode Adapter to match updated hardcoded elements
     result.push(createLinker('Internal Stuffer', ordered.length, 'GTAACGAGACCAGTATCAAGCCCGGGCAACAATGTGCGGACGGCGTTGGTCTCTAGCG'))
-    result.push(createLinker('Barcodes', ordered.length + 0.1, 'NNNNNNNNNNNAGCG'))
+    result.push(createLinker('Barcodes', ordered.length + 0.1, 'NNNNNNNNNNN'))
+    result.push(createLinker('Barcode Adapter', ordered.length + 0.2, 'AGCG'))
 
     // Rule 5: if the last module is KO/KD, add polyA after IS-BCs
     const lastModule = ordered[ordered.length - 1]

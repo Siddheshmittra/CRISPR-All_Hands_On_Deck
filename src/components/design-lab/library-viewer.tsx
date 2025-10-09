@@ -27,7 +27,7 @@ export function LibraryViewer({ folders, customModules, showTotal = false, embed
   const content = (
       <div className="space-y-3">
         {visibleFolders.map((folder) => {
-          const isOpen = openIds[folder.id] ?? true
+          const isOpen = openIds[folder.id] ?? false
           const mods = getModules(folder.id)
           return (
             <div key={folder.id} className="rounded-lg border border-border bg-card shadow-sm">

@@ -204,7 +204,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
       const newModules: Module[] = [];
       const newFolders: Array<{ id: string; name: string; modules: string[]; open?: boolean }> = [];
       const totalLibraryIndex = folders.findIndex(f => f.id === 'total-library');
-      const totalLibrary = totalLibraryIndex >= 0 ? { ...folders[totalLibraryIndex] } : { id: 'total-library', name: 'Total Library', modules: [], open: true };
+      const totalLibrary = totalLibraryIndex >= 0 ? { ...folders[totalLibraryIndex] } : { id: 'total-library', name: 'Total Library', modules: [], open: false };
 
       const skippedGenes: string[] = [];
       const warnings: string[] = [];
@@ -288,7 +288,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
 
         // Only create folder if it has modules
         if (moduleIds.length > 0) {
-          newFolders.push({ id: folderId, name: safeName, modules: moduleIds, open: true });
+          newFolders.push({ id: folderId, name: safeName, modules: moduleIds, open: false });
         }
       }
 

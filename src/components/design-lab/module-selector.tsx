@@ -125,7 +125,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     const newId = Date.now() + '-' + Math.random()
     setFolders([
       ...folders,
-      { id: newId, name: newFolderName.trim(), modules: [], open: true }
+      { id: newId, name: newFolderName.trim(), modules: [], open: false }
     ])
     setNewFolderName("")
     setActiveFolderId(newId)
@@ -1069,14 +1069,14 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             total.modules = [...total.modules, ...newModuleIds]
             updatedFolders[totalIdx] = total
           } else {
-            updatedFolders.unshift({ id: 'total-library', name: 'Total Library', modules: [...newModuleIds], open: true })
+            updatedFolders.unshift({ id: 'total-library', name: 'Total Library', modules: [...newModuleIds], open: false })
           }
 
           const newFolder = {
             id: `folder-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             name: folderName,
             modules: newModuleIds,
-            open: true
+            open: false
           }
 
           setFolders([...updatedFolders, newFolder])
@@ -1339,7 +1339,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                   const newId = Date.now() + '-' + Math.random()
                   setFolders([
                     ...folders,
-                    { id: newId, name, modules: [], open: true }
+                    { id: newId, name, modules: [], open: false }
                   ])
                   setNewFolderName('')
                   setSelectedFolderId(newId)
@@ -1360,7 +1360,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
                 const newId = Date.now() + '-' + Math.random()
                 setFolders([
                   ...folders,
-                  { id: newId, name, modules: [], open: true }
+                  { id: newId, name, modules: [], open: false }
                 ])
                 setNewFolderName('')
                 setSelectedFolderId(newId)
