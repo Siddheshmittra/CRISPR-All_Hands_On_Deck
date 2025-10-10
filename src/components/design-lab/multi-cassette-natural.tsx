@@ -168,16 +168,87 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
           })
         : [];
 
-      const cappedResult = normalizedPlans.slice(0, MAX_TOTAL_LIBRARIES);
+      // Enforce per-type gene caps and track if we truncate
+      const geneTrimNotices: string[] = [];
+      const trimmedPlans = normalizedPlans.map(plan => {
+        const overrideCap = sanitizedGeneOverrides[plan.type];
+        const cap = overrideCap ?? effectiveGenesPerLibrary;
+        const trimmedGenes = Array.isArray(plan.geneSymbols)
+          ? plan.geneSymbols.slice(0, cap)
+          : [];
+
+        if (overrideCap && trimmedGenes.length < plan.geneSymbols.length) {
+          geneTrimNotices.push(`${plan.name} (${LIBRARY_SHORT_LABELS[plan.type]}): trimmed to ${trimmedGenes.length}`);
+        }
+
+        return {
+          ...plan,
+          geneSymbols: trimmedGenes,
+        } satisfies PlannedLibrary;
+      });
+
+      let filteredPlans: PlannedLibrary[] = trimmedPlans;
+      const requestedCap = Math.min(requestedTotal, MAX_TOTAL_LIBRARIES);
+      let missingTypeMessages: string[] = [];
+
+      if (libraryMixMode === 'custom' && Object.keys(sanitizedCounts).length > 0) {
+        const countsRemaining: Record<LibraryPlanType, number> = {
+          overexpression: 0,
+          knockdown: 0,
+          knockout: 0,
+          knockin: 0,
+          ...sanitizedCounts,
+        };
+
+        const selected: PlannedLibrary[] = [];
+
+        for (const plan of trimmedPlans) {
+          const remaining = countsRemaining[plan.type] ?? 0;
+          if (remaining > 0) {
+            selected.push(plan);
+            countsRemaining[plan.type] = remaining - 1;
+          }
+        }
+
+        const unmet = (Object.entries(countsRemaining) as Array<[LibraryPlanType, number]>)
+          .filter(([, amount]) => amount > 0);
+
+        if (unmet.length > 0) {
+          missingTypeMessages = unmet.map(([type, amount]) => `${amount}× ${LIBRARY_LABELS[type]}`);
+        }
+
+        filteredPlans = selected.slice(0, requestedCap);
+      } else {
+        filteredPlans = trimmedPlans.slice(0, requestedCap);
+      }
+
+      if (missingTypeMessages.length > 0) {
+        toast.warning(`Missing requested libraries: ${missingTypeMessages.join(', ')}.`);
+      }
+
+      if (filteredPlans.length === 0) {
+        setPlans([]);
+        toast.message('No actionable libraries found from the prompt. Try being more specific about gene types or functions.');
+        return;
+      }
+
       if (normalizedPlans.length > MAX_TOTAL_LIBRARIES) {
         toast.warning(`Showing the first ${MAX_TOTAL_LIBRARIES} libraries (hard cap).`);
       }
-      setPlans(cappedResult);
-      if (cappedResult.length === 0) {
-        toast.message('No actionable libraries found from the prompt. Try being more specific about gene types or functions.');
-      } else {
-        toast.success(`Found ${cappedResult.length} library plan${cappedResult.length === 1 ? '' : 's'}`);
+
+      if (filteredPlans.length < requestedTotal) {
+        const requestedText = libraryMixMode === 'custom'
+          ? 'Requested mix not fully satisfied.'
+          : 'Planner returned fewer libraries than requested.';
+        toast.message(`${requestedText} Generated ${filteredPlans.length} of ${requestedTotal}.`);
       }
+
+      if (geneTrimNotices.length > 0) {
+        toast.message(`Applied per-type gene caps to ${geneTrimNotices.length} librar${geneTrimNotices.length === 1 ? 'y' : 'ies'}.`);
+      }
+
+      setPlans(filteredPlans);
+      toast.success(`Found ${filteredPlans.length} library plan${filteredPlans.length === 1 ? '' : 's'}`);
     } catch (e: any) {
       console.error('Library planning error:', e);
       toast.error(e?.message || 'Failed to plan libraries. Check your API configuration.');
