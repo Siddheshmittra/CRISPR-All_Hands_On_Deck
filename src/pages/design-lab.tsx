@@ -75,6 +75,8 @@ const normalizeCassetteModules = <T extends Module>(modules: T[]): T[] => {
   return hasHardcoded ? [...modules] : reorderModulesForSyntax(modules)
 }
 
+const MAX_SINGLE_CASSETTE_PERTURBATIONS = 5
+
 interface Cassette {
   id: string
   modules: Module[]
@@ -291,24 +293,37 @@ const DesignLab = () => {
   }
 
   const handleModuleSelect = async (module: Module) => {
-    if (constructModules.length >= 5) {
-      return // Max 5 modules
+    if (constructModules.length >= MAX_SINGLE_CASSETTE_PERTURBATIONS) {
+      toast.error(`You can only add up to ${MAX_SINGLE_CASSETTE_PERTURBATIONS} perturbations per construct.`)
+      return
     }
-    
+
     try {
       // Create a unique ID for this instance
       const uniqueId = `${module.id}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
       const newModule = { ...module, id: uniqueId }
       
       // Only enrich if the module doesn't already have a sequence
-      if (!newModule.sequence) {
-        const enrichedModule = await enrichModuleWithSequence(newModule);
-        setSelectedModules(prev => reorderModulesForSyntax([...prev, enrichedModule]))
-        setConstructModules(prev => reorderModulesForSyntax([...prev, enrichedModule]))
-      } else {
-        setSelectedModules(prev => reorderModulesForSyntax([...prev, newModule]))
-        setConstructModules(prev => reorderModulesForSyntax([...prev, newModule]))
+      const enrichedModule = newModule.sequence
+        ? newModule
+        : await enrichModuleWithSequence(newModule)
+
+      let added = false
+
+      setConstructModules(prev => {
+        if (prev.length >= MAX_SINGLE_CASSETTE_PERTURBATIONS) {
+          return prev
+        }
+        added = true
+        return reorderModulesForSyntax([...prev, enrichedModule])
+      })
+
+      if (!added) {
+        toast.error(`You can only add up to ${MAX_SINGLE_CASSETTE_PERTURBATIONS} perturbations per construct.`)
+        return
       }
+
+      setSelectedModules(prev => reorderModulesForSyntax([...prev, enrichedModule]))
     } catch (error) {
       console.error('Failed to enrich module:', error);
       toast.error(`Failed to add module: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -721,9 +736,16 @@ const DesignLab = () => {
           {inputMode === 'natural' && cassetteMode === 'single' && (
             <NaturalLanguageInput
               onModulesGenerated={async (modules) => {
-                // Enrich and add each module similarly to manual selection
-                for (const m of modules) {
+                const availableSlots = Math.max(0, MAX_SINGLE_CASSETTE_PERTURBATIONS - constructModules.length)
+                const modulesToAdd = modules.slice(0, availableSlots)
+                const skipped = modules.length - modulesToAdd.length
+
+                for (const m of modulesToAdd) {
                   await handleModuleSelect(m)
+                }
+
+                if (skipped > 0) {
+                  toast.error(`Only ${MAX_SINGLE_CASSETTE_PERTURBATIONS} perturbations are allowed per construct. Skipped ${skipped} ${skipped === 1 ? 'perturbation' : 'perturbations'}.`)
                 }
               }}
               onError={(err) => toast.error(err)}
