@@ -25,6 +25,7 @@ const TYPE_BADGE_STYLES: Record<string, string> = {
   'synthetic-gene': 'bg-knockin/80 text-knockin-foreground border-knockin/40 dark:bg-knockin/40 dark:text-knockin-foreground dark:border-knockin/40',
   'car-specificity-domain': 'bg-fuchsia-100 text-fuchsia-900 border-fuchsia-200 dark:bg-fuchsia-500/20 dark:text-fuchsia-100 dark:border-fuchsia-400/40',
   'car-signalling-domain': 'bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-500/20 dark:text-amber-100 dark:border-amber-400/40',
+  car: 'bg-emerald-100 text-emerald-900 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-100 dark:border-emerald-400/40',
   reporter: 'bg-sky-100 text-sky-900 border-sky-200 dark:bg-sky-500/20 dark:text-sky-100 dark:border-sky-400/40',
 }
 

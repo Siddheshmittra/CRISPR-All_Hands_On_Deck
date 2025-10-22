@@ -15,6 +15,7 @@ const TYPE_CONFIG: Record<string, { id: string; label: string; order: number }> 
   'Gene- Synthetic': { id: 'synthetic-gene', label: 'Synthetic Gene', order: 0 },
   'CAR Specificity Domain': { id: 'car-specificity-domain', label: 'Specificity Domain', order: 1 },
   'CAR Signalling Domain': { id: 'car-signalling-domain', label: 'Signalling Domain', order: 2 },
+  CAR: { id: 'car', label: 'CAR', order: 3 },
 }
 
 const REPORTER_CATEGORY = { id: 'reporter', label: 'Reporter', order: -1 }
@@ -141,13 +142,30 @@ const toSyntheticGene = (entry: RawKnockInEntry, index: number): SyntheticGene =
   const id = `${typeInfo.id}-${index}-${baseId}`
   const displayName = entry.Name.trim()
 
+  const tagSet = new Set<string>([typeInfo.label, 'knock-in'])
+  if (entry.Type) tagSet.add(entry.Type)
+  if (sequenceDerivation) tagSet.add(sequenceDerivation)
+  if (notes) {
+    tagSet.add(notes)
+    notes.split(/[^A-Za-z0-9]+/).forEach(token => {
+      if (token.length > 1) {
+        tagSet.add(token)
+      }
+    })
+  }
+  displayName.split(/[^A-Za-z0-9]+/).forEach(token => {
+    if (token.length > 1) {
+      tagSet.add(token)
+    }
+  })
+
   return {
     id,
     name: displayName,
     description: descriptionParts.join(' • ') || `${typeInfo.label} knock-in`,
     sequence: cleanSequence,
     category: typeInfo.id,
-    tags: Array.from(new Set([typeInfo.label, 'knock-in'])),
+    tags: Array.from(tagSet),
     knockinType: entry.Type,
     knockinTypeLabel: typeInfo.label,
     knockinTypeOrder: typeInfo.order,
