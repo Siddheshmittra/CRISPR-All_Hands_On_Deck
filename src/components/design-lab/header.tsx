@@ -64,61 +64,72 @@ export const Header = () => {
       {/* Sentinel used to detect when header becomes sticky */}
       <div ref={sentinelRef} aria-hidden className="h-px w-full" />
       <div className="w-full sticky top-0 z-50" ref={containerRef}>
-      {/* Top bar with logo */}
-      <div className="bg-card w-full py-6 px-8 border-b border-border">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div>
-              {/* Light logo */}
-              <img
-                src="/images/Roth.png"
-                alt="Roth Lab Logo"
-                width={260}
-                className="object-contain block dark:hidden"
-              />
-              {/* Dark logo */}
-              <img
-                src={RothDark}
-                alt="Roth Lab Logo (Dark)"
-                width={260}
-                className="object-contain hidden dark:block"
-              />
-            </div>
-            <div className="flex items-center gap-4">
-              {stuck && (
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-foreground font-mono select-none">
-                    {(() => {
-                      const full = title
-                      const idxPrefixEnd = "CRISPR-All ".length
-                      const idxHandsStart = full.indexOf("Hands")
-                      const idxHandsEnd = idxHandsStart >= 0 ? idxHandsStart + "Hands".length : -1
-                      const idxOnStart = full.indexOf("On", idxHandsEnd >= 0 ? idxHandsEnd : 0)
-                      const idxOnEnd = idxOnStart >= 0 ? idxOnStart + "On".length : -1
-                      const deckTarget = full.includes("Deck") ? "Deck" : full.includes("Studio") ? "Studio" : ""
-                      const idxDeckStart = deckTarget ? full.indexOf(deckTarget, idxOnEnd >= 0 ? idxOnEnd : 0) : -1
-                      const idxDeckEnd = idxDeckStart >= 0 ? idxDeckStart + deckTarget.length : -1
-                      const idxBang = full.indexOf("!", idxDeckEnd >= 0 ? idxDeckEnd : 0)
+        {/* Top bar with logo */}
+        <div className="bg-card w-full py-6 px-8 border-b border-border">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                {/* Light logo */}
+                <img
+                  src="/images/Roth.png"
+                  alt="Roth Lab Logo"
+                  width={260}
+                  className="object-contain block dark:hidden"
+                />
+                {/* Dark logo */}
+                <img
+                  src={RothDark}
+                  alt="Roth Lab Logo (Dark)"
+                  width={260}
+                  className="object-contain hidden dark:block"
+                />
+              </div>
+              <div className="flex items-center gap-4">
+                {stuck && (
+                  <div className="text-right">
+                    <div className="text-4xl font-bold text-foreground font-mono select-none">
+                      {(() => {
+                        const full = title
+                        const idxPrefixEnd = "CRISPR-All ".length
+                        const idxStudioStart = full.indexOf("Studio")
+                        const paletteByIndex = new Map<number, string>()
 
-                      const chars: JSX.Element[] = []
-                      for (let i = 0; i < display.length; i++) {
-                        let cls = "text-foreground"
-                        if (idxHandsStart >= 0 && i >= idxHandsStart && i < idxHandsEnd) cls = "text-[hsl(66,70%,47%)] dark:text-[hsl(66,70%,55%)] italic"
-                        else if (idxOnStart >= 0 && i >= idxOnStart && i < idxOnEnd) cls = "text-[hsl(13,95%,59%)] dark:text-[hsl(13,95%,65%)] italic"
-                        else if (idxDeckStart >= 0 && i >= idxDeckStart && i < idxDeckEnd) cls = "text-[hsl(32,75%,49%)] dark:text-[hsl(32,75%,55%)] italic"
-                        else if (idxBang >= 0 && i === idxBang) cls = "text-[hsl(210,55%,55%)] dark:text-[hsl(210,55%,65%)] italic"
-                        else if (i < idxPrefixEnd) cls = "text-foreground"
-                        chars.push(<span key={i} className={cls}>{display[i]}</span>)
-                      }
-                      return chars
-                    })()}
+                        const studioPalette = [
+                          "text-[hsl(66,70%,47%)] dark:text-[hsl(66,70%,58%)] italic", // Overexpression green
+                          "text-[hsl(13,95%,59%)] dark:text-[hsl(13,95%,66%)] italic", // Knockout coral
+                          "text-[hsl(32,75%,49%)] dark:text-[hsl(32,75%,56%)] italic", // Knockdown amber
+                          "text-[hsl(201,62%,55%)] dark:text-[hsl(201,62%,65%)] italic", // Knock-in teal
+                          "text-[hsl(66,70%,52%)] dark:text-[hsl(66,70%,62%)] italic", // Bright overexpression accent
+                          "text-[hsl(32,75%,57%)] dark:text-[hsl(32,75%,65%)] italic" // Bright knockdown accent
+                        ]
+
+                        if (idxStudioStart >= 0) {
+                          studioPalette.forEach((cls, offset) => {
+                            paletteByIndex.set(idxStudioStart + offset, cls)
+                          })
+                        }
+
+                        const idxBang = full.indexOf("!", idxStudioStart >= 0 ? idxStudioStart : 0)
+                        if (idxBang >= 0) {
+                          paletteByIndex.set(idxBang, "text-[hsl(210,55%,55%)] dark:text-[hsl(210,55%,65%)] italic")
+                        }
+
+                        const chars: JSX.Element[] = []
+                        for (let i = 0; i < display.length; i++) {
+                          let cls = "text-foreground"
+                          if (paletteByIndex.has(i)) cls = paletteByIndex.get(i)!
+                          else if (i < idxPrefixEnd) cls = "text-foreground"
+                          chars.push(<span key={i} className={cls}>{display[i]}</span>)
+                        }
+                        return chars
+                      })()}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
       </div>
     </>
   )
