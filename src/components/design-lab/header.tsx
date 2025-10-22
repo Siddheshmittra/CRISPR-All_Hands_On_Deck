@@ -56,7 +56,7 @@ export const Header = () => {
     return () => io.disconnect()
   }, [])
 
-  const title = "CRISPR-All Hands On Deck!"
+  const title = "CRISPR-All Studio!"
   const display = useNucleotideScramble(title, 45, stuck)
 
   return (
@@ -92,20 +92,21 @@ export const Header = () => {
                       const full = title
                       const idxPrefixEnd = "CRISPR-All ".length
                       const idxHandsStart = full.indexOf("Hands")
-                      const idxHandsEnd = idxHandsStart + "Hands".length
-                      const idxOnStart = full.indexOf("On", idxHandsEnd)
-                      const idxOnEnd = idxOnStart + "On".length
-                      const idxDeckStart = full.indexOf("Deck", idxOnEnd)
-                      const idxDeckEnd = idxDeckStart + "Deck".length
-                      const idxBang = full.indexOf("!", idxDeckEnd)
+                      const idxHandsEnd = idxHandsStart >= 0 ? idxHandsStart + "Hands".length : -1
+                      const idxOnStart = full.indexOf("On", idxHandsEnd >= 0 ? idxHandsEnd : 0)
+                      const idxOnEnd = idxOnStart >= 0 ? idxOnStart + "On".length : -1
+                      const deckTarget = full.includes("Deck") ? "Deck" : full.includes("Studio") ? "Studio" : ""
+                      const idxDeckStart = deckTarget ? full.indexOf(deckTarget, idxOnEnd >= 0 ? idxOnEnd : 0) : -1
+                      const idxDeckEnd = idxDeckStart >= 0 ? idxDeckStart + deckTarget.length : -1
+                      const idxBang = full.indexOf("!", idxDeckEnd >= 0 ? idxDeckEnd : 0)
 
                       const chars: JSX.Element[] = []
                       for (let i = 0; i < display.length; i++) {
                         let cls = "text-foreground"
-                        if (i >= idxHandsStart && i < idxHandsEnd) cls = "text-[hsl(66,70%,47%)] dark:text-[hsl(66,70%,55%)] italic"
-                        else if (i >= idxOnStart && i < idxOnEnd) cls = "text-[hsl(13,95%,59%)] dark:text-[hsl(13,95%,65%)] italic"
-                        else if (i >= idxDeckStart && i < idxDeckEnd) cls = "text-[hsl(32,75%,49%)] dark:text-[hsl(32,75%,55%)] italic"
-                        else if (i === idxBang) cls = "text-[hsl(210,55%,55%)] dark:text-[hsl(210,55%,65%)] italic"
+                        if (idxHandsStart >= 0 && i >= idxHandsStart && i < idxHandsEnd) cls = "text-[hsl(66,70%,47%)] dark:text-[hsl(66,70%,55%)] italic"
+                        else if (idxOnStart >= 0 && i >= idxOnStart && i < idxOnEnd) cls = "text-[hsl(13,95%,59%)] dark:text-[hsl(13,95%,65%)] italic"
+                        else if (idxDeckStart >= 0 && i >= idxDeckStart && i < idxDeckEnd) cls = "text-[hsl(32,75%,49%)] dark:text-[hsl(32,75%,55%)] italic"
+                        else if (idxBang >= 0 && i === idxBang) cls = "text-[hsl(210,55%,55%)] dark:text-[hsl(210,55%,65%)] italic"
                         else if (i < idxPrefixEnd) cls = "text-foreground"
                         chars.push(<span key={i} className={cls}>{display[i]}</span>)
                       }
