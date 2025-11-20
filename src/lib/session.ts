@@ -120,7 +120,7 @@ const ModuleSchema = z.object({
   sequence: z.string().optional(),
   gene_id: z.string().optional(),
   ensemblGeneId: z.string().optional(),
-  sequenceSource: z.enum(["ensembl_grch38", "ensembl_grch37", "shRNA.json", "gRNA.json"]).optional(),
+  sequenceSource: z.enum(["ensembl_grch38", "ensembl_grch37", "shRNA.json", "gRNA.json", "GeneData_CDS_Only.json"]).optional(),
   isSynthetic: z.boolean().optional(),
   syntheticSequence: z.string().optional(),
   color: z.string().optional(),
@@ -187,4 +187,3 @@ export const designLabSession = createSessionStorage<DesignLabSession>({
     }
   }
 });
-

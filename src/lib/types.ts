@@ -19,7 +19,7 @@ export interface Module {
   sequence?: string;
   gene_id?: string;
   ensemblGeneId?: string; // Store the Ensembl gene ID
-  sequenceSource?: 'ensembl_grch38' | 'ensembl_grch37' | 'shRNA.json' | 'gRNA.json';
+  sequenceSource?: 'ensembl_grch38' | 'ensembl_grch37' | 'shRNA.json' | 'gRNA.json' | 'GeneData_CDS_Only.json';
   isSynthetic?: boolean; // Flag for synthetic genes
   syntheticSequence?: string; // Custom synthetic sequence for knockins
   color?: string; // Optional color for UI

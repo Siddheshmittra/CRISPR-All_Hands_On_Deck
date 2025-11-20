@@ -45,7 +45,7 @@ export const LibraryManager = ({ customModules, onCustomModulesChange, construct
               type: z.enum(["overexpression", "knockout", "knockdown", "knockin", "synthetic"]).catch("overexpression"),
               description: z.string().optional(),
               sequence: z.string().optional(),
-              sequenceSource: z.enum(['ensembl_grch38', 'ensembl_grch37', 'shRNA.json', 'gRNA.json']).optional(),
+              sequenceSource: z.enum(['ensembl_grch38', 'ensembl_grch37', 'shRNA.json', 'gRNA.json', 'GeneData_CDS_Only.json']).optional(),
               isSynthetic: z.boolean().optional(),
               syntheticSequence: z.string().optional(),
             })

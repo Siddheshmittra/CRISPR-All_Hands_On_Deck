@@ -70,6 +70,14 @@ export const ModuleContextMenu: React.FC<ModuleContextMenuProps> = ({
         return `https://www.ensembl.org/Multi/Search/Results?q=${encodeURIComponent(module.name)};site=ensembl`
       }
     }
+    if (module.sequenceSource === 'GeneData_CDS_Only.json') {
+      if (module.gene_id && /^\d+$/.test(module.gene_id)) {
+        return `https://www.ncbi.nlm.nih.gov/gene/${module.gene_id}`;
+      }
+      if (module.name) {
+        return `https://www.ncbi.nlm.nih.gov/nuccore/?term=${encodeURIComponent(module.name)}`;
+      }
+    }
     // Local JSON sources (KD/KO) not applicable for OE, but handle gracefully
     if (module.sequenceSource === 'shRNA.json' || module.sequenceSource === 'gRNA.json') {
       // No external source page; guide user to UniProt search by name if present

@@ -1,6 +1,7 @@
 import { LRUCache } from 'lru-cache'
 import shRNADb from './shRNA.json';
 import rawGrnaDb from './gRNA.json';
+import geneDataDb from './GeneData_CDS_Only.json';
 import { Module } from './types';
 import { safeLocalStorage } from './uuid';
 
@@ -13,6 +14,36 @@ interface GrnaRecord {
   geneSymbol: string;
   gRNASequence: string;
 }
+
+interface GeneDataRecord {
+  refSeq?: string;
+  symbol?: string;
+  name?: string;
+  entrez?: number;
+  organism?: string;
+  totalLength?: number;
+  cdsLength?: number;
+  cdsSequence?: string;
+}
+
+const geneDataRecords: GeneDataRecord[] = geneDataDb as GeneDataRecord[];
+
+const geneDataSymbolMap = new Map<string, GeneDataRecord>();
+const geneDataSanitizedMap = new Map<string, GeneDataRecord>();
+
+const normalizeSymbolKey = (symbol?: string | null): string =>
+  (symbol || '').trim().toUpperCase();
+
+const sanitizeSymbolKey = (symbol: string): string =>
+  symbol.replace(/[^A-Z0-9]/gi, '');
+
+geneDataRecords.forEach(record => {
+  if (!record?.symbol) return;
+  const normalized = normalizeSymbolKey(record.symbol);
+  if (!normalized) return;
+  geneDataSymbolMap.set(normalized, record);
+  geneDataSanitizedMap.set(sanitizeSymbolKey(normalized), record);
+});
 
 const shRNAData: ShRNARecord[] = shRNADb as ShRNARecord[];
 const gRNAData: GrnaRecord[] = (rawGrnaDb as any[]).map(r => ({
@@ -32,7 +63,13 @@ const gRNASet = new Set<string>(
     .filter((symbol): symbol is string => !!symbol && symbol.length > 0)
 );
 
-const perturbationGeneSet = new Set<string>([...shRNASet, ...gRNASet]);
+const overexpressionSet = new Set<string>([...geneDataSymbolMap.keys()]);
+
+const perturbationGeneSet = new Set<string>([
+  ...shRNASet,
+  ...gRNASet,
+  ...overexpressionSet,
+]);
 
 const heuristicAlternatives: Record<string, string[]> = {
   SIR2: ['SIRT1', 'SIRT2'],
@@ -52,6 +89,66 @@ const heuristicAlternatives: Record<string, string[]> = {
   TNFRSF5: ['CD40'],
   CD40: ['TNFRSF5'],
 };
+
+function findGeneDataRecord(symbol?: string | null): GeneDataRecord | undefined {
+  if (!symbol) return undefined;
+  const normalized = normalizeSymbolKey(symbol);
+  if (!normalized) return undefined;
+
+  const direct = geneDataSymbolMap.get(normalized);
+  if (direct) return direct;
+
+  const sanitizedKey = sanitizeSymbolKey(normalized);
+  const sanitizedRecord = geneDataSanitizedMap.get(sanitizedKey);
+  if (sanitizedRecord) return sanitizedRecord;
+
+  const heuristic = heuristicAlternatives[normalized];
+  if (heuristic && heuristic.length > 0) {
+    for (const alt of heuristic) {
+      const altNormalized = normalizeSymbolKey(alt);
+      if (!altNormalized) continue;
+      const altDirect = geneDataSymbolMap.get(altNormalized);
+      if (altDirect) return altDirect;
+      const altSanitized = geneDataSanitizedMap.get(sanitizeSymbolKey(altNormalized));
+      if (altSanitized) return altSanitized;
+    }
+  }
+
+  return undefined;
+}
+
+function buildOverexpressionModuleFromGeneData(module: Module, record: GeneDataRecord): Module {
+  const rawSequence = (record.cdsSequence || '').trim();
+  if (!rawSequence) {
+    throw new Error(`Coding sequence unavailable for ${module.name} in GeneData_CDS_Only.json`);
+  }
+
+  const sequence = rawSequence.toUpperCase();
+  const description = module.description ?? `Gene: ${record.name || module.name}`;
+  const geneId = module.gene_id ?? (record.entrez != null ? String(record.entrez) : undefined);
+
+  return {
+    ...module,
+    sequence,
+    sequenceSource: 'GeneData_CDS_Only.json',
+    gene_id: geneId,
+    description,
+  };
+}
+
+function resolveOverexpressionFromGeneData(module: Module): Module | null {
+  if (module.type !== 'overexpression') return null;
+
+  const record = findGeneDataRecord(module.name);
+  if (!record) return null;
+
+  try {
+    return buildOverexpressionModuleFromGeneData(module, record);
+  } catch (error) {
+    console.warn(`[overexpression] Failed to hydrate ${module.name} from GeneData_CDS_Only.json:`, error);
+    return null;
+  }
+}
 
 const ENSEMBL = 'https://rest.ensembl.org';
 const GRCH37 = 'https://grch37.rest.ensembl.org';
@@ -86,7 +183,7 @@ const cdnaCache = new LRUCache<string, string>({
 
 // Local storage cache helpers
 const CACHE_PREFIX = 'ensembl_cache:';
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 
 function getLocalStorageKey(type: 'gene' | 'cdna', key: string): string {
   return `${CACHE_PREFIX}${CACHE_VERSION}:${type}:${key}`;
@@ -116,6 +213,67 @@ function setInLocalStorage(type: 'gene' | 'cdna', key: string, value: any): void
       timestamp: Date.now(),
     })
   );
+}
+
+type EnsemblSequenceType = 'cds' | 'cdna';
+
+const STOP_CODONS = new Set(['TAA', 'TAG', 'TGA']);
+
+function trimCdnaToCodingSequence(sequence: string): string | null {
+  if (!sequence) return null;
+  const normalized = sequence.toUpperCase();
+  const startIdx = normalized.indexOf('ATG');
+  if (startIdx === -1) return null;
+
+  let endIdx = normalized.length;
+  for (let i = startIdx; i <= normalized.length - 3; i += 3) {
+    const codon = normalized.slice(i, i + 3);
+    if (STOP_CODONS.has(codon)) {
+      endIdx = i + 3;
+      break;
+    }
+  }
+
+  const trimmed = sequence.slice(startIdx, endIdx);
+  return trimmed.length >= 3 ? trimmed : null;
+}
+
+async function fetchSequenceFromEnsembl(
+  transcriptId: string,
+  base: string,
+  type: EnsemblSequenceType
+): Promise<string | null> {
+  const url = `${base}/sequence/id/${transcriptId}?type=${type}`;
+  console.log(`[fetchCdna] Fetching URL: ${url}`);
+  try {
+    const response = await fetch(url, { headers: { Accept: 'text/plain' } });
+    if (!response.ok) {
+      console.warn(`[fetchCdna] ${type.toUpperCase()} fetch failed for ${transcriptId}. Status: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    const sequence = (await response.text())?.trim();
+    return sequence && sequence.length > 0 ? sequence : null;
+  } catch (error) {
+    console.warn(`[fetchCdna] ${type.toUpperCase()} fetch threw for ${transcriptId}:`, error);
+    return null;
+  }
+}
+
+async function fetchCodingSequenceInternal(
+  transcriptId: string,
+  base: string
+): Promise<string> {
+  let sequence = await fetchSequenceFromEnsembl(transcriptId, base, 'cds');
+  if (sequence) {
+    return sequence;
+  }
+
+  console.warn(`[fetchCdna] CDS sequence unavailable for ${transcriptId}, falling back to cDNA trimming.`);
+  const cdna = await fetchSequenceFromEnsembl(transcriptId, base, 'cdna');
+  if (!cdna) {
+    throw new Error(`Sequence fetch failed for transcript ${transcriptId}`);
+  }
+  return trimCdnaToCodingSequence(cdna) || cdna;
 }
 
 type ModuleType = 'overexpression' | 'knockdown' | 'knockout' | 'knockin';
@@ -491,7 +649,7 @@ export async function fetchCdna(
   transcriptId: string,
   opts?: { base?: string; forceRefresh?: boolean }
 ): Promise<string> {
-  console.log(`[fetchCdna] Attempting to fetch cDNA for transcript ID: ${transcriptId}`);
+  console.log(`[fetchCdna] Attempting to fetch coding sequence for transcript ID: ${transcriptId}`);
   // Check caches unless force refresh is requested
   if (!opts?.forceRefresh) {
     const cached = cdnaCache.get(transcriptId) || getFromLocalStorage<string>('cdna', transcriptId);
@@ -503,17 +661,8 @@ export async function fetchCdna(
   console.log(`[fetchCdna] Cache miss for transcript: ${transcriptId}. Fetching from Ensembl.`);
 
   const base = opts?.base ?? ENSEMBL;
-  const url = `${base}/sequence/id/${transcriptId}?type=cdna`;
-  console.log(`[fetchCdna] Fetching URL: ${url}`);
-  
-  const r = await fetch(url, { headers: { Accept: 'text/plain' } });
-  if (!r.ok) {
-    console.error(`[fetchCdna] Sequence fetch failed. Status: ${r.status}, Text: ${r.statusText}`);
-    throw new Error(`Sequence fetch failed: ${r.status}`);
-  }
-  
-  const sequence = await r.text();
-  console.log(`[fetchCdna] Successfully fetched sequence for transcript: ${transcriptId}. Length: ${sequence?.length}`);
+  const sequence = await fetchCodingSequenceInternal(transcriptId, base);
+  console.log(`[fetchCdna] Successfully fetched coding sequence for transcript: ${transcriptId}. Length: ${sequence?.length}`);
   
   // Cache the result
   cdnaCache.set(transcriptId, sequence);
@@ -528,8 +677,6 @@ export async function fetchCdnaBatch(
   opts?: { base?: string }
 ): Promise<Record<string, string>> {
   const base = opts?.base ?? ENSEMBL;
-  const url = `${base}/sequence/id`;
-
   const uncachedIds = transcriptIds.filter(id => !cdnaCache.has(id) && !getFromLocalStorage('cdna', id));
   
   if (uncachedIds.length === 0) {
@@ -539,29 +686,50 @@ export async function fetchCdnaBatch(
     );
   }
 
-  const response = await fetchJSON<Array<{ id: string; seq: string }>>(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      ids: uncachedIds,
-      type: 'cdna',
-    }),
-  });
+  const url = `${base}/sequence/id`;
+  try {
+    const response = await fetchJSON<Array<{ id: string; seq: string }>>(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ids: uncachedIds,
+        type: 'cds',
+      }),
+    });
+  
+    // Cache new CDS results
+    response.forEach(({ id, seq }) => {
+      if (seq && seq.length > 0) {
+        cdnaCache.set(id, seq);
+        setInLocalStorage('cdna', id, seq);
+      }
+    });
+  } catch (error) {
+    console.warn('[fetchCdnaBatch] CDS batch fetch failed, falling back to sequential requests.', error);
+  }
 
-  // Cache new results
-  response.forEach(({ id, seq }) => {
-    cdnaCache.set(id, seq);
-    setInLocalStorage('cdna', id, seq);
-  });
+  const stillMissing = uncachedIds.filter(id => !cdnaCache.has(id) && !getFromLocalStorage('cdna', id));
+  if (stillMissing.length > 0) {
+    await Promise.all(
+      stillMissing.map(async (id) => {
+        try {
+          const sequence = await fetchCodingSequenceInternal(id, base);
+          cdnaCache.set(id, sequence);
+          setInLocalStorage('cdna', id, sequence);
+        } catch (error) {
+          console.warn(`[fetchCdnaBatch] Failed to fetch coding sequence for ${id}:`, error);
+        }
+      })
+    );
+  }
 
   // Combine cached and new results
   return Object.fromEntries(
     transcriptIds.map(id => {
       const cached = cdnaCache.get(id) || getFromLocalStorage('cdna', id);
-      const fresh = response.find(r => r.id === id)?.seq;
-      return [id, cached || fresh || ''];
+      return [id, cached || ''];
     })
   );
 }
@@ -572,7 +740,7 @@ export interface EnsemblModule extends Module {
   ensemblGeneId?: string;
   canonicalTranscriptId?: string;
   sequence?: string;
-  sequenceSource?: 'ensembl_grch38' | 'gRNA.json' | 'shRNA.json';
+  sequenceSource?: 'ensembl_grch38' | 'gRNA.json' | 'shRNA.json' | 'GeneData_CDS_Only.json';
   ensemblRelease?: string;
 }
 
@@ -644,7 +812,16 @@ export async function enrichModuleWithSequence(
       }
     }
 
-    // Fallback to Ensembl for non-knockdown modules
+    if (module.type === 'overexpression') {
+      console.log(`[enrichModule] Resolving overexpression sequence for ${module.name} from local GeneData.`);
+      const localModule = resolveOverexpressionFromGeneData(module);
+      if (localModule) {
+        return localModule;
+      }
+      throw new Error(`Sequence for ${module.name} is not available in GeneData_CDS_Only.json.`);
+    }
+
+    // Fallback to Ensembl for remaining module types
     console.log(`[enrichModule] Falling back to Ensembl for ${module.name} (type: ${module.type})`);
     const gene = await resolveGene(module.name, 'homo_sapiens', opts);
     
@@ -688,7 +865,8 @@ export async function batchEnrichModulesBestEffort(
   // Split by type for optimized paths
   const kd = modules.filter(m => m.type === 'knockdown');
   const ko = modules.filter(m => m.type === 'knockout');
-  const rest = modules.filter(m => m.type !== 'knockdown' && m.type !== 'knockout');
+  const overexpression = modules.filter(m => m.type === 'overexpression');
+  const rest = modules.filter(m => m.type !== 'knockdown' && m.type !== 'knockout' && m.type !== 'overexpression');
 
   // 1) Knockdown via local shRNA data
   const kdById: Record<string, Module> = {};
@@ -725,6 +903,20 @@ export async function batchEnrichModulesBestEffort(
     }
   }
 
+  // 3) Overexpression via local CDS data
+  const oeById: Record<string, Module> = {};
+  for (const m of overexpression) {
+    const alreadyOk = m.sequence && m.sequenceSource === 'GeneData_CDS_Only.json';
+    if (alreadyOk) {
+      oeById[m.id] = m;
+      continue;
+    }
+    const resolved = resolveOverexpressionFromGeneData(m);
+    if (resolved) {
+      oeById[m.id] = resolved;
+    }
+  }
+
   // Collect remaining that still need enrichment (missing or remapped)
   const needsEnrichment: Module[] = [];
   const maybePush = (m: Module) => {
@@ -738,7 +930,7 @@ export async function batchEnrichModulesBestEffort(
   ko.forEach(m => maybePush(koById[m.id] ?? m));
   rest.forEach(m => maybePush(m));
 
-  // 3) For OE/KI (and KD/KO that remained), resolve genes concurrently with limit
+  // 4) For KI (and KD/KO leftovers), resolve genes concurrently with limit
   const uniqueSymbols = Array.from(new Set(
     needsEnrichment
       .filter(m => m.type !== 'knockdown' && m.type !== 'knockout')
@@ -800,6 +992,7 @@ export async function batchEnrichModulesBestEffort(
   // Seed kd/ko quick successes
   Object.values(kdById).forEach(m => { byId[m.id] = m; });
   Object.values(koById).forEach(m => { byId[m.id] = m; });
+  Object.values(oeById).forEach(m => { byId[m.id] = m; });
 
   // Attempt to fill from batch results for OE/KI
   for (const m of rest) {
