@@ -818,7 +818,7 @@ export async function enrichModuleWithSequence(
       if (localModule) {
         return localModule;
       }
-      throw new Error(`Sequence for ${module.name} is not available in GeneData_CDS_Only.json.`);
+      console.warn(`[enrichModule] ${module.name} not found in GeneData_CDS_Only.json; falling back to Ensembl CDS.`);
     }
 
     // Fallback to Ensembl for remaining module types
@@ -865,8 +865,8 @@ export async function batchEnrichModulesBestEffort(
   // Split by type for optimized paths
   const kd = modules.filter(m => m.type === 'knockdown');
   const ko = modules.filter(m => m.type === 'knockout');
-  const overexpression = modules.filter(m => m.type === 'overexpression');
-  const rest = modules.filter(m => m.type !== 'knockdown' && m.type !== 'knockout' && m.type !== 'overexpression');
+  const rest = modules.filter(m => m.type !== 'knockdown' && m.type !== 'knockout');
+  const overexpression = rest.filter(m => m.type === 'overexpression');
 
   // 1) Knockdown via local shRNA data
   const kdById: Record<string, Module> = {};
@@ -928,7 +928,7 @@ export async function batchEnrichModulesBestEffort(
 
   kd.forEach(m => maybePush(kdById[m.id] ?? m));
   ko.forEach(m => maybePush(koById[m.id] ?? m));
-  rest.forEach(m => maybePush(m));
+  rest.forEach(m => maybePush(oeById[m.id] ?? m));
 
   // 4) For KI (and KD/KO leftovers), resolve genes concurrently with limit
   const uniqueSymbols = Array.from(new Set(
@@ -965,7 +965,7 @@ export async function batchEnrichModulesBestEffort(
     }
   });
 
-  // 4) Batch fetch cDNA for resolved transcripts
+  // 5) Batch fetch cDNA for resolved transcripts
   const transcripts: string[] = [];
   const symbolToTranscript: Record<string, string> = {};
   for (const sym of uniqueSymbols) {
@@ -986,7 +986,7 @@ export async function batchEnrichModulesBestEffort(
     }
   }
 
-  // 5) Assemble enriched modules, falling back to single enrich as needed
+  // 6) Assemble enriched modules, falling back to single enrich as needed
   const byId: Record<string, Module> = {};
 
   // Seed kd/ko quick successes

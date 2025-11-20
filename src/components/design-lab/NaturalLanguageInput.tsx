@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { parseInstructions, EditInstruction } from '@/lib/llm/llmParser';
-import { dispatchEdits, DispatchWarning } from '@/lib/llm/dispatcher';
+import { dispatchEdits, DispatchWarning, mapActionToModuleType } from '@/lib/llm/dispatcher';
 import { Module } from '@/lib/types';
 import { TypedHeading } from '@/components/ui/typed-heading';
 
@@ -75,20 +75,21 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
     const warning = warnings[warningIndex];
     if (!warning) return;
 
-    const action = warning.action ?? 'overexpression';
+    const actionType = warning.action ?? 'overexpression';
     setIsLoading(true);
 
     try {
       // Find and replace the failed instruction with the alternative
       const updatedInstructions = originalInstructions.map(inst => {
+        const instActionType = mapActionToModuleType(inst.action || '');
         // Match the original failed target
         if (warning.originalTarget && 
             inst.target.trim().toUpperCase() === warning.originalTarget.trim().toUpperCase() &&
-            inst.action === action) {
+            instActionType === actionType) {
           return {
             ...inst,
             target: alternative,
-            description: `${action} ${alternative}`,
+            description: `${actionType} ${alternative}`,
           };
         }
         return inst;

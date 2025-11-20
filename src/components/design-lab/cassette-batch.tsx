@@ -207,7 +207,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
       const needsReEnrichment = !item.sequence || (
         (item.type === 'knockout' && item.sequenceSource !== 'gRNA.json') ||
         (item.type === 'knockdown' && item.sequenceSource !== 'shRNA.json') ||
-        (item.type === 'overexpression' && item.sequenceSource !== 'GeneData_CDS_Only.json')
+        (item.type === 'overexpression' && item.sequenceSource !== 'GeneData_CDS_Only.json' && item.sequenceSource !== 'ensembl_grch38' && item.sequenceSource !== 'ensembl_grch37')
       );
 
       let correctSequence = item.sequence || '';
