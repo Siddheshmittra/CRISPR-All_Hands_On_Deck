@@ -25,6 +25,7 @@ import { useConstructManager } from "@/hooks/use-construct-manager"
 import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { toast } from "sonner"
 import { generateBarcode } from "@/lib/barcode-utils"
+import { pickNextAvailable } from "@/lib/barcodes"
 import { predictTCellFunction } from "@/lib/llm/predictFunction"
 import { CodeHeading } from "@/components/ui/code-heading"
 import { StepBadge } from "@/components/ui/step-badge"
@@ -156,7 +157,7 @@ const DesignLab = () => {
             ...entry,
             id: `const:${moduleId}:${randomUUID()}`,
             name: entry.name?.replace(/^Const:\s*/, '') || entry.name,
-            mode: 'constant'
+            mode: 'constant' as const
           }
         }
         return entry
@@ -208,12 +209,8 @@ const DesignLab = () => {
 
   const nextBarcode = React.useCallback(() => {
     // Always draw deterministically from the first available in the pool provided by the user
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { pickNextAvailable } = require('@/lib/barcodes') as any
-      const candidate: string | undefined = pickNextAvailable(barcodePool, usedBarcodes)
-      if (candidate) return candidate
-    } catch {}
+    const candidate = pickNextAvailable(barcodePool, usedBarcodes)
+    if (candidate) return candidate
     // If pool not loaded or exhausted, fall back to general/internal pools deterministically
     const allPools: string[] = [
       ...generalPool.map(p => p.sequence),
@@ -794,7 +791,6 @@ const DesignLab = () => {
                   // Always choose from pool when available (button semantics)
                   if (barcodePool.length > 0) {
                     if (barcodeMode === 'internal') {
-                      const { pickNextAvailable } = require('@/lib/barcodes') as any
                       const candidate = pickNextAvailable(barcodePool, usedBarcodes)
                       return candidate || nextBarcode()
                     }
@@ -893,7 +889,6 @@ const DesignLab = () => {
                       requestGenerateBarcode={() => {
                         if (barcodePool.length > 0) {
                           if (barcodeMode === 'internal') {
-                            const { pickNextAvailable } = require('@/lib/barcodes') as any
                             const candidate = pickNextAvailable(barcodePool, usedBarcodes)
                             return candidate || nextBarcode()
                           }

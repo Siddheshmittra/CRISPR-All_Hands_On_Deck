@@ -28,16 +28,23 @@ const getSegmentStyle = (segment: AnnotatedSegment) => {
 };
 
 export const SequenceViewer: React.FC<SequenceViewerProps> = ({ segments }) => {
+  const totalLength = segments.reduce((sum, s) => sum + (s.sequence?.length || 0), 0);
+
   return (
-    <div className="w-full p-2 border rounded-md bg-background">
-      <div className="font-mono text-sm break-all whitespace-pre-wrap">
-        {segments.map((segment, index) => (
-          <Tippy key={index} content={`${segment.name} - ${segment.sequence.length}bp`}>
-            <span className={`px-1 rounded ${getSegmentStyle(segment)}`}>
-              {segment.sequence}
-            </span>
-          </Tippy>
-        ))}
+    <div className="w-full border rounded-md bg-background">
+      <div className="max-h-72 overflow-auto p-3">
+        <div className="font-mono text-sm leading-relaxed break-all whitespace-pre-wrap">
+          {segments.map((segment, index) => (
+            <Tippy key={index} content={`${segment.name} - ${segment.sequence.length}bp`}>
+              <span className={`px-1 rounded ${getSegmentStyle(segment)}`}>
+                {segment.sequence}
+              </span>
+            </Tippy>
+          ))}
+        </div>
+      </div>
+      <div className="border-t px-3 py-1.5 text-xs text-muted-foreground">
+        {totalLength.toLocaleString()} bp total
       </div>
     </div>
   );

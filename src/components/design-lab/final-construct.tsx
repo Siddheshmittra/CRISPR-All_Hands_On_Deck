@@ -277,7 +277,7 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
 
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
           <StepBadge n={4} />
           <h2
@@ -296,7 +296,7 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
             <span className={`${showDnaSplash ? 'opacity-0 scale-95 translate-y-0.5' : 'opacity-100 scale-100 translate-y-0'} transition-all duration-700 ease-in-out block`}>DNA Sequence</span>
           </h2>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button 
             variant="outline" 
             size="sm" 
