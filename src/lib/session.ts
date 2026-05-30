@@ -151,6 +151,8 @@ export const DesignLabSessionSchema = z.object({
   folders: z.array(FolderSchema).default([]),
   librarySyntax: z.array(LibrarySyntaxSchema).default([]),
   cassetteBatch: z.array(CassetteSchema).default([]),
+  // In-progress single-construct perturbations so work survives a refresh.
+  constructModules: z.array(ModuleSchema).default([]),
   cassetteMode: z.enum(["single", "multi"]).default("single"),
   inputMode: z.enum(["manual", "natural"]).default("manual"),
   barcodeMode: z.enum(["internal", "general"]).default("general"),
@@ -166,6 +168,7 @@ export interface DesignLabSession {
     modules: Module[];
     barcode?: string;
   }>;
+  constructModules: Module[];
   cassetteMode: 'single' | 'multi';
   inputMode: 'manual' | 'natural';
   barcodeMode: 'internal' | 'general';

@@ -58,14 +58,15 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
     try {
       // Add all successful modules to the design
       onModulesGenerated(previewModules);
-      
-      // Keep the preview open so users can still work with alternatives
-      // Clear the input only if there are no warnings
+
+      // Clear the added modules to prevent accidental double-adds. If there are
+      // unresolved warnings, keep the preview panel open so the user can still
+      // pick alternatives; otherwise close it entirely.
+      setPreviewModules([]);
       if (warnings.length === 0) {
-        setPreviewModules([]);
         setShowPreview(false);
       }
-      
+
     } catch (error) {
       console.error('Error adding modules:', error);
       onError?.('Failed to add modules. Please try again.');

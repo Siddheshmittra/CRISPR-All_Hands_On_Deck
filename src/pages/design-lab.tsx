@@ -7,11 +7,8 @@ import { randomUUID } from "@/lib/uuid"
 import { ConstructLayout } from "@/components/design-lab/construct-layout"
 import { FinalConstruct } from "@/components/design-lab/final-construct"
 import { MultiCassetteSetup } from "@/components/design-lab/multi-cassette-dialog"
-import { NaturalLanguageMode } from "@/components/design-lab/natural-language-mode"
 import { MultiCassetteNatural } from "@/components/design-lab/multi-cassette-natural"
-import { MultiCassetteSynthetic } from "@/components/design-lab/multi-cassette-synthetic"
 import { NaturalLanguageInput } from "@/components/design-lab/NaturalLanguageInput"
-import { LibraryManager } from "@/components/design-lab/library-manager"
 import { Card } from "@/components/ui/card"
 import { CassetteBatch } from "@/components/design-lab/cassette-batch"
 import { ErrorBoundary } from "@/components/error-boundary"
@@ -98,9 +95,6 @@ const DesignLab = () => {
     constructWithLinkers,
   } = useConstructManager([])
   // Removed explicit cassette count; all combinations will be generated
-  const [overexpressionCount, setOverexpressionCount] = useState(0)
-  const [knockoutCount, setKnockoutCount] = useState(0)
-  const [knockdownCount, setKnockdownCount] = useState(0)
   const [customModules, setCustomModules] = useState<Module[]>([])
   const [folders, setFolders] = useState<any[]>([{
     id: 'total-library',
@@ -164,6 +158,9 @@ const DesignLab = () => {
       })
       setLibrarySyntax(reorderLibrarySyntax(migratedSyntax))
       setCassetteBatch((loaded.cassetteBatch as unknown as Cassette[]) || [])
+      const restoredConstruct = reorderModulesForSyntax(((loaded.constructModules as unknown as Module[]) || []))
+      setConstructModules(restoredConstruct)
+      setSelectedModules(restoredConstruct)
       setCassetteMode(loaded.cassetteMode || 'single')
       setInputMode(loaded.inputMode || 'manual')
       setBarcodeMode(loaded.barcodeMode || 'general')
@@ -182,12 +179,13 @@ const DesignLab = () => {
       folders,
       librarySyntax,
       cassetteBatch,
+      constructModules,
       cassetteMode,
       inputMode,
       barcodeMode,
     }
     designLabSession.scheduleSave(payload as unknown as any)
-  }, [customModules, folders, librarySyntax, cassetteBatch, cassetteMode, inputMode, barcodeMode])
+  }, [customModules, folders, librarySyntax, cassetteBatch, constructModules, cassetteMode, inputMode, barcodeMode])
 
   // Flush session on page hide/unload (non-invasive)
   React.useEffect(() => {

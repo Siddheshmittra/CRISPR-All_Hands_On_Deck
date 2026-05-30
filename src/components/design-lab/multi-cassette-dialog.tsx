@@ -96,7 +96,11 @@ interface MultiCassetteSetupProps {
   // No global module injection; constants are handled as virtual libraries
 }
 
-
+// Guard rails for combinatorial generation. The Cartesian product across
+// variable libraries can grow explosively, so we surface the count to the user
+// and refuse to generate batches large enough to hang the browser.
+const MAX_COMBINATIONS = 10000;
+const WARN_COMBINATIONS = 1000;
 
 export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
   const {
@@ -110,7 +114,6 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     onLibraryTypeChange,
     onReorderLibraries,
     onLibrariesChange,
-    globalModule
   } = props;
   const [selectedLibrary, setSelectedLibrary] = useState<string>('total-library')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -159,6 +162,34 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     [orderedSyntax]
   );
   const koKdCount = orderedSyntax.length - geneLikeCount;
+
+  // Reactive estimate of how many constructs "Generate All Combinations" will
+  // produce. Variable libraries contribute their number of sequenced modules
+  // (matching the filter used during generation); constants contribute 1.
+  const combinationStats = useMemo(() => {
+    if (orderedSyntax.length === 0) {
+      return { total: 0, hasEmpty: false };
+    }
+    let total = 1;
+    let hasEmpty = false;
+    for (const entry of orderedSyntax) {
+      let count = 1;
+      if (entry.mode !== 'constant') {
+        const actualFolderId = entry.id.startsWith('lib:') ? entry.id.split(':')[1] : entry.id;
+        const folder = folders.find(f => f.id === actualFolderId);
+        const moduleIds: string[] = folder?.modules || [];
+        count = moduleIds
+          .map((id: string) => customModules.find(m => m.id === id))
+          .filter((m): m is Module => !!m && !!m.sequence && m.sequence.length > 0)
+          .length;
+      }
+      if (count === 0) hasEmpty = true;
+      total *= count;
+    }
+    return { total: hasEmpty ? 0 : total, hasEmpty };
+  }, [orderedSyntax, folders, customModules]);
+
+  const exceedsLimit = combinationStats.total > MAX_COMBINATIONS;
 
   // Quick lookup for module counts per library (folder)
   const getFolderCount = (libraryId: string) => {
@@ -256,6 +287,26 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
     if (orderedSyntax.length === 0) {
       toast.error('Please add libraries to the syntax section first');
       return;
+    }
+
+    // Guard against combinatorial explosion before doing any work.
+    const expectedTotal = combinationStats.total;
+    if (combinationStats.hasEmpty || expectedTotal <= 0) {
+      toast.error('One or more variable libraries have no modules with sequences yet. Add genes (or remove the empty library) before generating.');
+      return;
+    }
+    if (expectedTotal > MAX_COMBINATIONS) {
+      toast.error(
+        `This syntax would generate ${expectedTotal.toLocaleString()} constructs, exceeding the limit of ${MAX_COMBINATIONS.toLocaleString()}. ` +
+        'Reduce the number of variable libraries or genes per library, or pin some libraries as constants.'
+      );
+      return;
+    }
+    if (expectedTotal > WARN_COMBINATIONS) {
+      const proceed = window.confirm(
+        `This will generate ${expectedTotal.toLocaleString()} constructs and may take a while to build and render. Continue?`
+      );
+      if (!proceed) return;
     }
 
     // Initialize loading state
@@ -360,27 +411,6 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
             console.error('applyCassetteSyntax failed', e);
             cassette = [list[i]];
           }
-          if (globalModule) {
-            const exists = cassette.some(m => m.id === globalModule.id)
-            if (!exists) {
-              if (globalModule.type === 'knockin') {
-                cassette = [
-                  { ...HARDCODED_COMPONENTS.intron, id: `intron-${randomUUID()}` } as any,
-                  { ...globalModule, id: `${globalModule.id}-${randomUUID()}`, name: globalModule.name },
-                  { ...HARDCODED_COMPONENTS.internalStuffer, id: `is-domain-${randomUUID()}` } as any,
-                  { ...HARDCODED_COMPONENTS.barcodes, id: `bc-domain-${randomUUID()}` } as any,
-                  ...cassette,
-                ]
-              } else {
-                cassette = [
-                  { ...HARDCODED_COMPONENTS.intron, id: `intron-${randomUUID()}` } as any,
-                  { ...globalModule, id: `${globalModule.id}-${randomUUID()}` },
-                  { ...HARDCODED_COMPONENTS.t2a, id: `t2a-${randomUUID()}` } as any,
-                  ...cassette,
-                ]
-              }
-            }
-          }
           pendingChunk.push(cassette);
           produced++;
           if (pendingChunk.length >= CHUNK_SIZE) {
@@ -408,27 +438,6 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
             console.error('applyCassetteSyntax failed', e)
             // Fallback: push raw modules if syntax application fails
             cassette = currentModules
-          }
-          if (globalModule) {
-            const exists = cassette.some(m => m.id === globalModule.id)
-            if (!exists) {
-              if (globalModule.type === 'knockin') {
-                cassette = [
-                  { ...HARDCODED_COMPONENTS.intron, id: `intron-${randomUUID()}` } as any,
-                  { ...globalModule, id: `${globalModule.id}-${randomUUID()}`, name: globalModule.name },
-                  { ...HARDCODED_COMPONENTS.internalStuffer, id: `is-domain-${randomUUID()}` } as any,
-                  { ...HARDCODED_COMPONENTS.barcodes, id: `bc-domain-${randomUUID()}` } as any,
-                  ...cassette,
-                ]
-              } else {
-                cassette = [
-                  { ...HARDCODED_COMPONENTS.intron, id: `intron-${randomUUID()}` } as any,
-                  { ...globalModule, id: `${globalModule.id}-${randomUUID()}` },
-                  { ...HARDCODED_COMPONENTS.t2a, id: `t2a-${randomUUID()}` } as any,
-                  ...cassette,
-                ]
-              }
-            }
           }
           pendingChunk.push(cassette);
           produced++;
@@ -737,12 +746,35 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
             </div>
           </div>
 
+          {orderedSyntax.length > 0 && (
+            <div className="mt-4 flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">
+                {combinationStats.hasEmpty
+                  ? 'Some variable libraries have no sequenced modules yet.'
+                  : `This will generate `}
+                {!combinationStats.hasEmpty && (
+                  <span className={`font-semibold ${exceedsLimit ? 'text-destructive' : 'text-foreground'}`}>
+                    {combinationStats.total.toLocaleString()}
+                  </span>
+                )}
+                {!combinationStats.hasEmpty && ` construct${combinationStats.total === 1 ? '' : 's'}.`}
+              </span>
+              {exceedsLimit && (
+                <span className="text-xs font-medium text-destructive">
+                  Exceeds {MAX_COMBINATIONS.toLocaleString()} limit — reduce libraries/genes or pin constants.
+                </span>
+              )}
+            </div>
+          )}
+
           <Button
-            className="mt-6 w-full"
+            className="mt-3 w-full"
             onClick={handleManualGenerate}
-            disabled={orderedSyntax.length === 0}
+            disabled={orderedSyntax.length === 0 || isGenerating || combinationStats.hasEmpty || exceedsLimit}
           >
-            Generate All Combinations from Syntax
+            {combinationStats.total > 0 && !combinationStats.hasEmpty
+              ? `Generate ${combinationStats.total.toLocaleString()} Construct${combinationStats.total === 1 ? '' : 's'} from Syntax`
+              : 'Generate All Combinations from Syntax'}
           </Button>
         </Card>
       </DragDropContext>
