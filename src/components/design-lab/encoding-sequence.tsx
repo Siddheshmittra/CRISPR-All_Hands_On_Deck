@@ -7,6 +7,7 @@ type ModuleType = Module["type"]
 
 const MODULE_TYPE_META: Record<ModuleType, { abbreviation: string; color: string }> = {
   overexpression: { abbreviation: "OE", color: "text-overexpression" },
+  domain: { abbreviation: "DOM", color: "text-domain" },
   knockdown: { abbreviation: "KD", color: "text-knockdown" },
   knockout: { abbreviation: "KO", color: "text-knockout" },
   knockin: { abbreviation: "KI", color: "text-knockin" },

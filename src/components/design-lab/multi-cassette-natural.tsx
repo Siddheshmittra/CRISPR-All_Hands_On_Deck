@@ -9,6 +9,7 @@ import { planLibrariesFromPrompt, type PlannedLibrary, type LibraryPlanType } fr
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { SyntheticDomainImporter } from './synthetic-domain-importer';
+import { syntheticGeneModuleType } from '@/lib/synthetic-genes';
 import type { SyntheticGene } from '@/lib/types';
 import { LibraryViewer } from '@/components/design-lab/library-viewer';
 import { TypedHeading } from '@/components/ui/typed-heading';
@@ -303,7 +304,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
                 const syntheticModule: Module = {
                   id: `${match.name}-${uid()}`,
                   name: match.name,
-                  type: 'knockin',
+                  type: syntheticGeneModuleType(match),
                   description: match.description,
                   sequence: match.sequence,
                   isSynthetic: true,

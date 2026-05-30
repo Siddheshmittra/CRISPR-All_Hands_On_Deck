@@ -218,7 +218,7 @@ const DesignLab = () => {
       if (!usedBarcodes.has(seq)) return seq
     }
     // Hard fallback: generate unique
-    return generateBarcode(12, Array.from(usedBarcodes))
+    return generateBarcode(11, Array.from(usedBarcodes))
   }, [barcodePool, usedBarcodes, generalPool, internalPool])
 
   const handleAddLibrary = (
@@ -241,12 +241,12 @@ const DesignLab = () => {
     // Decide library type: explicit override > contained modules' uniform type > first module fallback
     const placement: LibrarySyntaxMode = options?.mode ?? 'variable';
 
-    let moduleType: 'overexpression' | 'knockout' | 'knockdown' | 'knockin' = 'overexpression';
+    let moduleType: 'overexpression' | 'domain' | 'knockout' | 'knockdown' | 'knockin' = 'overexpression';
     if (options?.type) {
       moduleType = options.type;
     } else if (moduleObjs.length > 0) {
       const t = moduleObjs[0].type
-      if (t === 'overexpression' || t === 'knockout' || t === 'knockdown' || t === 'knockin') {
+      if (t === 'overexpression' || t === 'domain' || t === 'knockout' || t === 'knockdown' || t === 'knockin') {
         moduleType = t
       } else {
         moduleType = 'overexpression'
@@ -266,7 +266,7 @@ const DesignLab = () => {
     setLibrarySyntax(prev => reorderLibrarySyntax(prev.filter(l => l.id !== libraryId)))
   }
 
-  const handleLibraryTypeChange = (libraryId: string, type: 'overexpression' | 'knockout' | 'knockdown' | 'knockin') => {
+  const handleLibraryTypeChange = (libraryId: string, type: 'overexpression' | 'domain' | 'knockout' | 'knockdown' | 'knockin') => {
     // Update the library type in librarySyntax
     setLibrarySyntax(prev => reorderLibrarySyntax(prev.map(l => l.id === libraryId ? { ...l, type } : l)))
     

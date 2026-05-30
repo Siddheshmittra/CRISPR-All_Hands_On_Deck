@@ -136,7 +136,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
     const existingBarcodes = cassetteBatch
       .map(c => c.barcode)
       .filter((b): b is string => !!b)
-    const newBarcode = generateBarcode(12, existingBarcodes)
+    const newBarcode = generateBarcode(11, existingBarcodes)
     setEditingBarcode(newBarcode)
     setBarcodeError('')
   }

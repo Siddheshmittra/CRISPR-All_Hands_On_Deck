@@ -2,7 +2,7 @@ export interface AnnotatedSegment {
   name: string;
   sequence: string;
   type: 'module' | 'linker' | 'hardcoded';
-  action?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin' | 'synthetic' | 'hardcoded';
+  action?: 'overexpression' | 'domain' | 'knockout' | 'knockdown' | 'knockin' | 'synthetic' | 'hardcoded';
 }
 
 export interface ModuleMetadata {
@@ -14,7 +14,7 @@ export interface ModuleMetadata {
 export interface Module {
   id: string;
   name: string;
-  type: "overexpression" | "knockout" | "knockdown" | "knockin" | "synthetic" | "hardcoded";
+  type: "overexpression" | "domain" | "knockout" | "knockdown" | "knockin" | "synthetic" | "hardcoded";
   description?: string;
   sequence?: string;
   gene_id?: string;
@@ -26,7 +26,7 @@ export interface Module {
   metadata?: ModuleMetadata; // Additional metadata for the module
   isEnriching?: boolean; // Flag to show loading state during sequence enrichment
   originalSequence?: string; // Store the original sequence before any enrichment or modification
-  originalType?: "overexpression" | "knockout" | "knockdown" | "knockin" | "synthetic" | "hardcoded"; // Preserve original perturbation type when remapped by syntax
+  originalType?: "overexpression" | "domain" | "knockout" | "knockdown" | "knockin" | "synthetic" | "hardcoded"; // Preserve original perturbation type when remapped by syntax
 }
 
 export interface SyntheticGeneReference {
@@ -64,7 +64,7 @@ export type ConstructItem = Module | Linker
 export type LibrarySyntaxMode = 'constant' | 'variable';
 
 export interface LibrarySyntaxAddOptions {
-  type?: 'overexpression' | 'knockout' | 'knockdown' | 'knockin';
+  type?: 'overexpression' | 'domain' | 'knockout' | 'knockdown' | 'knockin';
   mode?: LibrarySyntaxMode;
 }
 
@@ -72,7 +72,7 @@ export interface LibrarySyntax {
   id: string;
   name: string;
   modules?: Module[]; // Made optional to match usage in the code
-  type: 'overexpression' | 'knockout' | 'knockdown' | 'knockin';
+  type: 'overexpression' | 'domain' | 'knockout' | 'knockdown' | 'knockin';
   mode?: LibrarySyntaxMode; // Multi-construct syntax placement (defaults to 'variable')
 }
 

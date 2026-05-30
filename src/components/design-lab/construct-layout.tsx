@@ -34,6 +34,7 @@ function getTypeArrow(type: string) {
     case 'knockout': return '✖';
     case 'knockin': return '↑'; // Treat KI like OE in UI/drag semantics
     case 'overexpression': return '↑';
+    case 'domain': return '⊕';
     default: return '';
   }
 }

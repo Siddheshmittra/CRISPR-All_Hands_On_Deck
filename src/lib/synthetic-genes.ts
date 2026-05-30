@@ -224,6 +224,18 @@ export const syntheticGeneCategories = Array.from(
   return a.label.localeCompare(b.label)
 })
 
+// Map a curated library entry to its CRISPR-All Function/module type.
+// CAR signaling and specificity domains are sub-gene "Domain" Functions, while
+// full-length synthetic genes, CARs, and reporters are introduced as "Gene"
+// Functions via knock-in.
+export const syntheticGeneModuleType = (
+  gene: Pick<SyntheticGene, 'category' | 'knockinType'>
+): 'domain' | 'knockin' => {
+  const haystack = `${gene.category || ''} ${gene.knockinType || ''}`.toLowerCase()
+  if (haystack.includes('domain')) return 'domain'
+  return 'knockin'
+}
+
 export const getSyntheticGenesByCategory = (category: string): SyntheticGene[] => {
   if (category === 'all') return syntheticGenes
   return syntheticGenes.filter(gene => gene.category === category)

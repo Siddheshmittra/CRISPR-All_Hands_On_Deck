@@ -138,6 +138,7 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
     }
     const typeAbbrev: Record<Module['type'], string> = {
       overexpression: 'OE',
+      domain: 'DOM',
       knockout: 'KO',
       knockdown: 'KD',
       knockin: 'KI',
@@ -177,27 +178,31 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
     }
   }, [barcode, constructModules])
 
-  // Generate predicted function
+  // Summarize the encoded perturbations factually. We intentionally do NOT
+  // assert a biological phenotype here: a sequence-level summary cannot predict
+  // function. Phenotype prediction is handled separately by the grounded,
+  // citation-backed predictor (predictTCellFunction) in the Predicted Function section.
   const generatePredictedFunction = () => {
     if (modules.length === 0) return "No modules selected"
-    
-    const overexpression = modules.filter(m => m.type === "overexpression")
-    const knockout = modules.filter(m => m.type === "knockout")
-    const knockdown = modules.filter(m => m.type === "knockdown")
-    
-    let prediction = "Modulates epigenetic regulation. Enhances TCR signaling strength"
-    
-    if (overexpression.length > 0) {
-      prediction += ` through overexpression of ${overexpression.map(m => m.name).join(", ")}`
-    }
-    if (knockout.length > 0) {
-      prediction += `${overexpression.length > 0 ? " and" : ""} knockout of ${knockout.map(m => m.name).join(", ")}`
-    }
-    if (knockdown.length > 0) {
-      prediction += `${(overexpression.length > 0 || knockout.length > 0) ? " and" : ""} knockdown of ${knockdown.map(m => m.name).join(", ")}`
-    }
-    
-    return prediction + "."
+
+    const byType: Array<{ type: Module["type"]; verb: string }> = [
+      { type: "overexpression", verb: "overexpression of" },
+      { type: "domain", verb: "addition of domain(s)" },
+      { type: "knockin", verb: "knock-in of" },
+      { type: "knockout", verb: "knockout of" },
+      { type: "knockdown", verb: "knockdown of" },
+    ]
+
+    const clauses = byType
+      .map(({ type, verb }) => {
+        const names = modules.filter(m => m.type === type).map(m => m.name)
+        return names.length > 0 ? `${verb} ${names.join(", ")}` : null
+      })
+      .filter(Boolean) as string[]
+
+    if (clauses.length === 0) return "No perturbations encoded"
+
+    return `Encodes ${clauses.join("; ")}.`
   }
   
   const handleCopySequence = async () => {

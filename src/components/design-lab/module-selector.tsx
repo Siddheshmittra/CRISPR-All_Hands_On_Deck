@@ -11,6 +11,8 @@ import { enrichModuleWithSequence } from "@/lib/ensembl"
 import { Module, EnsemblModule } from "@/lib/types"
 // Benchling integration removed
 import { SyntheticGeneSelector } from "./synthetic-gene-selector"
+import { syntheticGeneModuleType } from "@/lib/synthetic-genes"
+import { buildCactusLibrariesAsync } from "@/lib/cactus"
 import { SyntheticGene } from "@/lib/types"
 import { UnifiedGeneSearch } from "./unified-gene-search"
 import * as XLSX from 'xlsx'
@@ -348,7 +350,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
     const newModule: Module = {
       id: `${gene.name}-${Date.now()}`,
       name: gene.name,
-      type: 'knockin',
+      type: syntheticGeneModuleType(gene),
       description: gene.description,
       sequence: gene.sequence,
       isSynthetic: true,
@@ -1210,6 +1212,63 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
   const isSelected = (moduleId: string) => 
     selectedModules.some(m => m.id === moduleId)
 
+  // Load the curated CACTUS meta-library sub-libraries: the protein-coding
+  // presets (full-length CARs, CAR binder/specificity domains, CAR signaling
+  // domains, synthetic genes) from the bundled knock-in data, plus the
+  // natural-gene knockout / knockdown / overexpression and microRNA target
+  // lists with sequences resolved at load time.
+  async function handleLoadCactus() {
+    if (folders.some(f => f.name.startsWith('CACTUS · '))) {
+      toast.info('CACTUS sub-libraries are already loaded')
+      return
+    }
+
+    setIsLibraryLoading(true)
+    const toastId = toast.loading('Loading CACTUS meta-library...', {
+      description: 'Resolving curated target sequences...'
+    })
+
+    try {
+      const { modules, folders: cactusFolders } = await buildCactusLibrariesAsync()
+      if (modules.length === 0) {
+        toast.error('CACTUS library data is unavailable', { id: toastId })
+        return
+      }
+
+      const existingIds = new Set(customModules.map(m => m.id))
+      const newModules = modules.filter(m => !existingIds.has(m.id))
+      if (newModules.length > 0) {
+        onCustomModulesChange([...customModules, ...newModules])
+      }
+
+      const updatedFolders = [...folders]
+      const totalIdx = updatedFolders.findIndex(f => f.id === 'total-library')
+      const allIds = modules.map(m => m.id)
+      if (totalIdx >= 0) {
+        updatedFolders[totalIdx] = {
+          ...updatedFolders[totalIdx],
+          modules: Array.from(new Set([...updatedFolders[totalIdx].modules, ...allIds])),
+        }
+      }
+      const foldersToAdd = cactusFolders.filter(cf => !folders.some(f => f.name === cf.name))
+      setFolders([...updatedFolders, ...foldersToAdd])
+
+      if (foldersToAdd.length === 0) {
+        toast.info('CACTUS sub-libraries are already loaded', { id: toastId })
+      } else {
+        toast.success(
+          `Loaded ${foldersToAdd.length} CACTUS sub-librar${foldersToAdd.length === 1 ? 'y' : 'ies'} (${newModules.length} elements)`,
+          { id: toastId, duration: 6000 }
+        )
+      }
+    } catch (error: any) {
+      console.error('[CACTUS] Failed to load meta-library:', error)
+      toast.error(`Failed to load CACTUS: ${error?.message || 'unknown error'}`, { id: toastId })
+    } finally {
+      setIsLibraryLoading(false)
+    }
+  }
+
   // Export logic
   
   // Export: prompt for folder selection
@@ -1240,6 +1299,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       case 'knockout': return '✖';
       case 'knockin': return '→';
       case 'overexpression': return '↑';
+      case 'domain': return '⊕';
       default: return '';
     }
   }
@@ -1315,6 +1375,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
               Import Library
             </Button>
             <Button variant="outline" size="sm" onClick={handleExportLibrary}>Export Library</Button>
+            <Button variant="outline" size="sm" onClick={handleLoadCactus} title="Load the curated protein-coding CACTUS meta-library sub-libraries">Load CACTUS</Button>
             <input
               type="file"
               accept=".csv,.xlsx"

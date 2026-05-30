@@ -161,7 +161,10 @@ export function SyntheticDomainImporter({ onDomainsImported, onClose }: Syntheti
       description: domain.description || `Custom synthetic domain: ${domain.name}`,
       sequence: domain.sequence,
       category: domain.category || 'custom',
-      tags: domain.tags ? domain.tags.split(',').map(t => t.trim()) : ['custom', 'imported']
+      // Mark as a Domain Function so the construct treats it as a scarless, intron-fused
+      // sub-gene element (no automatic 2A) rather than a separate-protein knock-in.
+      knockinType: 'Domain',
+      tags: domain.tags ? domain.tags.split(',').map(t => t.trim()) : ['domain', 'imported']
     }));
     
     onDomainsImported(syntheticGenes);

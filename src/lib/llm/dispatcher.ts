@@ -1,7 +1,7 @@
 import { EditInstruction, EditAction } from './llmParser';
 import { validateGenes } from './geneValidator';
 import { resolveGene, enrichModuleWithSequence, suggestGeneAlternatives } from '@/lib/ensembl';
-import { syntheticGenes } from '@/lib/synthetic-genes';
+import { syntheticGenes, syntheticGeneModuleType } from '@/lib/synthetic-genes';
 import type { Module } from '@/lib/types';
 
 // Map actions to module types
@@ -81,22 +81,24 @@ export async function createModule(edit: EditInstruction): Promise<Module> {
   });
 
   if (syntheticHit) {
-    // Always represent synthetic targets as knock-ins with embedded sequence
-    const twoASeq = TWO_A_SEQUENCES[DEFAULT_2A_TYPE] || '';
-    const finalSequence = syntheticHit.sequence + twoASeq; // default add 2A like manual mode
+    const synType = syntheticGeneModuleType(syntheticHit);
+    // Domains fuse scarlessly (no embedded 2A); synthetic genes are separate
+    // protein products introduced via knock-in (embedded 2A, like manual mode).
+    const isDomain = synType === 'domain';
+    const twoASeq = isDomain ? '' : (TWO_A_SEQUENCES[DEFAULT_2A_TYPE] || '');
+    const finalSequence = syntheticHit.sequence + twoASeq;
     return {
       id: `generated-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: syntheticHit.name,
-      type: 'knockin',
-      description: edit.description || `${moduleType} ${syntheticHit.name}`,
+      type: synType,
+      description: edit.description || `${synType} ${syntheticHit.name}`,
       sequence: finalSequence,
       isSynthetic: true,
       syntheticSequence: syntheticHit.sequence,
-      metadata: {
-        has2ASequence: true,
-        twoAType: DEFAULT_2A_TYPE,
-      },
-      color: getColorForType('knockin'),
+      metadata: isDomain
+        ? { has2ASequence: false }
+        : { has2ASequence: true, twoAType: DEFAULT_2A_TYPE },
+      color: getColorForType(synType),
     } as Module;
   }
 
@@ -121,22 +123,24 @@ export async function createModule(edit: EditInstruction): Promise<Module> {
         moduleType = 'knockin';
       }
     } else {
-      // Build a synthetic knock-in module with an embedded sequence
-      const twoASeq = TWO_A_SEQUENCES[DEFAULT_2A_TYPE] || '';
+      // Build a synthetic module with an embedded sequence. Domains fuse
+      // scarlessly (no 2A); synthetic genes are separate products (embedded 2A).
+      const synType = syntheticGeneModuleType(syntheticHitForKnockin);
+      const isDomain = synType === 'domain';
+      const twoASeq = isDomain ? '' : (TWO_A_SEQUENCES[DEFAULT_2A_TYPE] || '');
       const finalSeq = syntheticHitForKnockin.sequence + twoASeq;
       return {
         id: `generated-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: syntheticHitForKnockin.name,
-        type: 'knockin',
-        description: edit.description || `${moduleType} ${syntheticHitForKnockin.name}`,
+        type: synType,
+        description: edit.description || `${synType} ${syntheticHitForKnockin.name}`,
         sequence: finalSeq,
         isSynthetic: true,
         syntheticSequence: syntheticHitForKnockin.sequence,
-        metadata: {
-          has2ASequence: true,
-          twoAType: DEFAULT_2A_TYPE,
-        },
-        color: getColorForType('knockin'),
+        metadata: isDomain
+          ? { has2ASequence: false }
+          : { has2ASequence: true, twoAType: DEFAULT_2A_TYPE },
+        color: getColorForType(synType),
       } as Module;
     }
   }
@@ -154,6 +158,7 @@ export async function createModule(edit: EditInstruction): Promise<Module> {
 function getColorForType(type: string): string {
   const colors: Record<string, string> = {
     overexpression: 'bg-blue-100 text-blue-800',
+    domain: 'bg-domain text-domain-foreground',
     knockdown: 'bg-yellow-100 text-yellow-800',
     knockout: 'bg-red-100 text-red-800',
     knockin: 'bg-knockin text-knockin-foreground',

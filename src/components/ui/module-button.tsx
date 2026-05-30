@@ -13,6 +13,7 @@ const moduleButtonVariants = cva(
         default: "bg-card text-card-foreground border border-border hover:bg-muted shadow-module",
         selected: "bg-accent text-accent-foreground shadow-elevated scale-105",
         overexpression: "bg-overexpression/90 text-overexpression-foreground border-overexpression/30 hover:bg-overexpression hover:shadow-overexpression/20 hover:shadow-md transition-all duration-200 shadow-sm",
+        domain: "bg-domain/90 text-domain-foreground border-domain/30 hover:bg-domain hover:shadow-domain/20 hover:shadow-md transition-all duration-200 shadow-sm",
         knockout: "bg-knockout/90 text-knockout-foreground border-knockout/30 hover:bg-knockout hover:shadow-knockout/20 hover:shadow-md transition-all duration-200 shadow-sm",
         knockdown: "bg-knockdown/90 text-knockdown-foreground border-knockdown/30 hover:bg-knockdown hover:shadow-knockdown/20 hover:shadow-md transition-all duration-200 shadow-sm",
         knockin: "bg-knockin/90 text-knockin-foreground border-knockin/30 hover:bg-knockin hover:shadow-knockin/20 hover:shadow-md transition-all duration-200 shadow-sm",

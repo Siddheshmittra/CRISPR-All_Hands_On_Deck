@@ -107,7 +107,7 @@ export const validateBarcode = (barcode: string): { isValid: boolean; message: s
  * @returns A unique DNA barcode string in uppercase
  */
 export const generateBarcode = (
-  length: number = 12,
+  length: number = 11, // CRISPR-All canonical barcode length (11 bp)
   existingBarcodes: string[] = []
 ): string => {
   const nucleotides = ['A', 'C', 'G', 'T'];

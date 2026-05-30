@@ -27,13 +27,26 @@ export function useConstructManager(initialModules: Module[] = []) {
 
     const result: ConstructItem[] = []
 
+    const T2A_SEQ = 'GAAGGAAGAGGAAGCCTTCTCACATGCGGAGATGTGGAAGAGAATCCTGGACCA'
+    const INTRON_SEQ = 'GTAAGTCTTATTTAGTGGAAAGAATAGATCTTCTGTTCTTTCAAAAGCAGAAATGGCAATAACATTTTGTGCCATGAttttttttttCTGCAG'
+
+    // Protein-coding elements (Gene / Domain / synthetic knock-in) are placed to
+    // the 5' side and spliced scarlessly via introns.
+    const isCodingType = (t: Module['type']) =>
+      t === 'overexpression' || t === 'domain' || t === 'knockin'
+    // A "separate protein product" terminates the upstream ORF and therefore
+    // requires a 2A. Domains fuse into the neighbouring ORF (no 2A). A knock-in
+    // may opt out of being a separate product via metadata.has2ASequence === false.
+    const isSeparateProtein = (m: Module) =>
+      m.type === 'overexpression' || (m.type === 'knockin' && m.metadata?.has2ASequence !== false)
+
     // Find index of first KO/KD to insert STOP-Triplex-Adaptor before it (rule 3)
     const firstKOIdx = ordered.findIndex(m => m.type === 'knockout' || m.type === 'knockdown')
 
     ordered.forEach((mod, idx) => {
-      // Rule KI/OE: intron before every overexpression or knockin domain
-      if (mod.type === 'overexpression' || mod.type === 'knockin') {
-        result.push(createLinker('Intron', idx, 'GTAAGTCTTATTTAGTGGAAAGAATAGATCTTCTGTTCTTTCAAAAGCAGAAATGGCAATAACATTTTGTGCCATGAttttttttttCTGCAG'))
+      // Intron before every coding element (Gene / Domain / synthetic knock-in)
+      if (isCodingType(mod.type)) {
+        result.push(createLinker('Intron', idx, INTRON_SEQ))
       }
 
       // Insert STOP-Triplex-Adaptor immediately before first KO/KD (rule 3)
@@ -50,11 +63,20 @@ export function useConstructManager(initialModules: Module[] = []) {
       // Actual module
       result.push(mod)
 
-      // Rule KI/OE: T2A after overexpression; conditional after knockin based on dialog choice
-      if (mod.type === 'overexpression') {
-        result.push(createLinker('T2A', idx, 'GAAGGAAGAGGAAGCCTTCTCACATGCGGAGATGTGGAAGAGAATCCTGGACCA'))
-      } else if (mod.type === 'knockin' && (mod.metadata?.has2ASequence === true)) {
-        result.push(createLinker('T2A', idx, 'GAAGGAAGAGGAAGCCTTCTCACATGCGGAGATGTGGAAGAGAATCCTGGACCA'))
+      // 2A multicistronic element: inserted ONLY where a separate protein product
+      // begins. Domains fuse scarlessly (via introns) into the preceding ORF, so
+      // they receive no 2A. A 2A is added after a coding element when the next
+      // coding element is its own protein, and as a terminal cap after a final
+      // gene/knock-in (matching the 2A placed before the Internal Stuffer).
+      if (isCodingType(mod.type)) {
+        let nextCoding: Module | undefined
+        for (let j = idx + 1; j < ordered.length; j++) {
+          if (isCodingType(ordered[j].type)) { nextCoding = ordered[j]; break }
+        }
+        const insert2A = nextCoding ? isSeparateProtein(nextCoding) : isSeparateProtein(mod)
+        if (insert2A) {
+          result.push(createLinker('T2A', idx, T2A_SEQ))
+        }
       }
     })
 

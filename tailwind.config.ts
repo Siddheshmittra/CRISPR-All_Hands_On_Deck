@@ -69,6 +69,10 @@ export default {
 					DEFAULT: 'hsl(var(--overexpression))',
 					foreground: 'hsl(var(--overexpression-foreground))'
 				},
+				domain: {
+					DEFAULT: 'hsl(var(--domain))',
+					foreground: 'hsl(var(--domain-foreground))'
+				},
 				knockout: {
 					DEFAULT: 'hsl(var(--knockout))',
 					foreground: 'hsl(var(--knockout-foreground))'

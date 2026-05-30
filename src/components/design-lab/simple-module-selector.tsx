@@ -10,6 +10,7 @@ import { Search, Plus, ArrowRight } from "lucide-react"
 import { toast } from "sonner"
 import { Module, EnsemblModule } from "@/lib/types"
 import { SyntheticGeneSelector } from "./synthetic-gene-selector"
+import { syntheticGeneModuleType } from "@/lib/synthetic-genes"
 import { SyntheticGene } from "@/lib/types"
 import { searchEnsembl } from "@/lib/ensembl"
 
@@ -194,7 +195,7 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
     const newModule: Module = {
       id: `${gene.name}-${Date.now()}`,
       name: gene.name,
-      type: 'knockin',
+      type: syntheticGeneModuleType(gene),
       description: gene.description,
       sequence: sequence,
       isSynthetic: true,
