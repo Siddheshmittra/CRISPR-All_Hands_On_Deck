@@ -46,11 +46,18 @@ export interface ModuleButtonProps
 const ModuleButton = React.forwardRef<HTMLDivElement, ModuleButtonProps>(
   ({ className, variant, size, isSelected, moduleType, module, onRemove, showRemoveButton, enableContextMenu = true, children, ...props }, ref) => {
     const isLoading = module?.isEnriching;
-    // Debug log to see what we're working with
-    if (module) {
-      console.log('ModuleButton module:', JSON.stringify(module, null, 2));
-    }
-    
+
+    const tooltipText = React.useMemo(() => {
+      if (isLoading) return "Loading sequence..."
+      if (!module) return undefined
+      const parts: string[] = []
+      if (module.name) parts.push(module.name)
+      if (module.type) parts.push(`Type: ${module.type}`)
+      if (module.description) parts.push(module.description)
+      if (module.sequence) parts.push(`Length: ${module.sequence.length} bp`)
+      return parts.length > 0 ? parts.join('\n') : undefined
+    }, [module, isLoading])
+
     const effectiveModuleType = moduleType || module?.type;
     const buttonVariant = isSelected 
       ? "selected" 
@@ -79,7 +86,7 @@ const ModuleButton = React.forwardRef<HTMLDivElement, ModuleButtonProps>(
         tabIndex={isLoading ? -1 : 0}
         role="button"
         aria-busy={isLoading}
-        title={isLoading ? "Loading sequence..." : JSON.stringify(module, null, 2)}
+        title={tooltipText}
         {...props}
       >
         <div className="flex items-center gap-2">

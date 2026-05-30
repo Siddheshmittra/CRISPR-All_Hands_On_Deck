@@ -27,6 +27,8 @@ import { toast } from "sonner"
 import { generateBarcode } from "@/lib/barcode-utils"
 import { predictTCellFunction } from "@/lib/llm/predictFunction"
 import { CodeHeading } from "@/components/ui/code-heading"
+import { StepBadge } from "@/components/ui/step-badge"
+import { Button } from "@/components/ui/button"
 
 import { Module, LibrarySyntax, LibrarySyntaxMode, LibrarySyntaxAddOptions } from "@/lib/types"
 
@@ -867,7 +869,10 @@ const DesignLab = () => {
                 {/* 3. Encoding box */}
                 {cassetteMode !== 'multi' && (
                   <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
-                    <CodeHeading text="3. Encoding" className="text-xl font-bold text-gray-900 dark:text-white" />
+                    <div className="flex items-center gap-3">
+                      <StepBadge n={3} />
+                      <CodeHeading text="Encoding" className="text-xl font-bold text-gray-900 dark:text-white" />
+                    </div>
                     {constructWithLinkers.length > 0 ? (
                       <EncodingSequence items={constructWithLinkers} />
                     ) : (
@@ -933,7 +938,10 @@ const DesignLab = () => {
             
             {/* 4. Predicted Function / Predicted Cellular Program */}
             <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">5. Predicted Function / Predicted Cellular Program</h2>
+              <div className="flex items-center gap-3 mb-2">
+                <StepBadge n={5} />
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Predicted Function / Predicted Cellular Program</h2>
+              </div>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="text-sm">
@@ -955,8 +963,7 @@ const DesignLab = () => {
                   <p className="text-xs text-muted-foreground mt-2">Predictions come from the same API used by Natural Language mode.</p>
                 </div>
                 <div>
-                  <button
-                    className="px-3 py-2 rounded bg-primary text-primary-foreground disabled:opacity-50"
+                  <Button
                     onClick={async () => {
                       const modules = constructWithLinkers.filter((item: any) => item.type !== 'linker') as any[]
                       if (modules.length === 0) { toast.error('No modules selected'); return }
@@ -975,7 +982,7 @@ const DesignLab = () => {
                     disabled={isPredicting || constructWithLinkers.filter((i: any) => i.type !== 'linker').length === 0}
                   >
                     {isPredicting ? 'Predicting…' : 'Predict'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </Card>

@@ -6,6 +6,18 @@ import { Droppable, Draggable } from "@hello-pangea/dnd"
 import { ConstructItem, Module } from "@/lib/types"
 import { Badge } from "../ui/badge"
 import { AnimatedSyntaxHeading } from "@/components/ui/animated-syntax-heading"
+import { StepBadge } from "@/components/ui/step-badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface ConstructLayoutProps {
   constructModules: ConstructItem[]
@@ -43,12 +55,38 @@ export const ConstructLayout = ({
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <AnimatedSyntaxHeading className="text-xl font-bold text-gray-900 dark:text-white" />
+        <div className="flex items-center gap-3">
+          <StepBadge n={2} />
+          <AnimatedSyntaxHeading className="text-xl font-bold text-gray-900 dark:text-white" />
+        </div>
         <div className="flex gap-2">
-<Button variant="outline" size="sm" onClick={onReset}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Reset
-          </Button>
+          {constructModules.filter(item => item.type !== 'linker').length > 0 ? (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Reset
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset construct?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove all perturbation modules from the current construct. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={onReset}>Reset</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : (
+            <Button variant="outline" size="sm" onClick={onReset}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reset
+            </Button>
+          )}
           {isMultiCassetteMode && onAddCassette && constructModules.length > 0 && (
             <Button variant="default" size="sm" onClick={handleAddCassetteClick}>
               Add to Batch
@@ -93,10 +131,6 @@ export const ConstructLayout = ({
                                   {...provided.dragHandleProps}
                                   className={`relative group ${snapshot.isDragging ? 'z-10' : ''}`}
                                 >
-                                  {(() => {
-                                    console.log('Module in syntax area:', item);
-                                    return null;
-                                  })()}
                                   <ModuleButton
                                     module={item}
                                     moduleType={item.type as any}

@@ -116,7 +116,6 @@ export function AnimatedSyntaxHeading({ className }: AnimatedSyntaxHeadingProps)
       aria-label="2. Syntax"
       onMouseEnter={() => triggerAnimation()}
     >
-      <span className="inline-block mr-2">2.</span>
       <span className="inline-flex gap-1">
         {LETTERS.map((letter, idx) => {
           const offsets = offsetsRef.current[idx] ?? { x: 0, y: 0, rotate: 0 }

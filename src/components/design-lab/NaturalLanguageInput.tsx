@@ -8,6 +8,7 @@ import { parseInstructions, EditInstruction } from '@/lib/llm/llmParser';
 import { dispatchEdits, DispatchWarning, mapActionToModuleType } from '@/lib/llm/dispatcher';
 import { Module } from '@/lib/types';
 import { TypedHeading } from '@/components/ui/typed-heading';
+import { StepBadge } from '@/components/ui/step-badge';
 
 interface NaturalLanguageInputProps {
   onModulesGenerated: (modules: Module[]) => void;
@@ -125,11 +126,14 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
   };
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="space-y-4">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <TypedHeading text="1. Desired Genetic Perturbation" className="text-xl font-bold text-gray-900 dark:text-white" />
+          <div className="flex items-center gap-3">
+            <StepBadge n={1} />
+            <TypedHeading text="Desired Genetic Perturbation" className="text-xl font-bold text-gray-900 dark:text-white" />
+          </div>
           <Textarea
             id="natural-language"
             placeholder="Describe your genetic modifications (e.g., 'overexpress BATF, knockdown IRF4')"

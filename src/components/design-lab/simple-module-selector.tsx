@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { TypedHeading } from "@/components/ui/typed-heading"
+import { StepBadge } from "@/components/ui/step-badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -259,7 +260,10 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="space-y-5">
-        <TypedHeading text="1. Desired Genetic Perturbation" className="text-xl font-bold text-gray-900 dark:text-white" />
+        <div className="flex items-center gap-3">
+          <StepBadge n={1} />
+          <TypedHeading text="Desired Genetic Perturbation" className="text-xl font-bold text-gray-900 dark:text-white" />
+        </div>
         
         {/* Type Selector - Styled to match scan genes dialog */}
         <div className="p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -317,6 +321,16 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
               placeholder={`e.g. TP53, BRCA1, EGFR`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  if (suggestions.length > 0) {
+                    handleAddModule(suggestions[0])
+                  } else if (searchTerm.trim() && !loading) {
+                    handleQuickAddModule(searchTerm.trim())
+                  }
+                }
+              }}
               className="pl-10 h-11 text-base border-gray-300 dark:border-gray-600 focus-visible:ring-2 focus-visible:ring-primary"
             />
           </div>

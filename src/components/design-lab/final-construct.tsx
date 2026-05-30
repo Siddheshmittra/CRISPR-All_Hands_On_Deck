@@ -6,9 +6,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
 import Tippy from '@tippyjs/react';
-import { Download, Eye, EyeOff } from "lucide-react"
+import { Download, Eye, EyeOff, Copy, Check } from "lucide-react"
 import { generateGenbank } from "@/lib/genbank"
 import { toast } from "sonner"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { StepBadge } from "@/components/ui/step-badge"
 //
 
 import { ConstructItem, Module, AnnotatedSegment } from "@/lib/types"
@@ -35,6 +37,7 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
   const [barcode, setBarcode] = useState("")
   const [barcodeError, setBarcodeError] = useState("")
   const [showSequence, setShowSequence] = useState(true)
+  const [copied, setCopied] = useState(false)
   const [barcodeIndex, setBarcodeIndex] = useState<number | null>(null)
   const [integratedSegments, setIntegratedSegments] = useState<AnnotatedSegment[] | null>(null)
   // Prediction UI moved to Predicted Function section
@@ -197,6 +200,24 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
     return prediction + "."
   }
   
+  const handleCopySequence = async () => {
+    const sequence = (integratedSegments ?? generateAnnotatedSequence())
+      .map(s => s.sequence)
+      .join('')
+    if (!sequence) {
+      toast.error("No sequence to copy")
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(sequence)
+      setCopied(true)
+      toast.success("Sequence copied to clipboard")
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch (e) {
+      toast.error("Failed to copy sequence")
+    }
+  }
+
   const handleExport = () => {
     if (modules.length === 0) {
       toast.error("No modules to export")
@@ -257,21 +278,24 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
   return (
     <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h2
-          ref={headingRef}
-          className="text-xl font-bold text-gray-900 dark:text-white font-mono relative inline-block cursor-pointer select-none"
-          title="Toggle DNA splash"
-          onClick={() => {
-            if (flipTimeoutRef.current) window.clearTimeout(flipTimeoutRef.current)
-            if (splashTimeoutRef.current) window.clearTimeout(splashTimeoutRef.current)
-            setShowDnaSplash(prev => !prev)
-          }}
-        >
-          {/* DNA splash text */}
-          <span className={`${showDnaSplash ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-0.5'} transition-all duration-700 ease-in-out absolute inset-0`}>TACCTCACTAGCTGACTATATGATCTACTCTCACTA</span>
-          {/* Final header text */}
-          <span className={`${showDnaSplash ? 'opacity-0 scale-95 translate-y-0.5' : 'opacity-100 scale-100 translate-y-0'} transition-all duration-700 ease-in-out block`}>4. DNA Sequence</span>
-        </h2>
+        <div className="flex items-center gap-3">
+          <StepBadge n={4} />
+          <h2
+            ref={headingRef}
+            className="text-xl font-bold text-gray-900 dark:text-white font-mono relative inline-block cursor-pointer select-none"
+            title="Toggle DNA splash"
+            onClick={() => {
+              if (flipTimeoutRef.current) window.clearTimeout(flipTimeoutRef.current)
+              if (splashTimeoutRef.current) window.clearTimeout(splashTimeoutRef.current)
+              setShowDnaSplash(prev => !prev)
+            }}
+          >
+            {/* DNA splash text */}
+            <span className={`${showDnaSplash ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-0.5'} transition-all duration-700 ease-in-out absolute inset-0`}>TACCTCACTAGCTGACTATATGATCTACTCTCACTA</span>
+            {/* Final header text */}
+            <span className={`${showDnaSplash ? 'opacity-0 scale-95 translate-y-0.5' : 'opacity-100 scale-100 translate-y-0'} transition-all duration-700 ease-in-out block`}>DNA Sequence</span>
+          </h2>
+        </div>
         <div className="flex gap-2">
           <Button 
             variant="outline" 
@@ -280,6 +304,10 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
           >
             {showSequence ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
             {showSequence ? "Hide" : "Show"} Nucleotide Sequence
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleCopySequence}>
+            {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+            {copied ? "Copied" : "Copy Sequence"}
           </Button>
           <Button size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
@@ -296,14 +324,18 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <Label className="text-sm">Barcode Mode</Label>
-            <select
+            <Select
               value={barcodeMode}
-              onChange={(e) => onBarcodeModeChange?.(e.target.value as 'internal' | 'general')}
-              className="h-8 rounded-md border border-border bg-background px-2 text-sm"
+              onValueChange={(value) => onBarcodeModeChange?.(value as 'internal' | 'general')}
             >
-              <option value="internal">Internal (Roth lab)</option>
-              <option value="general">General</option>
-            </select>
+              <SelectTrigger className="h-8 w-[180px] text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="internal">Internal (Roth lab)</SelectItem>
+                <SelectItem value="general">General</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button
             variant="outline"
