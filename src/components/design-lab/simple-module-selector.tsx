@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { TypedHeading } from "@/components/ui/typed-heading"
-import { StepBadge } from "@/components/ui/step-badge"
+import { SectionHeading } from "@/components/ui/section-heading"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -259,12 +259,11 @@ export const SimpleModuleSelector = ({ onModuleAdd, constructModules }: SimpleMo
   }
 
   return (
-    <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+    <Card className="p-6 border border-border shadow-sm">
       <div className="space-y-5">
-        <div className="flex items-center gap-3">
-          <StepBadge n={1} />
-          <TypedHeading text="Desired Genetic Perturbation" className="text-xl font-bold text-gray-900 dark:text-white" />
-        </div>
+        <SectionHeading n={1}>
+          <TypedHeading text="Desired Genetic Perturbation" className="text-xl font-bold text-foreground" />
+        </SectionHeading>
         
         {/* Type Selector - Styled to match scan genes dialog */}
         <div className="p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">

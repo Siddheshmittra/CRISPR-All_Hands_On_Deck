@@ -623,7 +623,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
   return (
     <div className="space-y-6">
       <DragDropContext onDragEnd={handleDragEnd}>
-        <Card className="p-6 mb-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+        <Card className="p-6 mb-4 border border-border shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <AnimatedSyntaxHeading className="text-xl font-bold text-gray-900 dark:text-white" />
             {isGenerating && (
@@ -741,7 +741,7 @@ export const MultiCassetteSetup = (props: MultiCassetteSetupProps) => {
               <label className="text-sm font-medium">Construct Preview</label>
               <span className="text-xs text-muted-foreground">Constants lead, variables expand the search space</span>
             </div>
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-background p-4">
+            <div className="rounded-lg border border-border bg-background p-4">
               {renderConstructPreview()}
             </div>
           </div>

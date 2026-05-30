@@ -127,7 +127,7 @@ export function NaturalLanguageInput({ onModulesGenerated, onError }: NaturalLan
   };
 
   return (
-    <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+    <Card className="p-6 border border-border shadow-sm">
       <div className="space-y-4">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Albert+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,102 +10,71 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* ROTH-inspired Color Distribution - Blues dominant, oranges secondary */
-    --background: 0 0% 100%; /* Pure white background */
-    --foreground: 0 0% 8%; /* Dark text for contrast */
+    /* Roth Lab palette: #245EB2 primary blue, #091E57 navy, #38434C slate text,
+       #FF5A32 coral accent, #F6F6F6 off-white surface, #CDD5E0 blue-gray borders */
+    --background: 0 0% 96%; /* #F6F6F6 - soft off-white, not pure white */
+    --foreground: 207 15% 26%; /* #38434C - Roth slate gray */
 
-    --card: 0 0% 100%; /* White cards */
-    --card-foreground: 0 0% 8%;
+    --card: 0 0% 100%; /* White cards lift off the off-white page */
+    --card-foreground: 207 15% 26%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 8%;
+    --popover-foreground: 207 15% 26%;
 
-    --primary: 218 65% 35%; /* #245cb4 - Deep blue (dominant) */
+    --primary: 215 66% 42%; /* #245EB2 - Roth primary blue */
     --primary-foreground: 0 0% 98%;
     
-    --primary-light: 210 55% 55%; /* #6ab2d3 - Sky blue */
-    --primary-dark: 218 65% 25%; /* Darker blue */
+    --primary-light: 201 58% 64%; /* #6FB5D9 - Roth sky blue */
+    --primary-dark: 225 80% 19%; /* #091E57 - Roth deep navy */
 
-    --secondary: 32 75% 49%; /* #d48c24 - Warm orange (secondary) */
+    --secondary: 204 26% 40%; /* #4C6C81 - Roth blue-gray */
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 210 25% 85%; /* #ccd5dd - Light blue-gray (dominant background) */
-    --muted-foreground: 218 65% 35%;
+    --muted: 214 25% 92%; /* Light blue-gray panel */
+    --muted-foreground: 207 15% 38%;
 
-    --accent: 13 95% 59%; /* #fa6339 - Coral orange (accent) */
+    --accent: 13 100% 60%; /* #FF5A32 - Roth coral accent */
     --accent-foreground: 0 0% 98%;
 
-    --destructive: 13 95% 59%; /* #fa6339 - Coral orange */
+    --destructive: 13 100% 60%; /* #FF5A32 - Roth coral */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 35% 65%; /* #7494cc - Periwinkle borders */
-    --input: 210 25% 85%; /* #ccd5dd - Light blue-gray inputs */
-    --ring: 218 65% 35%;
+    --border: 215 23% 84%; /* #CDD5E0 - Roth blue-gray borders */
+    --input: 215 23% 88%;
+    --ring: 215 66% 42%;
 
     /* Blue-dominant gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(218 65% 35%), hsl(210 55% 55%));
-    --gradient-surface: linear-gradient(135deg, hsl(0 0% 100% / 0.95), hsl(210 25% 85% / 0.95));
+    --gradient-primary: linear-gradient(135deg, hsl(225 80% 19%), hsl(215 66% 42%));
+    --gradient-surface: linear-gradient(135deg, hsl(0 0% 100% / 0.95), hsl(214 25% 92% / 0.95));
     
     /* Shadows */
-    --shadow-module: 0 2px 8px hsl(218 65% 35% / 0.18);
-    --shadow-elevated: 0 20px 40px -12px hsl(218 65% 35% / 0.25);
+    --shadow-module: 0 2px 8px hsl(215 66% 42% / 0.16);
+    --shadow-elevated: 0 20px 40px -12px hsl(225 80% 19% / 0.22);
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 218 65% 35%; /* #245cb4 - Deep blue sidebar */
+    --sidebar-background: 215 66% 42%; /* #245EB2 - Roth blue sidebar */
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 210 55% 55%; /* Sky blue */
+    --sidebar-primary: 201 58% 64%; /* Sky blue */
     --sidebar-primary-foreground: 0 0% 8%;
-    --sidebar-accent: 208 55% 65%; /* #82b7da - Light blue accent */
+    --sidebar-accent: 208 55% 65%; /* Light blue accent */
     --sidebar-accent-foreground: 0 0% 8%;
-    --sidebar-border: 220 35% 65%;
-    --sidebar-ring: 218 65% 35%;
+    --sidebar-border: 215 30% 55%;
+    --sidebar-ring: 215 66% 42%;
 
-    /* Perturbation Type Colors */
-    --overexpression: 66 70% 47%; /* #c5d42f - Lime green for OE */
+    /* Perturbation Type Colors - Roth spectral categorical palette */
+    --overexpression: 94 38% 59%; /* #90BE6D - spectral green for OE */
     --overexpression-foreground: 0 0% 8%;
-    --domain: 270 60% 60%; /* #9b59d4 - Violet for Domain */
-    --domain-foreground: 0 0% 98%;
-    --knockout: 13 95% 59%; /* #fa6339 - Coral red for KO */
+    --domain: 42 93% 64%; /* #F9C74F - spectral yellow for Domain */
+    --domain-foreground: 0 0% 8%;
+    --knockout: 359 94% 62%; /* #F94144 - spectral red for KO */
     --knockout-foreground: 0 0% 98%;
-    --knockdown: 32 75% 49%; /* #d48c24 - Warm orange for KD */
-    --knockdown-foreground: 0 0% 98%;
-    --knockin: 201 62% 65%; /* #6eb6dd - Teal blue for KI & synthetic */
-    --knockin-foreground: 0 0% 8%;
+    --knockdown: 33 94% 55%; /* #F8961E - spectral orange for KD */
+    --knockdown-foreground: 0 0% 8%;
+    --knockin: 198 61% 39%; /* #277DA1 - spectral cerulean for KI & synthetic */
+    --knockin-foreground: 0 0% 98%;
 
-    font-family: 'Proxima Nova', Arial, sans-serif;
-  }
-
-  @font-face {
-    font-family: 'Proxima Nova';
-    src: url('https://use.typekit.net/af/123456/0000000000000000000177b8/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3') format('woff2');
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
-  }
-
-  @font-face {
-    font-family: 'Proxima Nova';
-    src: url('https://use.typekit.net/af/123456/0000000000000000000177b8/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n6&v=3') format('woff2');
-    font-weight: 600;
-    font-style: normal;
-    font-display: swap;
-  }
-
-  @font-face {
-    font-family: 'Proxima Nova';
-    src: url('https://use.typekit.net/af/123456/0000000000000000000177b8/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3') format('woff2');
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
-  }
-
-  @font-face {
-    font-family: 'Proxima Nova';
-    src: url('https://use.typekit.net/af/123456/0000000000000000000177b8/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n8&v=3') format('woff2');
-    font-weight: 800;
-    font-style: normal;
-    font-display: swap;
+    font-family: 'Albert Sans', system-ui, -apple-system, sans-serif;
   }
 
   * {
@@ -111,53 +82,50 @@ All colors MUST be HSL.
   }
   body {
     @apply bg-background text-foreground;
-    font-weight: 500; /* Slightly bolder base text */
+    font-family: 'Albert Sans', system-ui, -apple-system, sans-serif;
+    font-weight: 400; /* Roth uses a light, airy base weight */
   }
 
-  /* Typography improvements for better readability */
+  /* Typography: Roth tops out at 700, with tighter heading tracking */
   h1, h2, h3, h4, h5, h6 {
-    font-weight: 700; /* Bold headings */
-    letter-spacing: -0.02em; /* Tighter letter spacing for headings */
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 
   h1 {
-    font-weight: 800; /* Extra bold for main headings */
+    font-weight: 700;
   }
 
   h2 {
-    font-weight: 700; /* Bold for section headings */
+    font-weight: 700;
   }
 
   h3, h4 {
-    font-weight: 600; /* Semi-bold for subsection headings */
+    font-weight: 600;
   }
 
-  /* Make important UI elements more prominent */
   .font-medium {
-    font-weight: 600; /* Semi-bold instead of medium */
+    font-weight: 500;
   }
 
   .font-semibold {
-    font-weight: 700; /* Bold instead of semibold */
+    font-weight: 600;
   }
 
   .font-bold {
-    font-weight: 800; /* Extra bold instead of bold */
+    font-weight: 700;
   }
 
-  /* Improve button text readability */
   button {
-    font-weight: 600; /* Semi-bold buttons */
+    font-weight: 600;
   }
 
-  /* Make labels more prominent */
   label {
-    font-weight: 600; /* Semi-bold labels */
+    font-weight: 600;
   }
 
-  /* Improve card titles */
   .card h2, .card h3 {
-    font-weight: 700; /* Bold card titles */
+    font-weight: 700;
   }
 
   .dark {
@@ -210,16 +178,16 @@ All colors MUST be HSL.
     --sidebar-border: 221 30% 24%;
     --sidebar-ring: 210 58% 56%;
 
-    /* Perturbation Type Colors - adjusted for dark mode visibility */
-    --overexpression: 66 70% 58%;
+    /* Perturbation Type Colors - Roth spectral palette, lifted for dark navy */
+    --overexpression: 94 42% 62%; /* #90BE6D green */
     --overexpression-foreground: 0 0% 8%;
-    --domain: 270 65% 70%;
+    --domain: 42 95% 66%; /* #F9C74F yellow */
     --domain-foreground: 0 0% 8%;
-    --knockout: 13 95% 66%;
+    --knockout: 359 95% 68%; /* #F94144 red */
     --knockout-foreground: 0 0% 8%;
-    --knockdown: 32 78% 58%;
+    --knockdown: 33 95% 60%; /* #F8961E orange */
     --knockdown-foreground: 0 0% 8%;
-    --knockin: 201 62% 65%;
+    --knockin: 198 58% 56%; /* #277DA1 cerulean */
     --knockin-foreground: 0 0% 8%;
   }
 }

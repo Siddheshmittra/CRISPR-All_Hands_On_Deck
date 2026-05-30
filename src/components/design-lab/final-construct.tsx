@@ -281,7 +281,7 @@ export const FinalConstruct = ({ constructModules, barcodeMode = 'internal', onB
   }
 
   return (
-    <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+    <Card className="p-6 border border-border shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
           <StepBadge n={4} />

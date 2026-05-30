@@ -1320,11 +1320,11 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
           </div>
         </div>
       )}
-      <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+      <Card className="p-6 border border-border shadow-sm">
         <TypedHeading text="1. Desired Genetic Perturbations (Pooled)" className="text-xl font-bold text-gray-900 dark:text-white mb-4" />
 
       {/* Perturbation Type - button selector */}
-      <div className="mb-5 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="mb-5 p-4 rounded-lg bg-white dark:bg-gray-800 border border-border shadow-sm">
         <div className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Perturbation Type</div>
         <div className="flex gap-2 flex-wrap">
           {typeOptions.map(option => (
@@ -1353,7 +1353,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       </div>
 
       {/* Toolbar: Folder select + import/export + create library */}
-      <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+      <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-800 border border-border">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex gap-3 items-center">
             <span className="text-sm font-medium">Add to library:</span>
@@ -1680,11 +1680,11 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
       {/* Import Dialog */}
       {showScanGenesDialog && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={handleCloseImportDialog}>
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-border" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Import Library</h3>
             
             {/* Perturbation Type Selector - Moved to top */}
-            <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-800 border border-border shadow-sm">
               <div className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Perturbation Type</div>
               <div className="flex gap-2 flex-wrap">
                 {typeOptions.map((option) => (
@@ -1715,7 +1715,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
             
             <div className="space-y-6">
               {/* File Upload Option */}
-              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-5 bg-white dark:bg-gray-800 hover:shadow-md transition-shadow duration-200">
+              <div className="border border-border rounded-lg p-5 bg-white dark:bg-gray-800 hover:shadow-md transition-shadow duration-200">
                 <h4 className="text-base font-semibold mb-2 text-gray-900 dark:text-white">Upload File</h4>
                 <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
                   Upload a CSV or Excel file with gene names
@@ -1734,7 +1734,7 @@ export const ModuleSelector = ({ selectedModules, onModuleSelect, onModuleDesele
               </div>
               
               {/* Text Input Option */}
-              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-5 bg-white dark:bg-gray-800 hover:shadow-md transition-shadow duration-200">
+              <div className="border border-border rounded-lg p-5 bg-white dark:bg-gray-800 hover:shadow-md transition-shadow duration-200">
                 <h4 className="text-base font-semibold mb-2 text-gray-900 dark:text-white">Paste Gene Names</h4>
                 <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
                   Enter gene names separated by commas, spaces, or new lines

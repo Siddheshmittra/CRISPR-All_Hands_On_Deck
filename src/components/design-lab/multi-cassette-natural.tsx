@@ -416,7 +416,7 @@ export function MultiCassetteNatural(props: MultiCassetteNaturalProps) {
   // Minimal toggle summary removed to keep UI compact
 
   return (
-    <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+    <Card className="p-6 border border-border shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <TypedHeading text="1. Desired Genetic Perturbations (Pooled)" className="text-xl font-bold text-gray-900 dark:text-white" />
         <Dialog open={showImporter} onOpenChange={setShowImporter}>

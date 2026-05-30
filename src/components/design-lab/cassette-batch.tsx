@@ -702,7 +702,7 @@ export const CassetteBatch = ({ cassetteBatch, onDeleteCassette, onExportBatch, 
             </div>
             
             {editingCassetteId === cassette.id ? (
-              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-background">
+              <div className="border border-border rounded-lg p-4 bg-background">
                 <p className="text-sm text-muted-foreground mb-3">Drag modules to reorder the construct syntax:</p>
                 <DragDropContext onDragEnd={handleDragEnd}>
                   <Droppable droppableId={`cassette-${cassette.id}`} direction="horizontal">

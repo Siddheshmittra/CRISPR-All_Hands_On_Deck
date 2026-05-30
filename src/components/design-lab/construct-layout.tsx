@@ -54,7 +54,7 @@ export const ConstructLayout = ({
   }
 
   return (
-    <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+    <Card className="p-6 border border-border shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <StepBadge n={2} />
@@ -96,7 +96,7 @@ export const ConstructLayout = ({
         </div>
       </div>
 
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 min-h-[120px] bg-gradient-surface">
+      <div className="border border-border rounded-lg p-6 min-h-[120px] bg-gradient-surface">
         <div className="flex flex-row items-center w-full gap-4">
           <Droppable droppableId="construct" direction="horizontal">
             {(provided, snapshot) => (
@@ -174,7 +174,7 @@ export const ConstructLayout = ({
               <div
                 ref={provided.innerRef}
                 {...provided.droppableProps}
-                className={`flex flex-col items-center justify-center w-14 h-16 rounded-lg border border-gray-200 dark:border-gray-700 bg-muted transition-colors select-none shadow-sm ml-2 ${snapshot.isDraggingOver ? 'bg-destructive/20 border-destructive' : ''}`}
+                className={`flex flex-col items-center justify-center w-14 h-16 rounded-lg border border-border bg-muted transition-colors select-none shadow-sm ml-2 ${snapshot.isDraggingOver ? 'bg-destructive/20 border-destructive' : ''}`}
               >
                 <Trash2 className={`h-5 w-5 mb-1 ${snapshot.isDraggingOver ? 'text-destructive' : 'text-muted-foreground'}`} />
                 <span className="text-xs text-muted-foreground">Trash</span>

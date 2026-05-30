@@ -25,7 +25,7 @@ import { generateBarcode } from "@/lib/barcode-utils"
 import { pickNextAvailable } from "@/lib/barcodes"
 import { predictTCellFunction } from "@/lib/llm/predictFunction"
 import { CodeHeading } from "@/components/ui/code-heading"
-import { StepBadge } from "@/components/ui/step-badge"
+import { SectionHeading } from "@/components/ui/section-heading"
 import { Button } from "@/components/ui/button"
 
 import { Module, LibrarySyntax, LibrarySyntaxMode, LibrarySyntaxAddOptions } from "@/lib/types"
@@ -721,8 +721,8 @@ const DesignLab = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-12 sm:py-16">
+        <div className="space-y-12">
           <DesignMode
             cassetteMode={cassetteMode}
             onCassetteModeChange={setCassetteMode}
@@ -806,7 +806,7 @@ const DesignLab = () => {
           <DragDropContext onDragEnd={handleDragEnd}>
             <div className="flex flex-row gap-4 items-start">
               <div className="flex-1">
-                <div className="space-y-6">
+                <div className="space-y-8">
                 {inputMode === 'manual' && (
                   <>
                     {cassetteMode === 'single' ? (
@@ -862,11 +862,10 @@ const DesignLab = () => {
 
                 {/* 3. Encoding box */}
                 {cassetteMode !== 'multi' && (
-                  <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
-                    <div className="flex items-center gap-3">
-                      <StepBadge n={3} />
-                      <CodeHeading text="Encoding" className="text-xl font-bold text-gray-900 dark:text-white" />
-                    </div>
+                  <Card className="p-6 border border-border shadow-sm space-y-4">
+                    <SectionHeading n={3}>
+                      <CodeHeading text="Encoding" className="text-xl font-bold text-foreground" />
+                    </SectionHeading>
                     {constructWithLinkers.length > 0 ? (
                       <EncodingSequence items={constructWithLinkers} />
                     ) : (
@@ -905,7 +904,7 @@ const DesignLab = () => {
           </DragDropContext>
           
           {cassetteMode === 'single' && (
-            <div className="space-y-6">
+            <div className="space-y-8">
             <FinalConstruct 
               constructModules={constructWithLinkers}
               barcodeMode={barcodeMode}
@@ -930,11 +929,10 @@ const DesignLab = () => {
             />
             
             {/* 4. Predicted Function / Predicted Cellular Program */}
-            <Card className="p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-              <div className="flex items-center gap-3 mb-2">
-                <StepBadge n={5} />
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Predicted Function / Predicted Cellular Program</h2>
-              </div>
+            <Card className="p-6 border border-border shadow-sm">
+              <SectionHeading n={5} className="mb-4">
+                <h2 className="text-xl font-bold text-foreground">Predicted Function / Predicted Cellular Program</h2>
+              </SectionHeading>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="text-sm">
